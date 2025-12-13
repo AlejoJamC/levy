@@ -69,6 +69,30 @@ It runs a sequence of prompts through three configurations:
 2. Exact Cache Only
 3. Semantic Cache (uses `sentence-transformers` if available)
 
+
+### Running with Ollama (Local Models)
+
+1. Install and run [Ollama](https://ollama.com/).
+2. Pull required models:
+   ```bash
+   ollama pull llama3.2
+   ollama pull mxbai-embed-large
+   ```
+3. Run the demo:
+   ```bash
+   python examples/ollama_demo.py
+   ```
+
+### Using Redis Stack (Docker)
+
+To use Redis for persistence:
+
+1. Start Redis:
+   ```bash
+   docker-compose up -d
+   ```
+2. Configure `LevyConfig` to use `cache_store_type="redis"`.
+
 ## Configuration
 
 You can configure Levy via `LevyConfig`:

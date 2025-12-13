@@ -3,9 +3,15 @@ import logging
 from typing import Optional, Any, Dict
 from levy.config import LevyConfig
 from levy.models import LLMRequest, LevyResult, LLMResponse
-from levy.llm_client import LLMClient, MockLLMClient, OpenAILLMClient
-from levy.embeddings import EmbeddingClient, MockEmbeddingClient, SentenceTransformerClient
+from levy.llm_client import LLMClient, MockLLMClient, OpenAILLMClient, OllamaLLMClient
+from levy.embeddings import EmbeddingClient, MockEmbeddingClient, SentenceTransformerClient, OllamaEmbeddingClient
 from levy.cache.store import InMemoryStore
+# Load RedisStore conditionally or just import if available
+try:
+    from levy.cache.redis_store import RedisStore
+except ImportError:
+    RedisStore = None
+
 from levy.cache.exact_cache import ExactCache
 from levy.cache.semantic_cache import SemanticCache
 from levy.metrics import LevyMetrics
@@ -26,6 +32,11 @@ class LevyEngine:
                 base_url=config.openai_base_url,
                 model=config.model_name
             )
+        elif config.llm_provider == "ollama":
+            self.llm_client = OllamaLLMClient(
+                base_url=config.ollama_base_url,
+                model=config.model_name
+            )
         else:
             self.llm_client = MockLLMClient()
 
@@ -33,13 +44,30 @@ class LevyEngine:
         if config.enable_semantic_cache:
             if config.embedding_provider == "sentence-transformers":
                 self.embedding_client = SentenceTransformerClient(config.embedding_model)
+            elif config.embedding_provider == "ollama":
+                self.embedding_client = OllamaEmbeddingClient(
+                    base_url=config.ollama_base_url,
+                    model=config.embedding_model
+                )
             else:
                 self.embedding_client = MockEmbeddingClient()
         else:
              self.embedding_client = MockEmbeddingClient() # Fallback
 
         # 3. Initialize Store and Caches
-        self.store = InMemoryStore(max_size=self.config.cache_max_size)
+        if config.cache_store_type == "redis":
+            if RedisStore is None:
+                logger.warning("Redis dependencies not found. Falling back to Memory.")
+                self.store = InMemoryStore(max_size=self.config.cache_max_size)
+            else:
+                 try:
+                    self.store = RedisStore(redis_url=config.redis_url, ttl=config.cache_ttl_seconds)
+                 except Exception as e:
+                    logger.error(f"Failed to connect to Redis: {e}. Falling back to Memory.")
+                    self.store = InMemoryStore(max_size=self.config.cache_max_size)
+        else:
+            self.store = InMemoryStore(max_size=self.config.cache_max_size)
+
         self.exact_cache = ExactCache(self.store)
         self.semantic_cache = SemanticCache(
             self.store, 

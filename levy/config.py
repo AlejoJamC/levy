@@ -11,14 +11,19 @@ class LevyConfig:
     Configuration for the Levy Engine.
     """
     # LLM settings
-    llm_provider: str = "mock"  # "mock" or "openai"
+    llm_provider: str = "mock"  # "mock", "openai", "ollama"
     openai_api_key: Optional[str] = field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
     openai_base_url: str = "https://api.openai.com/v1"
-    model_name: str = "gpt-3.5-turbo"
+    ollama_base_url: str = "http://localhost:11434"
+    model_name: str = "llama3.2"  # Default change to local friendly
     
     # Embedding settings
-    embedding_provider: str = "mock" # "mock" or "sentence-transformers"
-    embedding_model: str = "all-MiniLM-L6-v2"
+    embedding_provider: str = "mock" # "mock", "sentence-transformers", "ollama"
+    embedding_model: str = "mxbai-embed-large"
+    
+    # Storage settings
+    cache_store_type: str = "memory" # "memory", "redis"
+    redis_url: str = "redis://localhost:6379/0"
     
     # Cache settings
     enable_exact_cache: bool = True

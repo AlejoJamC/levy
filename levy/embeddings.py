@@ -50,3 +50,34 @@ class SentenceTransformerClient(EmbeddingClient):
     
     def get_dimension(self) -> int:
         return self.model.get_sentence_embedding_dimension()
+
+class OllamaEmbeddingClient(EmbeddingClient):
+    """Client for local Ollama embeddings."""
+    def __init__(self, base_url: str = "http://localhost:11434", model: str = "mxbai-embed-large"):
+        # Local import to avoid circular dependency issues or just standard practice if keeping clean
+        import httpx
+        self.httpx = httpx
+        self.base_url = base_url
+        self.model = model
+        self._dimension = None
+
+    def embed(self, text: str) -> List[float]:
+        url = f"{self.base_url}/api/embeddings"
+        payload = {
+            "model": self.model,
+            "prompt": text
+        }
+        with self.httpx.Client(timeout=30.0) as client:
+            resp = client.post(url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            embedding = data["embedding"]
+            if self._dimension is None:
+                self._dimension = len(embedding)
+            return embedding
+
+    def get_dimension(self) -> int:
+        if self._dimension is None:
+            # Generate a dummy embedding to know the dimension
+            self.embed("test")
+        return self._dimension
