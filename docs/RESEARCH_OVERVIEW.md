@@ -52,6 +52,9 @@ In specialized domains like banking, duplication rates can be even higher due to
 
 ### 2.4 The Technical Gap in Current Practice
 
+> **Note:**
+> Pending expand this section with academic references and further research.
+
 Current organizational approaches to this problem are inadequate:
 
 **Exact-match caching**: Traditional key-value cache approach stores the exact prompt string and retrieves if seen again. The problem: it completely misses semantic duplicates. "Reset my password" and "forgot login credentials" won't match, even though they require essentially the same response.
@@ -403,5 +406,5 @@ The combination of empirical rigor, practical applicability, and connection to b
 ---
 
 **Document Version**: 1.0  
-**Last Updated**: December 2024  
-**Contact**: [Your university email if appropriate]
+**Last Updated**: December 2025  
+**Contact**: alejojamc7@gmail.com
