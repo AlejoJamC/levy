@@ -4,7 +4,7 @@
 2. INITIATIVE
    └─ Multi-quarter, high-level business goal
    
-3. EPIC ⭐ (AQUÍ ESTAMOS)
+3. EPIC ⭐
    └─ Large body of work (1-3 months)
    └─ Ejemplo: "Component 1: Client/Proxy Layer"
    
