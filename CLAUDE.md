@@ -167,6 +167,32 @@ edits:
 - Useful CLI: `openspec list`, `openspec status --change <name>`,
   `openspec validate --all`.
 
+### Linear ↔ OpenSpec mapping
+
+The engineering backlog lives in Linear (team **Levy Project**, project
+**"Levy — Capstone IT Artefact"**). Each Linear issue maps 1:1 to an OpenSpec
+change; the issue description carries the spec basis, scope, and acceptance
+criteria that seed the change's `proposal.md`. Milestones: M1 Experiment-Ready
+(2026-06-21), M2 Experiments & Analysis (2026-08-09), M3 Public Artefact
+Release (2026-11-02).
+
+| Linear | OpenSpec change | Priority |
+|---|---|---|
+| LEV-1 | `add-embedding-manager` | Urgent |
+| LEV-2 | `add-faiss-vector-store` | Urgent |
+| LEV-3 | `add-ground-truth-dataset` | Urgent |
+| LEV-4 | `add-experiment-harness` | Urgent |
+| LEV-5 | `add-test-infrastructure` | Urgent |
+| LEV-6 | `add-anthropic-connector` | High |
+| LEV-7 | `add-fastapi-router` | High |
+| LEV-8 | `add-statistical-analysis` | High |
+| LEV-9 | `add-release-packaging` | Medium |
+| LEV-10 | `add-results-dashboard` | Low (desirable) |
+
+Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 feeding LEV-4.
+When an OpenSpec change is created or archived, reference its Linear issue
+and keep the issue status in sync.
+
 ## Conventions
 
 - Python ≥ 3.10, dataclasses over Pydantic in the core package (EPIC-001 plans
