@@ -1,6 +1,8 @@
 # Levy
 
-**Levy** is a semantic caching engine for LLM APIs, designed as a research prototype for a Computer Science Capstone project. It sits between your application and an LLM provider (like OpenAI) to optimize costs and latency by reusing responses for identical or semantically similar prompts.
+**Levy** is a semantic caching engine for LLM APIs, built as the IT artefact of an MSc Artificial Intelligence capstone project (University of Liverpool). It sits between your application and an LLM provider (Mock, OpenAI-compatible, or Ollama today; Anthropic connector planned) to optimize costs and latency by reusing responses for identical or semantically similar prompts.
+
+The research behind Levy benchmarks false positive rates of semantic caching across embedding models (all-MiniLM vs ModernBERT), workloads (FAQ, code, chat), and similarity thresholds. The authoritative project definition lives in [docs/Project_Proposal.md](docs/Project_Proposal.md) and [docs/Specification_and_Design_Report.md](docs/Specification_and_Design_Report.md) (university submissions — do not modify).
 
 ## Features
 
@@ -14,11 +16,14 @@
 ```
 levy/
 ├── levy/               # Core package
-│   ├── cache/          # Cache logic (Exact, Semantic, Store)
-│   ├── llm_client.py   # LLM interaction (Mock, OpenAI)
-│   ├── embeddings.py   # Vector embedding logic
+│   ├── cache/          # Cache logic (Exact, Semantic, InMemory/Redis stores)
+│   ├── llm_client.py   # LLM interaction (Mock, OpenAI, Ollama)
+│   ├── embeddings.py   # Embedding clients (Mock, sentence-transformers, Ollama)
 │   ├── engine.py       # Main orchestration engine
+│   ├── config.py       # LevyConfig (providers, thresholds, store)
+│   ├── metrics.py      # Hit/miss/latency/token-savings tracking
 │   └── models.py       # Data classes
+├── docs/               # Research docs (proposal & S&D report are frozen)
 ├── examples/           # Demo scripts
 └── tests/              # Unit tests
 ```
@@ -36,6 +41,14 @@ levy/
     ```bash
     conda activate levy
     ```
+
+## Running Tests
+
+```bash
+python -m unittest discover -s tests -p "test_*.py"
+# or, if pytest is installed:
+python -m pytest tests/ -q
+```
 
 ## Usage
 

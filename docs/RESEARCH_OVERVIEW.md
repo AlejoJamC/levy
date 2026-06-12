@@ -1,6 +1,12 @@
 # Levy: Semantic Caching for LLM API Cost Optimization
 ## Research Overview & Academic Context
 
+> **Status: historical working document.** This overview predates the formal
+> submissions. Where it differs (12-week timeline, RAG workload, 0.70–0.95
+> threshold range), the frozen documents [Project_Proposal.md](Project_Proposal.md)
+> and [Specification_and_Design_Report.md](Specification_and_Design_Report.md)
+> are authoritative.
+
 **Author:** John Alejandro Mantilla Celis  
 **Institution:** University of Liverpool  
 **Program:** MSc Artificial Intelligence  
