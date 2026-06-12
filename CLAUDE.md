@@ -60,6 +60,7 @@ freely as long as they don't rewrite the submitted documents.
 | `docs/PLANNING_HIERARCHY.md` | Working | Vision → Epic → Feature → Story → Task hierarchy used to plan work. |
 | `docs/epics/EPIC-001-client-proxy-layer.md` | Working | Epic for the FastAPI client/proxy layer (Component 1). Pattern for future epics (`EPIC-00X-*.md`). |
 | `README.md` | Living | User-facing install/usage docs. Keep in sync with code. |
+| `openspec/` | Living | OpenSpec spec-driven workflow: capability specs + change proposals (see "Spec-driven workflow" below). |
 | `CLAUDE.md` (this file) | Living | Orientation + ground rules for every session. |
 
 ## Code architecture (current state)
@@ -114,6 +115,17 @@ implied by the spec, not bugs:
 
 ## Commands
 
+**Everything Python in this repo runs inside the `levy` conda env.** Dependencies
+(numpy, httpx, sentence-transformers, redis, dotenv) are installed there and
+nowhere else — a bare `python`/`pip` outside the env will fail with missing
+modules. Claude Code's shell does NOT inherit the activated env, so prefix every
+Python command:
+
+```bash
+# Activate first (conda run -n levy may hit shell-profile permission issues):
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate levy && <command>
+```
+
 ```bash
 # Environment (conda, env name: levy)
 conda env create -f environment.yml
@@ -122,7 +134,7 @@ conda activate levy
 # Tests (pytest is in pyproject [dev] extras but NOT in the conda env yet;
 # unittest always works)
 python -m unittest discover -s tests -p "test_*.py"
-# or, after `pip install pytest`:
+# or, after `pip install pytest` inside the env:
 python -m pytest tests/ -q
 
 # Demos
@@ -135,6 +147,25 @@ docker-compose up -d
 
 Secrets live in `.env` (gitignored; template in `.env.example`). Never commit
 API keys.
+
+## Spec-driven workflow (OpenSpec)
+
+The repo uses [OpenSpec](https://github.com/Fission-AI/OpenSpec) (CLI installed
+via Homebrew at `/opt/homebrew/bin/openspec`, scaffold initialized) for planning
+and tracking changes. New features should go through this flow instead of ad-hoc
+edits:
+
+- `openspec/specs/` — living capability specs (the working spec layer, built *on
+  top of* the frozen university docs; they must never contradict the frozen
+  research scope).
+- `openspec/changes/` — in-flight change proposals (`proposal.md`, `design.md`,
+  `tasks.md` per change); completed changes move to `openspec/changes/archive/`.
+- `openspec/config.yaml` — project context injected into artifact generation.
+- Slash commands (in `.claude/commands/opsx/`): `/opsx:propose` (create change +
+  artifacts), `/opsx:apply` (implement tasks), `/opsx:archive` (finish + update
+  specs), `/opsx:explore` (think through ideas), `/opsx:sync` (reconcile specs).
+- Useful CLI: `openspec list`, `openspec status --change <name>`,
+  `openspec validate --all`.
 
 ## Conventions
 

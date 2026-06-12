@@ -1,20 +1,26 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Levy is a semantic caching engine for LLM APIs — the IT artefact of an MSc AI
+  capstone (University of Liverpool). It measures false positive rates of
+  semantic caching across embedding models, workloads, and similarity thresholds.
+
+  IMMUTABLE research baseline (NEVER modify, specs must not contradict them):
+  docs/Project_Proposal.md and docs/Specification_and_Design_Report.md.
+  Key parameters from those docs: 2 embedding models (all-MiniLM-L6-v2 vs
+  ModernBERT) x 3 workloads (FAQ, code, chat) x 5 thresholds (0.70-0.90) = 30
+  configurations; metrics precision/recall/F0.5/FP-rate/hit-rate; hit rate >30%
+  for economic viability; Cohen's kappa >0.7.
+
+  Tech stack: Python >=3.10, dataclasses (no Pydantic in core), synchronous,
+  conda env "levy" (all Python commands run inside it). Target stack per spec:
+  FastAPI router, sentence-transformers, Faiss HNSW, Anthropic SDK, pytest.
+  Convention: every external dependency (LLM, embeddings, store) gets an ABC +
+  mock implementation so everything runs offline. Licence Apache 2.0; repo and
+  dataset will be public — no secrets or personal data.
 
 # Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
 # Example:
 #   rules:
 #     proposal:
 #       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
