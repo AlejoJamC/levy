@@ -114,7 +114,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   when Faiss absent), engine end-to-end semantic cache hit/miss.
 - `examples/simple_replay.py` — replays a prompt list under no-cache / exact /
   exact+semantic configs. `examples/ollama_demo.py` — end-to-end with local Ollama
-  (`llama3.2` + `mxbai-embed-large`).
+  (`qwen3` LLM + `nomic-embed-text` embeddings).
 
 ### Known gaps: current code vs frozen spec
 
@@ -171,7 +171,7 @@ python -m pytest tests/ -q
 
 # Demos
 python examples/simple_replay.py     # mock LLM; uses sentence-transformers if installed
-python examples/ollama_demo.py       # requires `ollama serve` + llama3.2 + mxbai-embed-large
+python examples/ollama_demo.py       # requires `ollama serve` + qwen3 + nomic-embed-text
 
 # Local services (Redis 7 for cache_store_type="redis")
 docker-compose up -d

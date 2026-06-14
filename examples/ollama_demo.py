@@ -11,13 +11,15 @@ def main():
     print("--- Levy with Local Ollama ---")
 
     # Configuration for Ollama
-    # Ensure you are running `ollama serve` and have `llama3.2` and `mxbai-embed-large` pulled.
+    # Ensure you are running `ollama serve` and have pulled:
+    #   ollama pull qwen3
+    #   ollama pull nomic-embed-text
     config = LevyConfig(
         llm_provider="ollama",
-        model_name="llama3.2",  # Adjust if you have a different model
+        model_name="qwen3",
         enable_semantic_cache=True,
         embedding_provider="ollama",
-        embedding_model="mxbai-embed-large", # Adjust if using different model
+        embedding_model="nomic-embed-text",
         similarity_threshold=0.8
     )
 

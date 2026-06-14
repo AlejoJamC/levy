@@ -15,7 +15,7 @@ class LevyConfig:
     openai_api_key: Optional[str] = field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
     openai_base_url: str = "https://api.openai.com/v1"
     ollama_base_url: str = "http://localhost:11434"
-    model_name: str = "llama3.2"  # Default change to local friendly
+    model_name: str = "qwen3"  # default local model for Ollama; override per deployment
     
     # Embedding settings
     embedding_provider: str = "sentence-transformers"  # "mock", "sentence-transformers", "ollama"
