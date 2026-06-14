@@ -4,7 +4,7 @@ from typing import Optional, Any, Dict
 from levy.config import LevyConfig
 from levy.models import LLMRequest, LevyResult, LLMResponse
 from levy.llm_client import LLMClient, MockLLMClient, OpenAILLMClient, OllamaLLMClient
-from levy.embeddings import EmbeddingClient, MockEmbeddingClient, SentenceTransformerClient, OllamaEmbeddingClient
+from levy.embedding_manager import EmbeddingManager
 from levy.cache.store import InMemoryStore
 # Load RedisStore conditionally or just import if available
 try:
@@ -40,19 +40,8 @@ class LevyEngine:
         else:
             self.llm_client = MockLLMClient()
 
-        # 2. Initialize Embedding Client
-        if config.enable_semantic_cache:
-            if config.embedding_provider == "sentence-transformers":
-                self.embedding_client = SentenceTransformerClient(config.embedding_model)
-            elif config.embedding_provider == "ollama":
-                self.embedding_client = OllamaEmbeddingClient(
-                    base_url=config.ollama_base_url,
-                    model=config.embedding_model
-                )
-            else:
-                self.embedding_client = MockEmbeddingClient()
-        else:
-             self.embedding_client = MockEmbeddingClient() # Fallback
+        # 2. Initialize Embedding Manager (handles mock, sentence-transformers, ollama)
+        self.embedding_manager = EmbeddingManager.from_config(config)
 
         # 3. Initialize Store and Caches
         if config.cache_store_type == "redis":
@@ -70,8 +59,8 @@ class LevyEngine:
 
         self.exact_cache = ExactCache(self.store)
         self.semantic_cache = SemanticCache(
-            self.store, 
-            self.embedding_client, 
+            self.store,
+            self.embedding_manager,  # satisfies embed()/get_dimension() interface
             threshold=self.config.similarity_threshold
         )
 
@@ -123,15 +112,12 @@ class LevyEngine:
             raise e
 
         # 4. Store in Cache
-        # We need the embedding for the semantic cache to work next time.
-        # If semantic is enabled, we should compute it now to store it.
         embedding = None
         if self.config.enable_semantic_cache:
-            embedding = self.embedding_client.embed(prompt)
-        
-        # We save to the unified store (via exact cache interface is easiest as it writes the key)
-        # But we need to pass the embedding so semantic cache can find it later.
-        self.exact_cache.set(request, llm_response.text, embedding=embedding)
+            embedding = self.embedding_manager.embed(prompt)
+
+        model_meta = self.embedding_manager.get_model_identity().as_dict()
+        self.exact_cache.set(request, llm_response.text, embedding=embedding, metadata=model_meta)
 
         latency = (time.time() - start_time) * 1000
         self.metrics.record_miss()

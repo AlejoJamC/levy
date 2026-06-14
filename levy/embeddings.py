@@ -37,10 +37,10 @@ class MockEmbeddingClient(EmbeddingClient):
 
 class SentenceTransformerClient(EmbeddingClient):
     """Wrapper around sentence-transformers."""
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2", trust_remote_code: bool = False):
         try:
             from sentence_transformers import SentenceTransformer
-            self.model = SentenceTransformer(model_name)
+            self.model = SentenceTransformer(model_name, trust_remote_code=trust_remote_code)
         except ImportError:
             raise ImportError("sentence-transformers is not installed. Please install it with `pip install sentence-transformers`.")
 
@@ -49,7 +49,7 @@ class SentenceTransformerClient(EmbeddingClient):
         return embedding.tolist()
     
     def get_dimension(self) -> int:
-        return self.model.get_sentence_embedding_dimension()
+        return self.model.get_embedding_dimension()
 
 class OllamaEmbeddingClient(EmbeddingClient):
     """Client for local Ollama embeddings."""

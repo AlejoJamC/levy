@@ -78,16 +78,29 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
 - `levy/llm_client.py` — `LLMClient` ABC + `MockLLMClient` (0.5s sleep, reversed
   echo), `OpenAILLMClient` (raw httpx), `OllamaLLMClient`.
 - `levy/embeddings.py` — `EmbeddingClient` ABC + mock (text-seeded random,
-  normalized), `SentenceTransformerClient`, `OllamaEmbeddingClient`.
+  normalized), `SentenceTransformerClient` (accepts `trust_remote_code` for
+  ModernBERT), `OllamaEmbeddingClient`.
+- `levy/embedding_manager.py` — **`EmbeddingManager`** (LEV-1): resolves study-model
+  aliases (`all-MiniLM-L6-v2` / `modernbert`) via a built-in registry, lazily loads
+  and caches one `EmbeddingClient` per checkpoint, memoizes embeddings by
+  `(model_key, sha256(text))`, applies symmetric task prefixes per model (e.g.
+  `search_query: ` for ModernBERT), and exposes `embed()`, `embed_with()`,
+  `get_dimension()`, `get_model_identity()`, `clear_memoization()`. The engine
+  constructs one manager from `LevyConfig` and all caches go through it. Supports
+  `mock`, `sentence-transformers`, and `ollama` providers.
 - `levy/cache/` — `base.py` (`CacheInterface` ABC), `exact_cache.py` (SHA-256 of
-  prompt as key), `semantic_cache.py` (brute-force cosine similarity over all
-  stored embeddings), `store.py` (`InMemoryStore`, FIFO eviction), `redis_store.py`
+  prompt as key; stores model identity in `CacheEntry.metadata`),
+  `semantic_cache.py` (brute-force cosine similarity over all stored embeddings),
+  `store.py` (`InMemoryStore`, FIFO eviction), `redis_store.py`
   (JSON-serialized entries, duck-types `InMemoryStore`; `KEYS *` + `MGET` scan for
   the semantic path — prototype-only).
 - `levy/metrics.py` — `LevyMetrics`: hits by type, misses, tokens saved
   (whitespace-split approximation), latency list.
 - `tests/test_levy.py` — 2 unittest tests (exact cache hit/miss, semantic
   machinery smoke test) using mock providers.
+- `tests/test_embedding_manager.py` — 20 unit tests for `EmbeddingManager`: runtime
+  model switching, alias resolution, memoization, dimension/identity exposure, prefix
+  handling, and default config validation. All offline (injected mock clients).
 - `examples/simple_replay.py` — replays a prompt list under no-cache / exact /
   exact+semantic configs. `examples/ollama_demo.py` — end-to-end with local Ollama
   (`llama3.2` + `mxbai-embed-large`).
@@ -106,9 +119,10 @@ implied by the spec, not bugs:
    prescribes Faiss HNSW (L2 distance, `similarity = 1/(1+distance)`).
 4. **No experiment harness** — `run_experiment` / 30-configuration replay,
    TP/FP/TN/FN accounting, and metric computation are not implemented.
-5. **Embedding defaults don't match the study** — config defaults to
-   `mxbai-embed-large` (Ollama); the study compares `all-MiniLM-L6-v2` vs ModernBERT
-   with runtime switching.
+5. ~~**Embedding defaults don't match the study**~~ — **Resolved (LEV-1).**
+   `LevyConfig` now defaults to `sentence-transformers` / `all-MiniLM-L6-v2`;
+   `EmbeddingManager` supports runtime switching to `modernbert`
+   (`nomic-ai/modernbert-embed-base`) with symmetric task-prefix handling.
 6. **No annotated dataset** in the repo yet (D2: 900 pairs, CSV/JSON + datasheet).
 7. **pytest declared but not installed** in the conda env; tests currently run via
    `unittest` (see commands).
