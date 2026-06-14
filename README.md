@@ -90,8 +90,8 @@ It runs a sequence of prompts through three configurations:
 1. Install and run [Ollama](https://ollama.com/).
 2. Pull required models:
    ```bash
-   ollama pull llama3.2
-   ollama pull mxbai-embed-large
+   ollama pull qwen3
+   ollama pull nomic-embed-text
    ```
 3. Run the demo:
    ```bash
@@ -117,12 +117,20 @@ config = LevyConfig(
     llm_provider="openai",
     openai_api_key="sk-...",
     enable_semantic_cache=True,
-    similarity_threshold=0.85,
+    similarity_threshold=0.85,   # in 1/(1+L2) space; study sweep: 0.70–0.90
     # Embedding model for the study (default: all-MiniLM-L6-v2 baseline)
     embedding_provider="sentence-transformers",
     embedding_model="all-MiniLM-L6-v2",   # or "modernbert" for the second study model
+    # Vector index backend (default: "auto" → Faiss HNSW if installed, else brute-force)
+    vector_index_backend="auto",  # "auto" | "faiss" | "brute_force"
 )
 ```
+
+> **Faiss HNSW** (implemented in LEV-2) is the production vector index. Install via conda to avoid Apple-Silicon segfaults:
+> ```bash
+> conda install -c conda-forge faiss-cpu
+> ```
+> If Faiss is absent the engine falls back to a brute-force numpy index automatically.
 
 ### Switching embedding models at runtime
 

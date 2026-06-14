@@ -90,7 +90,14 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   `mock`, `sentence-transformers`, and `ollama` providers.
 - `levy/cache/` — `base.py` (`CacheInterface` ABC), `exact_cache.py` (SHA-256 of
   prompt as key; stores model identity in `CacheEntry.metadata`),
-  `semantic_cache.py` (brute-force cosine similarity over all stored embeddings),
+  `vector_index.py` (LEV-2) — `VectorIndex` ABC + `BruteForceVectorIndex` (numpy
+  exact k-NN, offline default and correctness oracle) + `FaissHNSWVectorIndex`
+  (`IndexHNSWFlat` wrapped in `IndexIDMap`, returns L2 distances after sqrt);
+  `make_vector_index()` factory honours `vector_index_backend` config;
+  `semantic_cache.py` (LEV-2) — owns a `VectorIndex` + monotonic id→`CacheEntry`
+  map; retrieval uses `similarity = 1/(1+L2_distance)` per Algorithm 1 of the
+  frozen S&D; all embeddings L2-normalised before indexing/querying for
+  cross-model comparability; `reset()` empties index + map for per-config sweeps;
   `store.py` (`InMemoryStore`, FIFO eviction), `redis_store.py`
   (JSON-serialized entries, duck-types `InMemoryStore`; `KEYS *` + `MGET` scan for
   the semantic path — prototype-only).
@@ -101,9 +108,13 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
 - `tests/test_embedding_manager.py` — 20 unit tests for `EmbeddingManager`: runtime
   model switching, alias resolution, memoization, dimension/identity exposure, prefix
   handling, and default config validation. All offline (injected mock clients).
+- `tests/test_vector_index.py` — 19 unit tests for `VectorIndex` + `SemanticCache`:
+  add/search/reset/size, L2 normalization, zero-vector guard, similarity transform +
+  threshold decisions, id→entry resolution, Faiss↔brute-force agreement (skipped
+  when Faiss absent), engine end-to-end semantic cache hit/miss.
 - `examples/simple_replay.py` — replays a prompt list under no-cache / exact /
   exact+semantic configs. `examples/ollama_demo.py` — end-to-end with local Ollama
-  (`llama3.2` + `mxbai-embed-large`).
+  (`qwen3` LLM + `nomic-embed-text` embeddings).
 
 ### Known gaps: current code vs frozen spec
 
@@ -115,8 +126,15 @@ implied by the spec, not bugs:
    EPIC-001 covers this layer.
 2. **No Anthropic LLM connector** — only mock/OpenAI/Ollama exist; the spec names
    the Anthropic API as the backend.
-3. **No Faiss HNSW index** — `SemanticCache` does an O(n) cosine scan. The spec
-   prescribes Faiss HNSW (L2 distance, `similarity = 1/(1+distance)`).
+3. ~~**No Faiss HNSW index**~~ — **Resolved (LEV-2).** `SemanticCache` now owns a
+   `VectorIndex` (Faiss HNSW or brute-force oracle) and uses `similarity =
+   1/(1+L2_distance)` per Algorithm 1. **Threshold-scale flag for LEV-4/LEV-8:**
+   all embeddings are L2-normalised before indexing so the distance scale is
+   identical across models. For unit vectors, `distance = sqrt(2 − 2·cosine)` and
+   `similarity = 1/(1+distance)`. The frozen sweep 0.70–0.90 therefore covers a
+   high-cosine band (~0.91–0.998). This is intentional and spec-mandated; do NOT
+   rescale thresholds or revert to cosine. If hit-rate viability (>30%) is not
+   met at this band, surface that as a research-scope finding to the supervisor.
 4. **No experiment harness** — `run_experiment` / 30-configuration replay,
    TP/FP/TN/FN accounting, and metric computation are not implemented.
 5. ~~**Embedding defaults don't match the study**~~ — **Resolved (LEV-1).**
@@ -153,7 +171,7 @@ python -m pytest tests/ -q
 
 # Demos
 python examples/simple_replay.py     # mock LLM; uses sentence-transformers if installed
-python examples/ollama_demo.py       # requires `ollama serve` + llama3.2 + mxbai-embed-large
+python examples/ollama_demo.py       # requires `ollama serve` + qwen3 + nomic-embed-text
 
 # Local services (Redis 7 for cache_store_type="redis")
 docker-compose up -d
