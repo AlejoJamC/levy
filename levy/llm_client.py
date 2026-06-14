@@ -62,7 +62,7 @@ class OpenAILLMClient(LLMClient):
 
 class OllamaLLMClient(LLMClient):
     """Client for local Ollama instances."""
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "llama3.2"):
+    def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen3"):
         self.base_url = base_url
         self.model = model
 
