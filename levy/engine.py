@@ -59,9 +59,12 @@ class LevyEngine:
 
         self.exact_cache = ExactCache(self.store)
         self.semantic_cache = SemanticCache(
-            self.store,
-            self.embedding_manager,  # satisfies embed()/get_dimension() interface
-            threshold=self.config.similarity_threshold
+            embedding_client=self.embedding_manager,
+            threshold=self.config.similarity_threshold,
+            backend=self.config.vector_index_backend,
+            m=self.config.hnsw_m,
+            ef_construction=self.config.hnsw_ef_construction,
+            ef_search=self.config.hnsw_ef_search,
         )
 
     def generate(self, prompt: str, **kwargs) -> LevyResult:
@@ -118,6 +121,8 @@ class LevyEngine:
 
         model_meta = self.embedding_manager.get_model_identity().as_dict()
         self.exact_cache.set(request, llm_response.text, embedding=embedding, metadata=model_meta)
+        if self.config.enable_semantic_cache and embedding is not None:
+            self.semantic_cache.set(request, llm_response.text, embedding=embedding, metadata=model_meta)
 
         latency = (time.time() - start_time) * 1000
         self.metrics.record_miss()
