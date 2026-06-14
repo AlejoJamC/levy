@@ -24,14 +24,20 @@ class ExactCache(CacheInterface):
             return entry
         return None
 
-    def set(self, request: LLMRequest, response_text: str, embedding: Optional[List[float]] = None) -> None:
+    def set(
+        self,
+        request: LLMRequest,
+        response_text: str,
+        embedding: Optional[List[float]] = None,
+        metadata: Optional[dict] = None,
+    ) -> None:
         key = self._get_key(request.prompt)
         entry = CacheEntry(
             key_hash=key,
             prompt=request.prompt,
             response_text=response_text,
-            embedding=embedding
-            # TTL logic could be added here from config
+            embedding=embedding,
+            metadata=metadata or {},
         )
         self.store.set(key, entry)
 
