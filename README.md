@@ -15,17 +15,19 @@ The research behind Levy benchmarks false positive rates of semantic caching acr
 
 ```
 levy/
-├── levy/               # Core package
-│   ├── cache/          # Cache logic (Exact, Semantic, InMemory/Redis stores)
-│   ├── llm_client.py   # LLM interaction (Mock, OpenAI, Ollama)
-│   ├── embeddings.py   # Embedding clients (Mock, sentence-transformers, Ollama)
-│   ├── engine.py       # Main orchestration engine
-│   ├── config.py       # LevyConfig (providers, thresholds, store)
-│   ├── metrics.py      # Hit/miss/latency/token-savings tracking
-│   └── models.py       # Data classes
-├── docs/               # Research docs (proposal & S&D report are frozen)
-├── examples/           # Demo scripts
-└── tests/              # Unit tests
+├── levy/                    # Core package
+│   ├── cache/               # Cache logic (Exact, Semantic, InMemory/Redis stores)
+│   ├── llm_client.py        # LLM interaction (Mock, OpenAI, Ollama)
+│   ├── embeddings.py        # EmbeddingClient ABC + Mock, SentenceTransformer, Ollama
+│   ├── embedding_manager.py # EmbeddingManager: study-model registry, runtime switching,
+│   │                        #   memoization, symmetric prefix handling
+│   ├── engine.py            # Main orchestration engine
+│   ├── config.py            # LevyConfig (providers, thresholds, store)
+│   ├── metrics.py           # Hit/miss/latency/token-savings tracking
+│   └── models.py            # Data classes
+├── docs/                    # Research docs (proposal & S&D report are frozen)
+├── examples/                # Demo scripts
+└── tests/                   # Unit tests
 ```
 
 ## Installation
@@ -115,9 +117,23 @@ config = LevyConfig(
     llm_provider="openai",
     openai_api_key="sk-...",
     enable_semantic_cache=True,
-    similarity_threshold=0.85
+    similarity_threshold=0.85,
+    # Embedding model for the study (default: all-MiniLM-L6-v2 baseline)
+    embedding_provider="sentence-transformers",
+    embedding_model="all-MiniLM-L6-v2",   # or "modernbert" for the second study model
 )
 ```
+
+### Switching embedding models at runtime
+
+The `EmbeddingManager` built into the engine resolves study-model aliases:
+
+| Alias | Checkpoint | Notes |
+|---|---|---|
+| `all-MiniLM-L6-v2` / `all-minilm` | `sentence-transformers/all-MiniLM-L6-v2` | 384-dim, study baseline |
+| `modernbert` | `nomic-ai/modernbert-embed-base` | 768-dim, symmetric `search_query:` prefix applied automatically |
+
+To switch models between experiment runs, change `embedding_model` in `LevyConfig` — no code changes required. Embeddings are memoized per `(model, text)` so replay experiments never recompute a vector.
 
 ## License
 

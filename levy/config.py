@@ -18,8 +18,8 @@ class LevyConfig:
     model_name: str = "llama3.2"  # Default change to local friendly
     
     # Embedding settings
-    embedding_provider: str = "mock" # "mock", "sentence-transformers", "ollama"
-    embedding_model: str = "mxbai-embed-large"
+    embedding_provider: str = "sentence-transformers"  # "mock", "sentence-transformers", "ollama"
+    embedding_model: str = "all-MiniLM-L6-v2"  # study baseline; use "modernbert" for the other study model
     
     # Storage settings
     cache_store_type: str = "memory" # "memory", "redis"
