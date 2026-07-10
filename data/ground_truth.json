@@ -1,0 +1,197 @@
+[
+  {
+    "pair_id": "faq-0001",
+    "workload": "faq",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-faq-001",
+    "query_1": "How do I reset my fixture-account password?",
+    "query_2": "What is the process to reset the password on a fixture-account?",
+    "original_label": 1,
+    "author_label": 1,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "faq-0002",
+    "workload": "faq",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-faq-002",
+    "query_1": "How do I contact fixture-support by phone?",
+    "query_2": "What is the best pizza topping for a fixture-lunch?",
+    "original_label": 0,
+    "author_label": 0,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "faq-0003",
+    "workload": "faq",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-faq-003",
+    "query_1": "Where can I download the fixture-app for iOS?",
+    "query_2": "How do I get the fixture-app on my iPhone?",
+    "original_label": 1,
+    "author_label": 1,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "faq-0004",
+    "workload": "faq",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-faq-004",
+    "query_1": "What are the fixture-service business hours?",
+    "query_2": "How do I cancel my fixture-subscription?",
+    "original_label": 0,
+    "author_label": 0,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "faq-0005",
+    "workload": "faq",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-faq-005",
+    "query_1": "How do I reset my fixture-account password?",
+    "query_2": "I forgot my fixture-account password, how do I recover it?",
+    "original_label": 1,
+    "author_label": 0,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "code-0001",
+    "workload": "code",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-code-001",
+    "query_1": "How do I reverse a list in fixture-lang?",
+    "query_2": "What is the syntax to reverse a list in fixture-lang?",
+    "original_label": 1,
+    "author_label": 1,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "code-0002",
+    "workload": "code",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-code-002",
+    "query_1": "How do I reverse a list in fixture-lang?",
+    "query_2": "How do I sort a dictionary by value in fixture-lang?",
+    "original_label": 0,
+    "author_label": 0,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "code-0003",
+    "workload": "code",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-code-003",
+    "query_1": "Why does fixture-lang throw a NullPointerFixtureException here?",
+    "query_2": "What causes a NullPointerFixtureException in this fixture-lang snippet?",
+    "original_label": 1,
+    "author_label": 1,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "code-0004",
+    "workload": "code",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-code-004",
+    "query_1": "How do I install the fixture-lang package manager?",
+    "query_2": "What is the best fixture-lang linter?",
+    "original_label": 0,
+    "author_label": 1,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "code-0005",
+    "workload": "code",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-code-005",
+    "query_1": "How do I concatenate strings in fixture-lang?",
+    "query_2": "What is the fixture-lang way to join strings together?",
+    "original_label": 1,
+    "author_label": 1,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "chat-0001",
+    "workload": "chat",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-chat-001",
+    "query_1": "I had a rough day at fixture-work today.",
+    "query_2": "Work was really hard for me today at my fixture-job.",
+    "original_label": 1,
+    "author_label": 1,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "chat-0002",
+    "workload": "chat",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-chat-002",
+    "query_1": "I had a rough day at fixture-work today.",
+    "query_2": "My favorite fixture-hobby is painting.",
+    "original_label": 0,
+    "author_label": 0,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "chat-0003",
+    "workload": "chat",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-chat-003",
+    "query_1": "Do you have any pets, like a fixture-dog?",
+    "query_2": "Do you own any animals, maybe a fixture-cat?",
+    "original_label": 1,
+    "author_label": 1,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "chat-0004",
+    "workload": "chat",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-chat-004",
+    "query_1": "What's your favorite fixture-movie genre?",
+    "query_2": "I really enjoy fixture-hiking on weekends.",
+    "original_label": 0,
+    "author_label": 0,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  },
+  {
+    "pair_id": "chat-0005",
+    "workload": "chat",
+    "source_corpus": "synthetic-fixture",
+    "source_pair_id": "fixture-chat-005",
+    "query_1": "I am feeling anxious about my fixture-exam tomorrow.",
+    "query_2": "I am nervous about the fixture-test happening tomorrow.",
+    "original_label": 1,
+    "author_label": 1,
+    "metadata": {
+      "provenance": "synthetic-fixture"
+    }
+  }
+]
