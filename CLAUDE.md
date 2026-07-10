@@ -115,6 +115,32 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
 - `examples/simple_replay.py` — replays a prompt list under no-cache / exact /
   exact+semantic configs. `examples/ollama_demo.py` — end-to-end with local Ollama
   (`qwen3` LLM + `nomic-embed-text` embeddings).
+- `levy/dataset/` (LEV-3) — ground-truth dataset **platform tooling** (D2), data-agnostic:
+  `schema.py` (`QueryPair` dataclass + workload constants `faq`/`code`/`chat` +
+  validation; `ground_truth_label()` returns the author's blind label if set, else the
+  original corpus label — the eval contract LEV-4 replays against); `io.py` (CSV/JSON
+  load/save, round-trip and cross-format identical; `metadata` JSON-encoded into one CSV
+  column); `sampling.py` (`CorpusSource` ABC + `QuoraQQPSource` / `StackOverflowDuplicatesSource`
+  / `ConvAI2Source` adapters, each documenting its expected local raw file format — no
+  network access — + `MockCorpusSource`; seeded, stratified, deterministic
+  `sample_workload`/`sample_dataset`); `annotation.py` (`BlindAnnotationSession` — shows
+  only `query_1`/`query_2`, never the original label; per-answer progress persistence for
+  resumable 900-pair sessions; never overwrites an existing `author_label` unless
+  `overwrite=True`); `kappa.py` (`cohen_kappa`/`kappa_report`, stdlib-only 2×2
+  contingency, documented zero-annotated and `pe==1` edge cases). `scripts/*.py`
+  (`sample_dataset.py`, `annotate_dataset.py`, `compute_kappa.py`, `export_dataset.py`)
+  are thin argparse CLIs over this package, runnable fully offline.
+- `data/` — `ground_truth.csv` + `ground_truth.json` currently hold **15 synthetic
+  fixture pairs** (5/workload, obviously fake text, `source_corpus="synthetic-fixture"`)
+  standing in for the real 900-pair dataset; `data/README.md` documents the placeholder
+  status, `data/DATASHEET.md` is the full D2 datasheet skeleton (source corpora +
+  licences, sampling protocol, annotation guidelines, kappa result placeholder, fallback
+  corpora) with `TODO (post data-production)` markers only where the real
+  sampling/annotation run is required.
+- `tests/test_dataset.py` — 48 unit tests for `levy/dataset/`: schema validation, CSV/JSON
+  round-trip + cross-format equality, sampling determinism/stratification, blind
+  annotation (blindness, resume, no-overwrite), Cohen's kappa (perfect/chance/worked/
+  degenerate cases), and CLI smoke tests against the `data/` fixtures. All offline.
 
 ### Known gaps: current code vs frozen spec
 
@@ -141,7 +167,14 @@ implied by the spec, not bugs:
    `LevyConfig` now defaults to `sentence-transformers` / `all-MiniLM-L6-v2`;
    `EmbeddingManager` supports runtime switching to `modernbert`
    (`nomic-ai/modernbert-embed-base`) with symmetric task-prefix handling.
-6. **No annotated dataset** in the repo yet (D2: 900 pairs, CSV/JSON + datasheet).
+6. ~~**No annotated dataset**~~ — **Platform tooling resolved (LEV-3).** `levy/dataset/`
+   + `scripts/` implement the schema, CSV/JSON loader (the LEV-4 contract), seeded
+   stratified sampling, blind re-annotation, and Cohen's kappa. **Still open (author
+   task, tracked in `openspec/changes/add-ground-truth-dataset/tasks.md` §7):** the real
+   900-pair sample from Quora QQP / Stack Overflow duplicates / ConvAI2 (or an approved
+   fallback corpus), the author's actual blind re-annotation of all 900 pairs, the final
+   Cohen's kappa result, and replacing the synthetic fixtures currently in `data/` with
+   the released dataset.
 7. **pytest declared but not installed** in the conda env; tests currently run via
    `unittest` (see commands).
 
