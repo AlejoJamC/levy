@@ -24,7 +24,11 @@ levy/
 │   ├── engine.py            # Main orchestration engine
 │   ├── config.py            # LevyConfig (providers, thresholds, store)
 │   ├── metrics.py           # Hit/miss/latency/token-savings tracking
-│   └── models.py            # Data classes
+│   ├── models.py            # Data classes
+│   └── dataset/             # Ground-truth dataset platform (LEV-3): schema, CSV/JSON
+│                            #   I/O, seeded sampling, blind re-annotation, Cohen's kappa
+├── scripts/                 # CLIs over levy/dataset (sample/annotate/kappa/export)
+├── data/                    # Ground-truth dataset (currently synthetic fixtures + datasheet)
 ├── docs/                    # Research docs (proposal & S&D report are frozen)
 ├── examples/                # Demo scripts
 └── tests/                   # Unit tests
@@ -142,6 +146,37 @@ The `EmbeddingManager` built into the engine resolves study-model aliases:
 | `modernbert` | `nomic-ai/modernbert-embed-base` | 768-dim, symmetric `search_query:` prefix applied automatically |
 
 To switch models between experiment runs, change `embedding_model` in `LevyConfig` — no code changes required. Embeddings are memoized per `(model, text)` so replay experiments never recompute a vector.
+
+## Ground-truth dataset tooling (LEV-3)
+
+`levy/dataset/` + `scripts/` provide the data-agnostic platform for D2 (900
+annotated query pairs across 3 workloads: FAQ, code, chat). This is
+**tooling only** — `data/ground_truth.csv` / `data/ground_truth.json`
+currently ship 15 synthetic fixture pairs (5/workload, obviously fake text,
+`source_corpus="synthetic-fixture"`), not the real dataset. See
+`data/README.md` and `data/DATASHEET.md` for the full protocol and the
+platform-vs-data-production split.
+
+```bash
+# Sample a dataset (falls back to synthetic MockCorpusSource per workload
+# when a raw corpus file isn't given — fully offline):
+python scripts/sample_dataset.py --n-per-workload 300 --seed 42 \
+    --out-csv data/ground_truth.csv --out-json data/ground_truth.json
+
+# Blind re-annotation session (never shows the original label; resumable):
+python scripts/annotate_dataset.py \
+    --dataset data/ground_truth.json --progress data/.annotation_progress.json
+
+# Cohen's kappa (author vs. original label), overall + per-workload:
+python scripts/compute_kappa.py --dataset data/ground_truth.json --strict
+
+# Convert between CSV and JSON (identical content, round-trip safe):
+python scripts/export_dataset.py --in data/ground_truth.json --out /tmp/dataset.csv
+```
+
+`QueryPair.ground_truth_label()` (author label if annotated, else the
+original corpus label) is the contract the experiment harness (LEV-4) will
+replay against.
 
 ## License
 
