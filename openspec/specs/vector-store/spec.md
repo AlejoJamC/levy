@@ -2,7 +2,11 @@
 
 Capability: approximate-nearest-neighbour retrieval for the semantic cache — Faiss HNSW index over L2 distance, the spec's L2→similarity transform and threshold decision, the internal-id → entry metadata mapping, per-configuration reset, and an exact-NN brute-force fallback used both offline and as the correctness oracle.
 
-## ADDED Requirements
+## Purpose
+
+Provide approximate-nearest-neighbour retrieval for the semantic cache: a Faiss HNSW index over L2 distance with the spec's L2→similarity transform and threshold decision, an internal-id → entry mapping, per-configuration reset, and an exact-NN brute-force fallback used offline and as the correctness oracle.
+
+## Requirements
 
 ### Requirement: HNSW vector index over L2 distance
 The system SHALL store semantic-cache embeddings in a Faiss HNSW index using L2 distance. When Faiss is unavailable or the configured backend is brute-force, the system SHALL fall back to an exact-nearest-neighbour numpy index that returns the same L2 distances, so the engine operates with or without Faiss installed.

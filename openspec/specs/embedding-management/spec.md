@@ -2,7 +2,11 @@
 
 Capability: loading, selecting, and switching embedding models at runtime; generating embeddings through a single entry point with per-(model, text) memoization; exposing model identity and dimension to downstream consumers.
 
-## ADDED Requirements
+## Purpose
+
+Load, select, and switch embedding models at runtime; generate embeddings through a single entry point with per-(model, text) memoization; and expose model identity and dimension to downstream consumers.
+
+## Requirements
 
 ### Requirement: Runtime study-model selection
 The system SHALL load the embedding model named in configuration and SHALL allow switching between the two study models (`all-MiniLM-L6-v2` and ModernBERT) through configuration alone, with no code changes.
