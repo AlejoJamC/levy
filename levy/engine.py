@@ -19,10 +19,10 @@ from levy.metrics import LevyMetrics
 logger = logging.getLogger(__name__)
 
 class LevyEngine:
-    def __init__(self, config: LevyConfig = LevyConfig()):
+    def __init__(self, config: LevyConfig = LevyConfig(), embedding_manager: Optional[EmbeddingManager] = None):
         self.config = config
         self.metrics = LevyMetrics()
-        
+
         # 1. Initialize LLM Client
         if config.llm_provider == "openai":
             if not config.openai_api_key:
@@ -40,8 +40,10 @@ class LevyEngine:
         else:
             self.llm_client = MockLLMClient()
 
-        # 2. Initialize Embedding Manager (handles mock, sentence-transformers, ollama)
-        self.embedding_manager = EmbeddingManager.from_config(config)
+        # 2. Initialize Embedding Manager (handles mock, sentence-transformers, ollama).
+        # Callers (e.g. the experiment harness sweeping many configs per model) may inject
+        # a shared manager so memoization survives across engine instances.
+        self.embedding_manager = embedding_manager if embedding_manager is not None else EmbeddingManager.from_config(config)
 
         # 3. Initialize Store and Caches
         if config.cache_store_type == "redis":

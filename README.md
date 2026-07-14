@@ -25,9 +25,10 @@ levy/
 │   ├── config.py            # LevyConfig (providers, thresholds, store)
 │   ├── metrics.py           # Hit/miss/latency/token-savings tracking
 │   ├── models.py            # Data classes
-│   └── dataset/             # Ground-truth dataset platform (LEV-3): schema, CSV/JSON
-│                            #   I/O, seeded sampling, blind re-annotation, Cohen's kappa
-├── scripts/                 # CLIs over levy/dataset (sample/annotate/kappa/export)
+│   ├── dataset/              # Ground-truth dataset platform (LEV-3): schema, CSV/JSON
+│   │                        #   I/O, seeded sampling, blind re-annotation, Cohen's kappa
+│   └── experiment/          # Experiment harness (LEV-4): grid, replay, metrics, sweep runner
+├── scripts/                 # CLIs over levy/dataset + levy/experiment
 ├── data/                    # Ground-truth dataset (currently synthetic fixtures + datasheet)
 ├── docs/                    # Research docs (proposal & S&D report are frozen)
 ├── examples/                # Demo scripts
@@ -175,8 +176,49 @@ python scripts/export_dataset.py --in data/ground_truth.json --out /tmp/dataset.
 ```
 
 `QueryPair.ground_truth_label()` (author label if annotated, else the
-original corpus label) is the contract the experiment harness (LEV-4) will
-replay against.
+original corpus label) is the contract the experiment harness (LEV-4)
+replays against.
+
+## Experiment harness (LEV-4)
+
+`levy/experiment/` replays annotated query pairs through the production
+cache lookup path (`LevyEngine.generate()`) across the frozen 30-configuration
+grid — 2 embedding models × 3 workloads × 5 similarity thresholds
+(0.70–0.90) — and accounts for TP/FP/TN/FN against each pair's ground-truth
+label per Algorithm 2 of the S&D Report.
+
+```bash
+# Full 30-configuration sweep on the committed synthetic fixture (offline, mock providers):
+python scripts/run_experiments.py --out-dir results/smoke-run
+
+# Smoke run: one model, one workload, two thresholds:
+python scripts/run_experiments.py --out-dir results/smoke-run \
+    --models all-MiniLM-L6-v2 --workloads faq --thresholds 0.70,0.90
+
+# Real study run (once the real 900-pair dataset from LEV-11 lands):
+python scripts/run_experiments.py --dataset data/ground_truth.csv \
+    --embedding-provider sentence-transformers --out-dir results/run-001
+```
+
+Outputs written to `--out-dir`:
+- `results.csv` — one row per configuration: confusion counts (TP/FP/TN/FN),
+  precision, recall, F0.5, false positive rate, hit rate, and zero-division
+  flags (0.0 instead of NaN, never silently dropped).
+- `decisions.csv` — one row per replayed pair per configuration: decision
+  (hit/miss), decision source (`exact_cache`/`semantic_cache`/`llm`), matched
+  similarity, ground-truth label, confusion outcome.
+- `run_meta.json` — dataset path, providers, resolved model checkpoints, the
+  grid that was run, and latency stats (explicitly labeled synthetic under
+  the mock LLM's fixed 0.5s sleep). Never merged into the two files above, so
+  re-running on identical inputs reproduces `results.csv`/`decisions.csv`
+  byte-identically.
+
+`--embedding-provider` defaults to `mock`, so the harness runs fully offline
+with zero external dependencies against the committed synthetic fixture
+(`data/ground_truth.csv`). Mock embeddings are text-hashed random vectors and
+don't capture semantic similarity — this validates the machinery, not
+research results; a real run needs `sentence-transformers` and the real
+900-pair dataset (LEV-11, not yet delivered).
 
 ## License
 
