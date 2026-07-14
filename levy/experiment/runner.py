@@ -58,6 +58,7 @@ def run_sweep(
     pairs: List[QueryPair],
     configs: Optional[List[ExperimentConfig]] = None,
     embedding_provider: str = "mock",
+    llm_latency_seconds: float = 0.5,
 ) -> Tuple[List[EvaluationResult], Dict[str, dict]]:
     """
     Run every configuration in `configs` (the full frozen grid by default),
@@ -66,6 +67,9 @@ def run_sweep(
     sweep. Returns `(results, model_identities)` where `model_identities`
     maps each model alias to its resolved checkpoint/dimension (for the
     run-metadata sidecar).
+
+    `llm_latency_seconds` forwards to each configuration's `MockLLMClient`
+    (default 0.5, matching a real run); tests pass 0 to keep the suite fast.
     """
     if configs is None:
         configs = full_grid()
@@ -78,7 +82,14 @@ def run_sweep(
         if manager is None:
             manager = EmbeddingManager(model_name=config.model, provider=embedding_provider)
             managers[config.model] = manager
-        results.append(run_experiment(config, pairs, embedding_manager=manager))
+        results.append(
+            run_experiment(
+                config,
+                pairs,
+                embedding_manager=manager,
+                llm_latency_seconds=llm_latency_seconds,
+            )
+        )
 
     model_identities = {model: manager.get_model_identity().as_dict() for model, manager in managers.items()}
     return results, model_identities

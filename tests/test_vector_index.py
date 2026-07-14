@@ -9,6 +9,7 @@ and engine end-to-end with mock embeddings.
 
 import math
 import unittest
+import unittest.mock
 
 import numpy as np
 
@@ -273,6 +274,7 @@ class TestEngineSemanticCache(unittest.TestCase):
             enable_semantic_cache=True,
             similarity_threshold=threshold,
             llm_provider="mock",
+            mock_llm_latency_seconds=0,
             embedding_provider="mock",
             vector_index_backend="brute_force",
         )
@@ -304,6 +306,7 @@ class TestEngineSemanticCache(unittest.TestCase):
             enable_exact_cache=False,
             enable_semantic_cache=False,
             llm_provider="mock",
+            mock_llm_latency_seconds=0,
             embedding_provider="mock",
         )
         engine = LevyEngine(config)
@@ -330,6 +333,7 @@ class TestEngineSemanticCache(unittest.TestCase):
             enable_semantic_cache=True,
             similarity_threshold=0.0,
             llm_provider="mock",
+            mock_llm_latency_seconds=0,
             embedding_provider="mock",
             vector_index_backend="brute_force",
         )
@@ -339,6 +343,125 @@ class TestEngineSemanticCache(unittest.TestCase):
         self.assertEqual(len(engine.store.entries), 1)
         # Semantic index also has 1 entry
         self.assertEqual(engine.semantic_cache._index.size(), 1)
+
+
+# ---------------------------------------------------------------------------
+# 6.6  SemanticCache edge cases (desynced index, no-embedding set, clear)
+# ---------------------------------------------------------------------------
+
+class _EmptySearchIndex:
+    """A VectorIndex stand-in whose search() always returns no matches."""
+
+    def __init__(self):
+        self._size = 0
+
+    def add(self, vector, entry_id):
+        self._size += 1
+
+    def search(self, vector, k=1):
+        return [], []
+
+    def reset(self):
+        self._size = 0
+
+    def size(self):
+        return self._size
+
+
+class _UnknownIdIndex:
+    """A VectorIndex stand-in whose search() returns an id absent from _entries."""
+
+    def __init__(self):
+        self._size = 0
+
+    def add(self, vector, entry_id):
+        self._size += 1
+
+    def search(self, vector, k=1):
+        return [999], [0.0]  # id 999 was never registered in SemanticCache._entries
+
+    def reset(self):
+        self._size = 0
+
+    def size(self):
+        return self._size
+
+
+class TestSemanticCacheEdgeCases(unittest.TestCase):
+
+    class _Client:
+        def embed(self, text):
+            return [1.0, 0.0]
+
+        def get_dimension(self):
+            return 2
+
+    def test_get_returns_none_when_search_finds_no_ids(self):
+        sc = SemanticCache(embedding_client=self._Client(), threshold=0.0, vector_index=_EmptySearchIndex())
+        sc._index.add([1.0, 0.0], 0)  # non-zero size, but search() yields no ids
+        self.assertIsNone(sc.get(LLMRequest(prompt="q")))
+
+    def test_get_returns_none_when_id_not_in_entries(self):
+        sc = SemanticCache(embedding_client=self._Client(), threshold=0.0, vector_index=_UnknownIdIndex())
+        sc._index.add([1.0, 0.0], 999)
+        self.assertIsNone(sc.get(LLMRequest(prompt="q")))
+
+    def test_set_without_embedding_calls_embedding_client(self):
+        """set() computes the embedding itself when the caller doesn't pass one."""
+        sc = SemanticCache(embedding_client=self._Client(), threshold=0.0, backend="brute_force")
+        sc.set(LLMRequest(prompt="q"), "resp")  # no embedding kwarg
+        entry = sc.get(LLMRequest(prompt="q"))
+        self.assertIsNotNone(entry)
+        self.assertEqual(entry.response_text, "resp")
+
+    def test_clear_delegates_to_reset(self):
+        sc = SemanticCache(embedding_client=self._Client(), threshold=0.0, backend="brute_force")
+        sc.set(LLMRequest(prompt="q"), "resp", embedding=[1.0, 0.0])
+        sc.clear()
+        self.assertEqual(sc._index.size(), 0)
+        self.assertEqual(sc._entries, {})
+
+
+# ---------------------------------------------------------------------------
+# 6.7  make_vector_index factory + FaissHNSWVectorIndex edge cases
+# ---------------------------------------------------------------------------
+
+@unittest.skipUnless(FAISS_AVAILABLE, "faiss-cpu not installed — skipping Faiss-specific tests")
+class TestFaissVectorIndexEdgeCases(unittest.TestCase):
+
+    def test_search_on_empty_index_returns_no_matches(self):
+        idx = FaissHNSWVectorIndex()
+        self.assertEqual(idx.search([1.0, 0.0], k=1), ([], []))
+
+    def test_reset_empties_index(self):
+        idx = FaissHNSWVectorIndex()
+        idx.add([1.0, 0.0], entry_id=0)
+        self.assertEqual(idx.size(), 1)
+        idx.reset()
+        self.assertEqual(idx.size(), 0)
+        self.assertEqual(idx.search([1.0, 0.0], k=1), ([], []))
+
+    def test_make_vector_index_explicit_faiss_backend(self):
+        idx = make_vector_index(backend="faiss")
+        self.assertIsInstance(idx, FaissHNSWVectorIndex)
+
+
+class TestMakeVectorIndexAutoFallback(unittest.TestCase):
+
+    def test_auto_falls_back_to_brute_force_when_faiss_unavailable(self):
+        """Simulates a faiss-less environment by making `import faiss` fail."""
+        import builtins
+
+        real_import = builtins.__import__
+
+        def _blocked_import(name, *args, **kwargs):
+            if name == "faiss":
+                raise ImportError("simulated: faiss not installed")
+            return real_import(name, *args, **kwargs)
+
+        with unittest.mock.patch("builtins.__import__", side_effect=_blocked_import):
+            idx = make_vector_index(backend="auto")
+        self.assertIsInstance(idx, BruteForceVectorIndex)
 
 
 if __name__ == "__main__":

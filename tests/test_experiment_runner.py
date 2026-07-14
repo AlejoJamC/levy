@@ -2,8 +2,8 @@
 Tests for the sweep runner and output writers (LEV-4 / 4.4, 4.5).
 
 Uses small grid subsets against the committed synthetic fixture (not the
-full 30-configuration grid) so the suite stays fast under the mock LLM's
-fixed per-call sleep.
+full 30-configuration grid); latency is injected at zero so the suite
+stays fast regardless of grid size.
 """
 
 import csv
@@ -44,11 +44,11 @@ class TestDeterminism(unittest.TestCase):
             tmp_path = Path(tmp)
             run1, run2 = tmp_path / "run1", tmp_path / "run2"
 
-            results1, identities1 = run_sweep(pairs, configs=configs, embedding_provider="mock")
+            results1, identities1 = run_sweep(pairs, configs=configs, embedding_provider="mock", llm_latency_seconds=0)
             write_results_csv(results1, run1 / "results.csv")
             write_decisions_csv(results1, run1 / "decisions.csv")
 
-            results2, identities2 = run_sweep(pairs, configs=configs, embedding_provider="mock")
+            results2, identities2 = run_sweep(pairs, configs=configs, embedding_provider="mock", llm_latency_seconds=0)
             write_results_csv(results2, run2 / "results.csv")
             write_decisions_csv(results2, run2 / "decisions.csv")
 
@@ -64,7 +64,7 @@ class TestDeterminism(unittest.TestCase):
     def test_results_and_decisions_carry_no_timestamps_or_latency(self):
         pairs = load_dataset(FIXTURE)
         configs = _small_grid()
-        results, _ = run_sweep(pairs, configs=configs, embedding_provider="mock")
+        results, _ = run_sweep(pairs, configs=configs, embedding_provider="mock", llm_latency_seconds=0)
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -77,12 +77,20 @@ class TestDeterminism(unittest.TestCase):
                     self.assertNotIn(forbidden, header)
 
 
+class TestDefaultGrid(unittest.TestCase):
+
+    def test_run_sweep_without_configs_uses_full_frozen_grid(self):
+        pairs = load_dataset(FIXTURE)
+        results, _ = run_sweep(pairs, embedding_provider="mock", llm_latency_seconds=0)
+        self.assertEqual(len(results), 30)  # 2 models x 3 workloads x 5 thresholds
+
+
 class TestOutputContract(unittest.TestCase):
 
     def setUp(self):
         self.pairs = load_dataset(FIXTURE)
         self.configs = _contract_grid()
-        self.results, self.model_identities = run_sweep(self.pairs, configs=self.configs, embedding_provider="mock")
+        self.results, self.model_identities = run_sweep(self.pairs, configs=self.configs, embedding_provider="mock", llm_latency_seconds=0)
 
     def test_results_csv_has_one_row_per_configuration(self):
         with tempfile.TemporaryDirectory() as tmp:

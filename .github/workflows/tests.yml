@@ -1,0 +1,23 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up conda env from environment.yml
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: levy
+          miniforge-version: latest
+
+      - name: Run gated test suite (offline, mock providers only)
+        shell: bash -el {0}
+        run: python -m pytest tests/ -q --cov=levy --cov-branch --cov-fail-under=90

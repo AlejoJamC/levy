@@ -9,6 +9,7 @@ class TestLevyEngine(unittest.TestCase):
             enable_exact_cache=True, 
             enable_semantic_cache=False,
             llm_provider="mock",
+            mock_llm_latency_seconds=0,
             embedding_provider="mock"
         )
         engine = LevyEngine(config)
@@ -32,6 +33,7 @@ class TestLevyEngine(unittest.TestCase):
             enable_semantic_cache=True,
             similarity_threshold=0.0, # Accept everything
             llm_provider="mock",
+            mock_llm_latency_seconds=0,
             embedding_provider="mock"
         )
         engine = LevyEngine(config)
