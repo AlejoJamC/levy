@@ -3,7 +3,7 @@ import logging
 from typing import Optional, Any, Dict
 from levy.config import LevyConfig
 from levy.models import LLMRequest, LevyResult, LLMResponse
-from levy.llm_client import LLMClient, MockLLMClient, OpenAILLMClient, OllamaLLMClient
+from levy.llm_client import LLMClient, MockLLMClient, OpenAILLMClient, OllamaLLMClient, AnthropicLLMClient
 from levy.embedding_manager import EmbeddingManager
 from levy.cache.store import InMemoryStore
 # Load RedisStore conditionally or just import if available
@@ -36,6 +36,15 @@ class LevyEngine:
             self.llm_client = OllamaLLMClient(
                 base_url=config.ollama_base_url,
                 model=config.model_name
+            )
+        elif config.llm_provider == "anthropic":
+            self.llm_client = AnthropicLLMClient(
+                api_key=config.anthropic_api_key,
+                model=config.anthropic_model,
+                max_retries=config.anthropic_max_retries,
+                budget_cap_usd=config.anthropic_budget_cap_usd,
+                input_price_per_mtok=config.anthropic_input_price_per_mtok,
+                output_price_per_mtok=config.anthropic_output_price_per_mtok,
             )
         else:
             self.llm_client = MockLLMClient(latency_seconds=config.mock_llm_latency_seconds)

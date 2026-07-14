@@ -1,6 +1,6 @@
 # Levy
 
-**Levy** is a semantic caching engine for LLM APIs, built as the IT artefact of an MSc Artificial Intelligence capstone project (University of Liverpool). It sits between your application and an LLM provider (Mock, OpenAI-compatible, or Ollama today; Anthropic connector planned) to optimize costs and latency by reusing responses for identical or semantically similar prompts.
+**Levy** is a semantic caching engine for LLM APIs, built as the IT artefact of an MSc Artificial Intelligence capstone project (University of Liverpool). It sits between your application and an LLM provider (Mock, OpenAI-compatible, Ollama, or Anthropic) to optimize costs and latency by reusing responses for identical or semantically similar prompts.
 
 The research behind Levy benchmarks false positive rates of semantic caching across embedding models (all-MiniLM vs ModernBERT), workloads (FAQ, code, chat), and similarity thresholds. The authoritative project definition lives in [docs/Project_Proposal.md](docs/Project_Proposal.md) and [docs/Specification_and_Design_Report.md](docs/Specification_and_Design_Report.md) (university submissions — do not modify).
 
@@ -17,7 +17,7 @@ The research behind Levy benchmarks false positive rates of semantic caching acr
 levy/
 ├── levy/                    # Core package
 │   ├── cache/               # Cache logic (Exact, Semantic, InMemory/Redis stores)
-│   ├── llm_client.py        # LLM interaction (Mock, OpenAI, Ollama)
+│   ├── llm_client.py        # LLM interaction (Mock, OpenAI, Ollama, Anthropic)
 │   ├── embeddings.py        # EmbeddingClient ABC + Mock, SentenceTransformer, Ollama
 │   ├── embedding_manager.py # EmbeddingManager: study-model registry, runtime switching,
 │   │                        #   memoization, symmetric prefix handling
@@ -110,6 +110,57 @@ It runs a sequence of prompts through three configurations:
    ```bash
    python examples/ollama_demo.py
    ```
+
+### Using Anthropic (LEV-6)
+
+The `anthropic` provider wraps the official `anthropic` SDK behind the same
+synchronous `LLMClient` interface as Mock/OpenAI/Ollama:
+
+```python
+config = LevyConfig(
+    llm_provider="anthropic",
+    # anthropic_api_key defaults to the ANTHROPIC_API_KEY env var (.env)
+    anthropic_model="claude-opus-4-8",       # default; override per config
+    anthropic_max_retries=2,                 # SDK's own exponential backoff
+    anthropic_budget_cap_usd=200.0,          # hard stop (frozen budget cap)
+    anthropic_input_price_per_mtok=5.0,      # USD / 1M input tokens
+    anthropic_output_price_per_mtok=25.0,    # USD / 1M output tokens
+)
+engine = LevyEngine(config)
+result = engine.generate("Hello")
+```
+
+- **Retry:** the connector doesn't reimplement backoff — it configures the
+  SDK's built-in retry (connection errors, 408/409/429/5xx) via
+  `anthropic_max_retries`. Non-retryable API errors propagate as the SDK's
+  typed exceptions (e.g. `anthropic.BadRequestError`) rather than being
+  swallowed.
+- **Token accounting:** `LLMResponse.token_usage` is the real
+  `input_tokens + output_tokens` from the API's usage report;
+  `LLMResponse.metadata` carries the input/output split, the serving model,
+  and the stop reason.
+- **Budget guard:** `AnthropicLLMClient` accumulates a request count and an
+  estimated cost (tokens × configured per-MTok prices) per instance. Once the
+  estimate reaches `anthropic_budget_cap_usd`, further calls raise
+  `BudgetExceededError` *before* sending a request. Inspect spend at any time
+  via `engine.llm_client.request_count` / `.estimated_cost_usd`. This is a
+  safety net, not an invoice — state is per-process and resets on restart;
+  the Anthropic Console remains the authoritative billing record.
+- **Refusals:** if the API returns a successful response whose `stop_reason`
+  is a refusal, the client raises `AnthropicRefusalError` instead of
+  returning (and thereby caching) empty content.
+- **Model default drift (documented, not silently resolved):** the frozen
+  S&D Report's example model string (`claude-3-sonnet-20240229`) is retired.
+  `anthropic_model` defaults to the current recommended model
+  (`claude-opus-4-8`) instead.
+
+**One-time real-API smoke check** (not part of the offline test suite — it
+lives in `examples/`, is not named `test_*.py`, and makes one real, billed
+API call using `ANTHROPIC_API_KEY` from `.env`):
+
+```bash
+python examples/anthropic_smoke_check.py
+```
 
 ### Using Redis Stack (Docker)
 
