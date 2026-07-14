@@ -38,17 +38,17 @@ class MockEmbeddingClient(EmbeddingClient):
 class SentenceTransformerClient(EmbeddingClient):
     """Wrapper around sentence-transformers."""
     def __init__(self, model_name: str = "all-MiniLM-L6-v2", trust_remote_code: bool = False):
-        try:
+        try:  # pragma: no cover -- loads a real model checkpoint, not offline-testable
             from sentence_transformers import SentenceTransformer
             self.model = SentenceTransformer(model_name, trust_remote_code=trust_remote_code)
-        except ImportError:
+        except ImportError:  # pragma: no cover -- only triggers when the optional dependency is absent
             raise ImportError("sentence-transformers is not installed. Please install it with `pip install sentence-transformers`.")
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> List[float]:  # pragma: no cover -- requires a loaded model
         embedding = self.model.encode(text)
         return embedding.tolist()
-    
-    def get_dimension(self) -> int:
+
+    def get_dimension(self) -> int:  # pragma: no cover -- requires a loaded model
         return self.model.get_embedding_dimension()
 
 class OllamaEmbeddingClient(EmbeddingClient):
@@ -61,7 +61,7 @@ class OllamaEmbeddingClient(EmbeddingClient):
         self.model = model
         self._dimension = None
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> List[float]:  # pragma: no cover -- requires a running Ollama server
         url = f"{self.base_url}/api/embeddings"
         payload = {
             "model": self.model,
@@ -79,5 +79,5 @@ class OllamaEmbeddingClient(EmbeddingClient):
     def get_dimension(self) -> int:
         if self._dimension is None:
             # Generate a dummy embedding to know the dimension
-            self.embed("test")
+            self.embed("test")  # pragma: no cover -- requires a running Ollama server
         return self._dimension

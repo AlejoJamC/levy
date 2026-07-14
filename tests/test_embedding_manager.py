@@ -6,9 +6,10 @@ so no model downloads or network access are required.
 """
 
 import unittest
+from unittest import mock
 from levy.config import LevyConfig
 from levy.embedding_manager import EmbeddingManager, KNOWN_MODEL_NAMES, _resolve
-from levy.embeddings import MockEmbeddingClient
+from levy.embeddings import MockEmbeddingClient, OllamaEmbeddingClient
 
 
 class _RecordingMock(MockEmbeddingClient):
@@ -182,6 +183,10 @@ class TestDimensionAndIdentity(unittest.TestCase):
         self.assertEqual(identity.canonical_name, "mock")
         self.assertIsInstance(identity.dimension, int)
 
+    def test_mock_provider_get_dimension(self):
+        manager = EmbeddingManager("all-MiniLM-L6-v2", provider="mock")
+        self.assertEqual(manager.get_dimension(), manager._get_mock_client().get_dimension())
+
 
 # ---------------------------------------------------------------------------
 # 5.5  Symmetric task-prefix handling
@@ -233,11 +238,87 @@ class TestDefaultConfig(unittest.TestCase):
     def test_manager_from_default_config_uses_correct_model(self):
         config = LevyConfig()
         manager = EmbeddingManager.from_config(config)
-        mock = _RecordingMock(dimension=384)
-        manager._clients["sentence-transformers/all-MiniLM-L6-v2"] = mock
+        mock_client = _RecordingMock(dimension=384)
+        manager._clients["sentence-transformers/all-MiniLM-L6-v2"] = mock_client
         manager.embed("test")
         # Verify text was passed raw (no prefix for all-MiniLM)
-        self.assertEqual(mock.received_texts[0], "test")
+        self.assertEqual(mock_client.received_texts[0], "test")
+
+
+# ---------------------------------------------------------------------------
+# 5.7  Ollama provider (client injected, no real server)
+# ---------------------------------------------------------------------------
+
+class _FakeOllamaEmbeddingClient:
+    """Duck-types OllamaEmbeddingClient without any network access."""
+
+    def __init__(self, dimension=5):
+        self.dimension = dimension
+        self.received_texts = []
+
+    def embed(self, text):
+        self.received_texts.append(text)
+        return [0.1] * self.dimension
+
+    def get_dimension(self):
+        return self.dimension
+
+
+class TestOllamaProvider(unittest.TestCase):
+
+    def _manager(self):
+        manager = EmbeddingManager("qwen3", provider="ollama", ollama_base_url="http://fake:1")
+        fake = _FakeOllamaEmbeddingClient()
+        manager._clients["ollama"] = fake
+        return manager, fake
+
+    def test_embed_with_uses_injected_client(self):
+        manager, fake = self._manager()
+        vector = manager.embed_with("qwen3", "hello")
+        self.assertEqual(vector, [0.1] * 5)
+        self.assertEqual(fake.received_texts, ["hello"])
+
+    def test_embed_with_memoizes_by_text(self):
+        manager, fake = self._manager()
+        manager.embed_with("qwen3", "hello")
+        manager.embed_with("qwen3", "hello")
+        self.assertEqual(len(fake.received_texts), 1)  # second call served from memo
+
+    def test_get_dimension_delegates_to_client(self):
+        manager, _ = self._manager()
+        self.assertEqual(manager.get_dimension(), 5)
+
+    def test_get_model_identity_reports_ollama(self):
+        manager, _ = self._manager()
+        identity = manager.get_model_identity()
+        self.assertEqual(identity.canonical_name, "ollama")
+        self.assertEqual(identity.dimension, 5)
+
+    def test_get_ollama_client_lazily_constructs_and_caches(self):
+        """Without an injected client, a real OllamaEmbeddingClient is constructed
+        (attribute assignment only -- no network access happens at construction time)."""
+        manager = EmbeddingManager("qwen3", provider="ollama", ollama_base_url="http://fake:1")
+        client = manager._get_ollama_client()
+        self.assertIsInstance(client, OllamaEmbeddingClient)
+        self.assertEqual(client.base_url, "http://fake:1")
+        self.assertIs(manager._get_ollama_client(), client)  # cached, not reconstructed
+
+
+class TestSentenceTransformerLazyConstruction(unittest.TestCase):
+
+    def test_get_st_client_constructs_and_caches(self):
+        """Without an injected client, `_get_st_client` constructs one via the
+        (patched) SentenceTransformerClient class and caches it by checkpoint."""
+        with mock.patch("levy.embedding_manager.SentenceTransformerClient") as FakeCls:
+            FakeCls.return_value = _RecordingMock(dimension=384)
+            manager = EmbeddingManager("all-MiniLM-L6-v2", provider="sentence-transformers")
+            manager.embed("hello")
+            FakeCls.assert_called_once_with(
+                model_name="sentence-transformers/all-MiniLM-L6-v2", trust_remote_code=False
+            )
+            # Second call reuses the cached client -- no second construction.
+            manager.embed("world")
+            FakeCls.assert_called_once()
 
 
 if __name__ == "__main__":

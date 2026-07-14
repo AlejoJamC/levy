@@ -11,9 +11,13 @@ class LLMClient(ABC):
 
 class MockLLMClient(LLMClient):
     """A mock client that echoes the prompt (reversed) for testing."""
+    def __init__(self, latency_seconds: float = 0.5):
+        self.latency_seconds = latency_seconds
+
     def generate(self, request: LLMRequest) -> LLMResponse:
         # Simulate network latency
-        time.sleep(0.5) 
+        if self.latency_seconds:
+            time.sleep(self.latency_seconds)
         response_text = f"Computed response for: {request.prompt[::-1]}" # Reverse string as 'computation'
         # Simple token estimation
         tokens = len(response_text.split())
@@ -30,7 +34,7 @@ class OpenAILLMClient(LLMClient):
         self.base_url = base_url
         self.model = model
 
-    def generate(self, request: LLMRequest) -> LLMResponse:
+    def generate(self, request: LLMRequest) -> LLMResponse:  # pragma: no cover -- requires the real OpenAI API
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
@@ -66,7 +70,7 @@ class OllamaLLMClient(LLMClient):
         self.base_url = base_url
         self.model = model
 
-    def generate(self, request: LLMRequest) -> LLMResponse:
+    def generate(self, request: LLMRequest) -> LLMResponse:  # pragma: no cover -- requires a running Ollama server
         url = f"{self.base_url}/api/chat"
         payload = {
             "model": self.model,

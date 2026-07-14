@@ -51,11 +51,19 @@ levy/
 
 ## Running Tests
 
+pytest is the canonical runner (declared in `environment.yml` / `pyproject.toml`
+`[dev]` extras) with an enforced 90% branch-coverage gate on `levy/`:
+
 ```bash
-python -m unittest discover -s tests -p "test_*.py"
-# or, if pytest is installed:
+# Fast run
 python -m pytest tests/ -q
+
+# Gated run (also used in CI): fails if branch coverage of levy/ drops below 90%
+python -m pytest tests/ -q --cov=levy --cov-branch --cov-fail-under=90
 ```
+
+`python -m unittest discover -s tests -p "test_*.py"` still works (the suite is
+plain `unittest.TestCase`s), but pytest is the one true command going forward.
 
 ## Usage
 

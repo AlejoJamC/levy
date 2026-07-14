@@ -209,8 +209,16 @@ implied by the spec, not bugs:
    fallback corpus), the author's actual blind re-annotation of all 900 pairs, the final
    Cohen's kappa result, and replacing the synthetic fixtures currently in `data/` with
    the released dataset.
-7. **pytest declared but not installed** in the conda env; tests currently run via
-   `unittest` (see commands).
+7. ~~**pytest declared but not installed**~~ — **Resolved (LEV-5).** `pytest` and
+   `pytest-cov` are installed in the `levy` conda env (`environment.yml`, conda-forge)
+   and mirrored in `pyproject.toml` `[dev]` extras. pytest is the canonical runner;
+   `python -m unittest discover` still works but is no longer advertised as the
+   default. A gated command (`--cov=levy --cov-branch --cov-fail-under=90`) enforces
+   ≥90% branch coverage on `levy/`, with network-only provider internals
+   (OpenAI/Ollama LLM clients, Ollama/SentenceTransformer embedding clients) excluded
+   via inline `# pragma: no cover` markers. `MockLLMClient` latency is now injectable
+   (`latency_seconds`, default 0.5 unchanged); tests inject 0, so the suite runs in
+   ~2s instead of the previous ~81s.
 
 ## Commands
 
@@ -230,11 +238,11 @@ source ~/miniconda3/etc/profile.d/conda.sh && conda activate levy && <command>
 conda env create -f environment.yml
 conda activate levy
 
-# Tests (pytest is in pyproject [dev] extras but NOT in the conda env yet;
-# unittest always works)
+# Tests — pytest is canonical (installed in the conda env + pyproject [dev] extras)
+python -m pytest tests/ -q                                              # fast run
+python -m pytest tests/ -q --cov=levy --cov-branch --cov-fail-under=90  # gated run (used in CI)
+# unittest still works (tests are plain unittest.TestCase):
 python -m unittest discover -s tests -p "test_*.py"
-# or, after `pip install pytest` inside the env:
-python -m pytest tests/ -q
 
 # Demos
 python examples/simple_replay.py     # mock LLM; uses sentence-transformers if installed

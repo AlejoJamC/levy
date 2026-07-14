@@ -38,7 +38,7 @@ class LevyEngine:
                 model=config.model_name
             )
         else:
-            self.llm_client = MockLLMClient()
+            self.llm_client = MockLLMClient(latency_seconds=config.mock_llm_latency_seconds)
 
         # 2. Initialize Embedding Manager (handles mock, sentence-transformers, ollama).
         # Callers (e.g. the experiment harness sweeping many configs per model) may inject

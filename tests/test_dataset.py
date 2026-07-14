@@ -25,8 +25,12 @@ from levy.dataset.io import (
 )
 from levy.dataset.kappa import cohen_kappa, kappa_report
 from levy.dataset.sampling import (
+    ConvAI2Source,
+    CorpusSource,
     CorpusSourceError,
     MockCorpusSource,
+    QuoraQQPSource,
+    StackOverflowDuplicatesSource,
     sample_dataset,
     sample_workload,
 )
@@ -85,9 +89,28 @@ class TestQueryPairSchema(unittest.TestCase):
         with self.assertRaises(QueryPairValidationError):
             _make_pair(query_1="   ")
 
+    def test_empty_query_2_rejected(self):
+        with self.assertRaises(QueryPairValidationError):
+            _make_pair(query_2="   ")
+
     def test_empty_pair_id_rejected(self):
         with self.assertRaises(QueryPairValidationError):
             _make_pair(pair_id="")
+
+    def test_empty_source_corpus_rejected(self):
+        with self.assertRaises(QueryPairValidationError):
+            _make_pair(source_corpus="")
+
+    def test_empty_source_pair_id_rejected(self):
+        with self.assertRaises(QueryPairValidationError):
+            _make_pair(source_pair_id="")
+
+    def test_from_dict_invalid_field_value_wrapped(self):
+        """A field that can't convert (e.g. non-integer label) raises QueryPairValidationError."""
+        data = _make_pair().to_dict()
+        data["original_label"] = "not-an-int"
+        with self.assertRaises(QueryPairValidationError):
+            QueryPair.from_dict(data)
 
     def test_ground_truth_label_prefers_author_label(self):
         pair = _make_pair(original_label=1, author_label=0)
@@ -185,6 +208,21 @@ class TestCsvJsonRoundTrip(unittest.TestCase):
             with self.assertRaises(DatasetValidationError):
                 load_json(path)
 
+    def test_load_json_rejects_malformed_json(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "bad.json"
+            path.write_text("{not valid json")
+            with self.assertRaises(DatasetValidationError):
+                load_json(path)
+
+    def test_load_json_rejects_invalid_item(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "bad.json"
+            path.write_text(json.dumps([{"pair_id": "faq-0001"}]))  # missing required fields
+            with self.assertRaises(DatasetValidationError) as ctx:
+                load_json(path)
+            self.assertIn("item[0]", str(ctx.exception))
+
     def test_committed_fixture_loads_and_matches_between_formats(self):
         """The data/ synthetic fixtures must themselves be valid and in sync."""
         csv_pairs = load_csv(FIXTURE_CSV)
@@ -264,6 +302,155 @@ class TestSampling(unittest.TestCase):
         sources = {WORKLOAD_FAQ: MockCorpusSource(WORKLOAD_FAQ, n_candidates=20, seed=1)}
         with self.assertRaises(CorpusSourceError):
             sample_dataset(sources, n_per_workload=5, seed=1)
+
+    def test_insufficient_negatives_raises(self):
+        """Plenty of positives but too few negatives must name the negative shortfall."""
+        source = MockCorpusSource(WORKLOAD_FAQ, n_candidates=20, seed=1)  # 10 pos, 10 neg
+        with self.assertRaises(CorpusSourceError):
+            sample_workload(source, n=30, seed=1, positive_ratio=0.1)  # needs 27 neg, only 10 available
+
+    def test_sample_dataset_workload_mismatch_raises(self):
+        """A source registered under the wrong workload key is rejected."""
+        sources = {
+            WORKLOAD_FAQ: MockCorpusSource(WORKLOAD_CODE, n_candidates=40, seed=1),  # wrong workload
+            WORKLOAD_CODE: MockCorpusSource(WORKLOAD_CODE, n_candidates=40, seed=2),
+            WORKLOAD_CHAT: MockCorpusSource(WORKLOAD_CHAT, n_candidates=40, seed=3),
+        }
+        with self.assertRaises(CorpusSourceError):
+            sample_dataset(sources, n_per_workload=8, seed=42)
+
+    def test_mock_corpus_source_rejects_unknown_workload(self):
+        with self.assertRaises(CorpusSourceError):
+            MockCorpusSource("not-a-workload")
+
+
+# ---------------------------------------------------------------------------
+# Real corpus source adapters (raw-file parsing, no network)
+# ---------------------------------------------------------------------------
+
+class _MinimalCorpusSource(CorpusSource):
+    workload = WORKLOAD_FAQ
+    name = "minimal"
+
+    def iter_candidates(self):
+        return super().iter_candidates()
+
+
+class TestCorpusSourceAbstract(unittest.TestCase):
+
+    def test_abstract_stub_raises_not_implemented(self):
+        with self.assertRaises(NotImplementedError):
+            _MinimalCorpusSource().iter_candidates()
+
+
+class TestQuoraQQPSource(unittest.TestCase):
+
+    def test_parses_valid_tsv(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "qqp.tsv"
+            path.write_text(
+                "id\tqid1\tqid2\tquestion1\tquestion2\tis_duplicate\n"
+                "1\t10\t11\tHow do I learn Python?\tHow can I learn Python?\t1\n"
+                "2\t12\t13\tWhat is the capital of France?\tHow tall is Mount Everest?\t0\n"
+                "3\t14\t15\t\tEmpty question one\t0\n",  # blank question1 -> skipped
+                encoding="utf-8",
+            )
+            source = QuoraQQPSource(path)
+            self.assertEqual(source.workload, "faq")
+            candidates = list(source.iter_candidates())
+        self.assertEqual(len(candidates), 2)
+        self.assertEqual(candidates[0].label, 1)
+        self.assertEqual(candidates[1].label, 0)
+
+    def test_missing_columns_raises(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "qqp.tsv"
+            path.write_text("id\tquestion1\n1\tHello\n", encoding="utf-8")
+            source = QuoraQQPSource(path)
+            with self.assertRaises(CorpusSourceError):
+                list(source.iter_candidates())
+
+
+class TestStackOverflowDuplicatesSource(unittest.TestCase):
+
+    def test_parses_valid_csv(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "so.csv"
+            path.write_text(
+                "pair_id,question1_id,question1,question2_id,question2,is_duplicate\n"
+                "p1,1,How to reverse a list in Python?,2,How do I reverse a Python list?,1\n"
+                "p2,3,What is a decorator?,4,How does TCP work?,0\n"
+                "p3,5,,6,Empty question one,0\n",  # blank question1 -> skipped
+                encoding="utf-8",
+            )
+            source = StackOverflowDuplicatesSource(path)
+            self.assertEqual(source.workload, "code")
+            candidates = list(source.iter_candidates())
+        self.assertEqual(len(candidates), 2)
+        self.assertEqual(candidates[0].source_pair_id, "p1")
+
+    def test_missing_columns_raises(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "so.csv"
+            path.write_text("pair_id,question1\np1,Hello\n", encoding="utf-8")
+            source = StackOverflowDuplicatesSource(path)
+            with self.assertRaises(CorpusSourceError):
+                list(source.iter_candidates())
+
+
+class TestConvAI2Source(unittest.TestCase):
+
+    def test_parses_valid_json(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "convai2.json"
+            path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "pair_id": "c1",
+                            "utterance_1": "I love hiking on weekends.",
+                            "utterance_2": "Hiking is my favorite weekend activity.",
+                            "same_intent": 1,
+                        },
+                        {
+                            "pair_id": "c2",
+                            "utterance_1": "What's your favorite food?",
+                            "utterance_2": "It's raining outside.",
+                            "same_intent": 0,
+                        },
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            source = ConvAI2Source(path)
+            self.assertEqual(source.workload, "chat")
+            candidates = list(source.iter_candidates())
+        self.assertEqual(len(candidates), 2)
+        self.assertEqual(candidates[0].label, 1)
+
+    def test_invalid_json_raises(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "convai2.json"
+            path.write_text("{not valid json", encoding="utf-8")
+            source = ConvAI2Source(path)
+            with self.assertRaises(CorpusSourceError):
+                list(source.iter_candidates())
+
+    def test_non_list_raises(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "convai2.json"
+            path.write_text(json.dumps({"not": "a list"}), encoding="utf-8")
+            source = ConvAI2Source(path)
+            with self.assertRaises(CorpusSourceError):
+                list(source.iter_candidates())
+
+    def test_missing_fields_raises(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "convai2.json"
+            path.write_text(json.dumps([{"pair_id": "c1"}]), encoding="utf-8")
+            source = ConvAI2Source(path)
+            with self.assertRaises(CorpusSourceError):
+                list(source.iter_candidates())
 
 
 # ---------------------------------------------------------------------------
@@ -412,6 +599,80 @@ class TestBlindAnnotation(unittest.TestCase):
             summary = session.run()
         self.assertEqual(summary.skipped, 1)
         self.assertIsNone(pairs[0].author_label)
+
+    def test_unrecognized_answer_is_skipped(self):
+        pairs = self._pairs()
+        answers = iter(["maybe", "1", "0"])
+        with TemporaryDirectory() as tmp:
+            session = BlindAnnotationSession(
+                pairs,
+                progress_path=Path(tmp) / "progress.json",
+                input_fn=lambda prompt: next(answers),
+                output_fn=lambda msg: None,
+            )
+            summary = session.run()
+        self.assertEqual(summary.skipped, 1)
+        self.assertIsNone(pairs[0].author_label)
+
+    def test_eof_on_input_stops_early(self):
+        """Piped stdin ending (EOFError) is treated like an early quit."""
+        pairs = self._pairs()
+
+        def _raise_eof(prompt):
+            raise EOFError()
+
+        with TemporaryDirectory() as tmp:
+            session = BlindAnnotationSession(
+                pairs,
+                progress_path=Path(tmp) / "progress.json",
+                input_fn=_raise_eof,
+                output_fn=lambda msg: None,
+            )
+            summary = session.run()
+        self.assertTrue(summary.quit_early)
+        self.assertEqual(summary.newly_labeled, 0)
+
+    def test_progress_entry_for_unknown_pair_id_is_ignored(self):
+        """A progress file referencing a pair_id absent from `pairs` is skipped, not an error."""
+        pairs = self._pairs()
+        with TemporaryDirectory() as tmp:
+            progress_path = Path(tmp) / "progress.json"
+            progress_path.write_text(json.dumps({"faq-9999": 1}), encoding="utf-8")
+            session = BlindAnnotationSession(
+                pairs,
+                progress_path=progress_path,
+                input_fn=lambda prompt: "0",
+                output_fn=lambda msg: None,
+            )
+        self.assertTrue(all(p.author_label is None for p in pairs))
+
+    def test_progress_merge_does_not_overwrite_existing_label(self):
+        """A progress-file label for an already-labeled pair is ignored unless overwrite=True."""
+        pairs = self._pairs()
+        pairs[0].author_label = 1  # set directly, before the progress file is applied
+        with TemporaryDirectory() as tmp:
+            progress_path = Path(tmp) / "progress.json"
+            progress_path.write_text(json.dumps({"faq-0001": 0}), encoding="utf-8")
+            BlindAnnotationSession(
+                pairs,
+                progress_path=progress_path,
+                input_fn=lambda prompt: "0",
+                output_fn=lambda msg: None,
+                overwrite=False,
+            )
+        self.assertEqual(pairs[0].author_label, 1)  # untouched by the conflicting progress entry
+
+    def test_remaining_count(self):
+        pairs = self._pairs()
+        pairs[0].author_label = 1
+        with TemporaryDirectory() as tmp:
+            session = BlindAnnotationSession(
+                pairs,
+                progress_path=Path(tmp) / "progress.json",
+                input_fn=lambda prompt: "0",
+                output_fn=lambda msg: None,
+            )
+        self.assertEqual(session.remaining_count(), 2)
 
 
 # ---------------------------------------------------------------------------

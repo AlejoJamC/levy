@@ -26,6 +26,7 @@ def run_experiment(
     pairs: List[QueryPair],
     embedding_manager: Optional[EmbeddingManager] = None,
     embedding_provider: str = "mock",
+    llm_latency_seconds: float = 0.5,
 ) -> EvaluationResult:
     """
     Replay `pairs` (filtered to `config.workload`) against a fresh engine
@@ -36,11 +37,15 @@ def run_experiment(
     across a model's 15 configurations by the sweep runner, so LEV-1's
     memoization is not defeated). Otherwise a manager is constructed from
     `embedding_provider` / `config.model` for standalone use.
+
+    `llm_latency_seconds` forwards to `MockLLMClient` (default 0.5, matching
+    a real run's synthetic delay); tests pass 0 to keep the suite fast.
     """
     workload_pairs = [pair for pair in pairs if pair.workload == config.workload]
 
     engine_config = LevyConfig(
         llm_provider="mock",
+        mock_llm_latency_seconds=llm_latency_seconds,
         embedding_provider=embedding_provider,
         embedding_model=config.model,
         enable_exact_cache=True,
