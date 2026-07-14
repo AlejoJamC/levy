@@ -141,6 +141,35 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   round-trip + cross-format equality, sampling determinism/stratification, blind
   annotation (blindness, resume, no-overwrite), Cohen's kappa (perfect/chance/worked/
   degenerate cases), and CLI smoke tests against the `data/` fixtures. All offline.
+- `levy/experiment/` (LEV-4) — offline replay harness per S&D Report Algorithm 2:
+  `config.py` (`ExperimentConfig` + `full_grid()`, the frozen 2 models × 3 workloads ×
+  5 thresholds = 30 configurations, thresholds carried verbatim on the `1/(1+L2)` scale);
+  `metrics.py` (`EvaluationResult`/`DecisionRecord`, precision/recall/F0.5/FPR/hit-rate
+  formulas, zero-division reported as `0.0` + flag never NaN, `check_sanity()` raising
+  `ExperimentSanityError` naming the offending configuration); `replay.py` —
+  `run_experiment(config, pairs)` builds a fresh `LevyEngine` per configuration (mock
+  LLM, memory store), replays each `QueryPair` through the production lookup path
+  (`query_1` miss-and-store, `query_2` hit/miss decision via `LevyResult.source`),
+  accumulates the cache across pairs within a configuration, and increments TP/FP/TN/FN
+  against `QueryPair.ground_truth_label()`; `runner.py` — `run_sweep()` shares one
+  `EmbeddingManager` per model across its 15 configurations (LEV-1 memoization is not
+  defeated by the sweep) and writes `results.csv` / `decisions.csv` (no timestamps or
+  latency, so re-runs on identical inputs are byte-identical) plus a `run_meta.json`
+  sidecar (dataset path, providers, resolved model checkpoints, grid, latency labeled
+  synthetic under the mock LLM's fixed 0.5s sleep). `LevyEngine` accepts an optional
+  `embedding_manager` constructor param for this sharing; default behavior unchanged.
+- `scripts/run_experiments.py` — argparse CLI over `levy/experiment/runner.py`: dataset
+  path (default `data/ground_truth.csv`), output directory, `--models/--workloads/
+  --thresholds` grid-subset flags for smoke runs, `--embedding-provider` (default
+  `mock`, fully offline against the synthetic fixture; pass `sentence-transformers` for
+  a real study run once LEV-11 lands). Non-zero exit on a sanity-check failure.
+- `tests/test_experiment_config.py`, `test_experiment_metrics.py`,
+  `test_experiment_replay.py`, `test_experiment_runner.py` — 37 unit tests for
+  `levy/experiment/`: grid enumeration/uniqueness, hand-computed metrics + zero-division
+  + sanity-check violations, replay outcomes (TP/FP/TN/FN via a scripted embedding
+  manager, exact-duplicate via the exact cache, cross-pair cache accumulation, fresh
+  cache per `run_experiment` call), sweep determinism (byte-identical re-runs), and
+  output-contract shape. All offline (mock LLM + mock/scripted embeddings).
 
 ### Known gaps: current code vs frozen spec
 
@@ -161,8 +190,13 @@ implied by the spec, not bugs:
    high-cosine band (~0.91–0.998). This is intentional and spec-mandated; do NOT
    rescale thresholds or revert to cosine. If hit-rate viability (>30%) is not
    met at this band, surface that as a research-scope finding to the supervisor.
-4. **No experiment harness** — `run_experiment` / 30-configuration replay,
-   TP/FP/TN/FN accounting, and metric computation are not implemented.
+4. ~~**No experiment harness**~~ — **Resolved (LEV-4).** `levy/experiment/` implements
+   `run_experiment`/`full_grid`/30-configuration replay, TP/FP/TN/FN accounting against
+   `QueryPair.ground_truth_label()`, and precision/recall/F0.5/FPR/hit-rate computation
+   with zero-division-safe formulas and sanity checks. `scripts/run_experiments.py`
+   drives the full grid (or a subset) fully offline via the mock LLM; results are
+   validated against the committed 15-pair synthetic fixture only — a real run still
+   needs LEV-11's 900-pair dataset and `sentence-transformers` providers.
 5. ~~**Embedding defaults don't match the study**~~ — **Resolved (LEV-1).**
    `LevyConfig` now defaults to `sentence-transformers` / `all-MiniLM-L6-v2`;
    `EmbeddingManager` supports runtime switching to `modernbert`
