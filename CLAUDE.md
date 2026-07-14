@@ -76,7 +76,20 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
 - `levy/models.py` — dataclasses: `LLMRequest`, `LLMResponse`, `CacheEntry`,
   `LevyResult` (`source` ∈ `llm | exact_cache | semantic_cache`), `MetricsSnapshot`.
 - `levy/llm_client.py` — `LLMClient` ABC + `MockLLMClient` (0.5s sleep, reversed
-  echo), `OpenAILLMClient` (raw httpx), `OllamaLLMClient`.
+  echo), `OpenAILLMClient` (raw httpx), `OllamaLLMClient`, `AnthropicLLMClient`
+  (LEV-6) — synchronous wrapper around the official `anthropic` SDK
+  (`messages.create`), selected via `llm_provider="anthropic"`. Retry is the
+  SDK's own exponential backoff (`anthropic_max_retries`), not reimplemented;
+  non-retryable errors propagate as the SDK's typed exceptions. Token usage
+  (`response.usage.input_tokens`/`output_tokens`) populates `LLMResponse.token_usage`
+  (sum) and `metadata` (split + model + stop_reason). A per-instance `_BudgetGuard`
+  accumulates request count and estimated cost (tokens × configurable per-MTok
+  prices) and raises `BudgetExceededError` before sending once the estimate
+  reaches `anthropic_budget_cap_usd` (default 200.0, the frozen cap). A
+  `stop_reason: "refusal"` response raises `AnthropicRefusalError` instead of
+  being cached. Missing `ANTHROPIC_API_KEY` fails at construction. Fully
+  offline-testable via an injectable `http_client` (`anthropic.DefaultHttpxClient`
+  wrapping `httpx.MockTransport`) — no coverage pragmas needed.
 - `levy/embeddings.py` — `EmbeddingClient` ABC + mock (text-seeded random,
   normalized), `SentenceTransformerClient` (accepts `trust_remote_code` for
   ModernBERT), `OllamaEmbeddingClient`.
@@ -105,6 +118,11 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   (whitespace-split approximation), latency list.
 - `tests/test_levy.py` — 2 unittest tests (exact cache hit/miss, semantic
   machinery smoke test) using mock providers.
+- `tests/test_anthropic_client.py` — 13 unit tests for `AnthropicLLMClient` (LEV-6):
+  construction/missing-key, success (text/token_usage/metadata), retry-then-success,
+  non-retryable propagation, refusal handling (incl. engine end-to-end — nothing
+  cached), budget-guard halt + spend visibility, engine wiring end-to-end. Fully
+  offline via `httpx.MockTransport` injected as the SDK's `http_client`.
 - `tests/test_embedding_manager.py` — 20 unit tests for `EmbeddingManager`: runtime
   model switching, alias resolution, memoization, dimension/identity exposure, prefix
   handling, and default config validation. All offline (injected mock clients).
@@ -114,7 +132,9 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   when Faiss absent), engine end-to-end semantic cache hit/miss.
 - `examples/simple_replay.py` — replays a prompt list under no-cache / exact /
   exact+semantic configs. `examples/ollama_demo.py` — end-to-end with local Ollama
-  (`qwen3` LLM + `nomic-embed-text` embeddings).
+  (`qwen3` LLM + `nomic-embed-text` embeddings). `examples/anthropic_smoke_check.py`
+  — one-shot real-API smoke check for the Anthropic connector (billed, requires a
+  real `ANTHROPIC_API_KEY`; not collected by pytest — lives outside `tests/`).
 - `levy/dataset/` (LEV-3) — ground-truth dataset **platform tooling** (D2), data-agnostic:
   `schema.py` (`QueryPair` dataclass + workload constants `faq`/`code`/`chat` +
   validation; `ground_truth_label()` returns the author's blind label if set, else the
@@ -179,8 +199,18 @@ implied by the spec, not bugs:
 1. **No FastAPI router** (`/v1/chat/completions`, `/admin/cache/stats`,
    `/admin/cache/clear` with `X-Cache-Status` / `X-Cache-Similarity` headers).
    EPIC-001 covers this layer.
-2. **No Anthropic LLM connector** — only mock/OpenAI/Ollama exist; the spec names
-   the Anthropic API as the backend.
+2. ~~**No Anthropic LLM connector**~~ — **Resolved (LEV-6).** `AnthropicLLMClient`
+   wraps the official `anthropic` SDK behind the existing synchronous `LLMClient`
+   ABC, selected via `llm_provider="anthropic"`. **Sync-now decision:** the frozen
+   S&D calls for an "asynchronous wrapper", but the whole core engine (caches,
+   harness) is synchronous; this change implements the connector synchronously
+   against the existing ABC and defers async to the FastAPI router (LEV-7), where
+   the SDK's `AsyncAnthropic` client fits naturally — recorded as a documented
+   resolution, not silent drift (see `openspec/changes/add-anthropic-connector/design.md`).
+   **Model default drift:** the frozen S&D's example model string
+   (`claude-3-sonnet-20240229`) is retired; the connector defaults to
+   `claude-opus-4-8` instead — flagged here per the frozen-docs rule, not silently
+   resolved.
 3. ~~**No Faiss HNSW index**~~ — **Resolved (LEV-2).** `SemanticCache` now owns a
    `VectorIndex` (Faiss HNSW or brute-force oracle) and uses `similarity =
    1/(1+L2_distance)` per Algorithm 1. **Threshold-scale flag for LEV-4/LEV-8:**
@@ -247,6 +277,7 @@ python -m unittest discover -s tests -p "test_*.py"
 # Demos
 python examples/simple_replay.py     # mock LLM; uses sentence-transformers if installed
 python examples/ollama_demo.py       # requires `ollama serve` + qwen3 + nomic-embed-text
+python examples/anthropic_smoke_check.py  # one real, billed call; requires ANTHROPIC_API_KEY in .env
 
 # Local services (Redis 7 for cache_store_type="redis")
 docker-compose up -d
