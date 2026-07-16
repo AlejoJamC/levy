@@ -148,3 +148,15 @@ class LevyEngine:
 
     def get_metrics_summary(self) -> str:
         return str(self.metrics)
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Additive accessor (LEV-7): semantic-index size + per-model cached-entry
+        counts, read from CacheEntry.metadata written by the exact-cache store."""
+        model_breakdown: Dict[str, int] = {}
+        for entry in self.store.entries.values():
+            name = entry.metadata.get("canonical_name", "unknown")
+            model_breakdown[name] = model_breakdown.get(name, 0) + 1
+        return {
+            "index_size": self.semantic_cache.size(),
+            "model_breakdown": model_breakdown,
+        }

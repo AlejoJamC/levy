@@ -190,15 +190,46 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   manager, exact-duplicate via the exact cache, cross-pair cache accumulation, fresh
   cache per `run_experiment` call), sweep determinism (byte-identical re-runs), and
   output-contract shape. All offline (mock LLM + mock/scripted embeddings).
+- `levy/api/` (LEV-7) — FastAPI router exposing the engine over HTTP per the frozen
+  S&D "Intended interface": `app.py` (`create_app(config, max_engines)` factory +
+  module-level `app`; `POST /v1/chat/completions`, `GET /admin/cache/stats`,
+  `POST /admin/cache/clear`; sync `def` endpoints run in FastAPI's threadpool —
+  the async-at-boundary decision recorded in known-gap #1 above); `schemas.py`
+  (Pydantic v2 request/response/error models — the only Pydantic in the repo, per
+  convention); `pool.py` (`EnginePool` keyed by `(embedding_model, threshold)`,
+  default cap 8, `PoolCapExceededError` beyond it; shares one `EmbeddingManager`
+  per embedding_model across thresholds so a model isn't reloaded for a threshold
+  change). Response body is Anthropic Messages-shaped for hit and miss alike;
+  cache identity lives in `X-Cache-Status`/`X-Cache-Similarity` headers, not the
+  body. `BudgetExceededError`/`AnthropicRefusalError`/`PoolCapExceededError`/any
+  other exception map to structured JSON (402/502/400/500) via FastAPI exception
+  handlers, not stack traces. Each chat request emits one JSON log record
+  (`levy.api` logger) with `request_id`, timestamps, resolved cache config,
+  prompt, cache decision, similarity, and latency — sufficient to replay a
+  request sequence. Run via `uvicorn levy.api.app:app`.
+- `tests/test_api_router.py` — 16 unit tests for `levy/api/`: hit/miss flows
+  (exact + semantic, body-shape parity), per-request `cache_config` isolation/
+  accumulation/defaults, pool-cap breach, admin stats/clear consistency,
+  validation/budget/refusal/generic error mapping, structured-log record
+  completeness and replayability, OpenAPI contract shape. Fully offline via
+  FastAPI's `TestClient` + mock providers (Anthropic scenarios use the same
+  `httpx.MockTransport` injection pattern as `test_anthropic_client.py`).
 
 ### Known gaps: current code vs frozen spec
 
 Track these when building toward the experimental phase — they are the backlog
 implied by the spec, not bugs:
 
-1. **No FastAPI router** (`/v1/chat/completions`, `/admin/cache/stats`,
-   `/admin/cache/clear` with `X-Cache-Status` / `X-Cache-Similarity` headers).
-   EPIC-001 covers this layer.
+1. ~~**No FastAPI router**~~ — **Resolved (LEV-7).** `levy/api/` exposes
+   `POST /v1/chat/completions` (`X-Cache-Status` / `X-Cache-Similarity`
+   headers, Anthropic-format body for hit and miss alike), `GET
+   /admin/cache/stats`, and `POST /admin/cache/clear`. **Async decision:**
+   endpoints are declared `def` (sync), so FastAPI runs them in its
+   threadpool — the whole call chain (engine, caches, the LEV-6 Anthropic
+   client) stays synchronous; this satisfies the frozen "asynchronous
+   wrapper" intent at the HTTP boundary (concurrent request handling)
+   without an `AsyncAnthropic` migration. Recorded resolution, not silent
+   drift — see `openspec/changes/add-fastapi-router/design.md`.
 2. ~~**No Anthropic LLM connector**~~ — **Resolved (LEV-6).** `AnthropicLLMClient`
    wraps the official `anthropic` SDK behind the existing synchronous `LLMClient`
    ABC, selected via `llm_provider="anthropic"`. **Sync-now decision:** the frozen
@@ -278,6 +309,9 @@ python -m unittest discover -s tests -p "test_*.py"
 python examples/simple_replay.py     # mock LLM; uses sentence-transformers if installed
 python examples/ollama_demo.py       # requires `ollama serve` + qwen3 + nomic-embed-text
 python examples/anthropic_smoke_check.py  # one real, billed call; requires ANTHROPIC_API_KEY in .env
+
+# HTTP API (LEV-7) — reads .env for the configured provider's credentials
+uvicorn levy.api.app:app --reload
 
 # Local services (Redis 7 for cache_store_type="redis")
 docker-compose up -d

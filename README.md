@@ -16,6 +16,7 @@ The research behind Levy benchmarks false positive rates of semantic caching acr
 ```
 levy/
 ├── levy/                    # Core package
+│   ├── api/                 # FastAPI router (LEV-7): app, Pydantic schemas, engine pool
 │   ├── cache/               # Cache logic (Exact, Semantic, InMemory/Redis stores)
 │   ├── llm_client.py        # LLM interaction (Mock, OpenAI, Ollama, Anthropic)
 │   ├── embeddings.py        # EmbeddingClient ABC + Mock, SentenceTransformer, Ollama
@@ -171,6 +172,113 @@ To use Redis for persistence:
    docker-compose up -d
    ```
 2. Configure `LevyConfig` to use `cache_store_type="redis"`.
+
+## HTTP API (LEV-7)
+
+`levy/api/` exposes the engine over HTTP per the frozen S&D "Intended
+interface" contract, plus admin observability/maintenance.
+
+```bash
+uvicorn levy.api.app:app --reload
+```
+
+By default the app builds its engine pool from `LevyConfig()` (reads `.env`,
+so real deployments need the configured provider's credentials). Interactive
+docs are auto-generated at `http://localhost:8000/docs`
+(`/openapi.json` for the raw schema).
+
+### `POST /v1/chat/completions`
+
+Extracts the prompt from the last `messages` entry and serves it via
+exact cache → semantic cache → the configured LLM provider. The response body
+is in the Anthropic Messages format for both hits and misses; cache identity
+lives in the response headers, not the body.
+
+```bash
+# Miss: first time seeing this prompt
+curl -s -D - http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "What is the capital of France?"}]}'
+# X-Cache-Status: MISS
+
+# Exact hit: identical prompt, second request
+curl -s -D - http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "What is the capital of France?"}]}'
+# X-Cache-Status: HIT
+# X-Cache-Similarity: 1.0
+
+# Per-request cache_config: routes to an engine bound to this
+# (embedding_model, threshold) pair; omitted fields fall back to LevyConfig defaults.
+curl -s -D - http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+        "messages": [{"role": "user", "content": "Tell me France'"'"'s capital"}],
+        "cache_config": {"threshold": 0.80, "embedding_model": "all-MiniLM-L6-v2"}
+      }'
+# Semantic hit (if similar enough to a stored entry under this pair):
+# X-Cache-Status: HIT
+# X-Cache-Similarity: 0.87   (example)
+```
+
+### `GET /admin/cache/stats`
+
+Aggregated hit rate, semantic-index size, and per-model cached-entry counts
+across every pooled `(embedding_model, threshold)` engine instance.
+
+```bash
+curl -s http://localhost:8000/admin/cache/stats
+```
+
+### `POST /admin/cache/clear`
+
+Empties the exact and semantic caches of every pooled engine and resets
+metrics, reporting per-key entry counts cleared.
+
+```bash
+curl -s -X POST http://localhost:8000/admin/cache/clear
+```
+
+### Engine pool
+
+The engine binds `embedding_model`/`similarity_threshold` at construction,
+while the contract puts both per-request. The router resolves this with a
+bounded pool (default cap: 8) keyed by `(embedding_model, threshold)`: the
+first request for a pair builds an engine from the base `LevyConfig` with
+those two fields overridden; later requests with the same pair reuse it (their
+caches accumulate). Requesting a pair beyond the cap returns a structured
+`400 pool_cap_exceeded` error naming the cap.
+
+### Error responses
+
+Errors are structured JSON (`{"error": ..., "detail": ..., ...}`), not stack
+traces:
+
+| Condition | Status | `error` |
+|---|---|---|
+| Malformed/missing `messages` | 422 | (FastAPI's standard validation body) |
+| Pool cap exceeded | 400 | `pool_cap_exceeded` |
+| Anthropic budget cap reached (LEV-6) | 402 | `budget_exceeded` (includes `cap_usd`/`estimated_cost_usd`) |
+| Anthropic refusal | 502 | `provider_refusal` |
+| Any other provider/engine error | 500 | `provider_error` |
+
+### Structured request logging
+
+Every chat request emits one JSON record via stdlib logging (`levy.api`
+logger): `request_id` (echoed in the response body), `arrival_ts`/
+`completion_ts`, the resolved `embedding_model`/`threshold`, the `prompt`,
+the cache decision `cache_source`, `similarity`, and `latency_ms`. The
+records alone are enough to reconstruct and replay a request sequence with
+identical cache configuration.
+
+### Async decision (recorded, not a gap)
+
+The frozen S&D calls for an "asynchronous wrapper"; endpoints here are
+declared `async`-free (`def`) so FastAPI runs them in its threadpool instead —
+the whole call chain (engine, caches, the LEV-6 Anthropic client) is
+synchronous, and blocking the event loop directly would serialize every
+request. This satisfies the intent (concurrent request handling) without an
+`AsyncAnthropic` migration; see `openspec/changes/add-fastapi-router/design.md`.
 
 ## Configuration
 
