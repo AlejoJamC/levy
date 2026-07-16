@@ -121,6 +121,10 @@ class SemanticCache(CacheInterface):
     def clear(self) -> None:
         self.reset()
 
+    def size(self) -> int:
+        """Number of entries currently indexed (public accessor for stats)."""
+        return self._index.size()
+
     # ------------------------------------------------------------------
     # Per-configuration reset (LEV-4 calls this between experiment runs)
     # ------------------------------------------------------------------
