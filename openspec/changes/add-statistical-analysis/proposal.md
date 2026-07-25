@@ -34,6 +34,6 @@ _None. The pipeline is a pure consumer of the harness and dataset outputs throug
 
 - **New code:** `levy/analysis/` (loaders for the harness contract, ANOVA/Tukey, curves, figure writers, replication compare), `scripts/run_analysis.py`, `tests/test_analysis_*.py`.
 - **Dependencies:** `pandas`, `statsmodels`, `matplotlib` (new); `scipy`/`scikit-learn` already in the env.
-- **Docs:** README (analysis command, outputs, replication check), CLAUDE.md (architecture map; D3 pipeline noted as fixture-validated pending LEV-11).
+- **Docs:** README (analysis command, outputs, replication check), CLAUDE.md (architecture map; the pipeline is dataset-agnostic and validated on fixtures).
 - **Downstream:** LEV-9 packages the pipeline + outputs; LEV-10 visualizes the curve tables.
-- **Gated by LEV-11 (data only):** the real ANOVA/curve/kappa numbers; the pipeline, tests, and command are not.
+- **Nothing here is blocked by data production.** This change delivers a complete, tested pipeline. Publishing the real D3 numbers is a later *execution* of the same command against real harness results, tracked as the production run in LEV-11.

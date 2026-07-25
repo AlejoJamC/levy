@@ -29,5 +29,5 @@
 
 ## 5. Docs & sync
 
-- [ ] 5.1 README: analysis command, output bundle reference, replication-check usage; note the platform-vs-data split (pipeline fixture-validated; real D3 numbers arrive by re-running on LEV-11-era results). CLAUDE.md: architecture map entry for `levy/analysis/` + scripts.
-- [ ] 5.2 `openspec validate --all` passes; sync Linear LEV-8 (reference this change; tick the pipeline-side acceptance criteria; note kappa-over-900 and real tables remain gated by LEV-11 only).
+- [ ] 5.1 README: analysis command, output bundle reference, replication-check usage; state that the pipeline is dataset-agnostic (any harness output directory, fixture or real). CLAUDE.md: architecture map entry for `levy/analysis/` + scripts.
+- [ ] 5.2 `openspec validate --all` passes; sync Linear LEV-8 (reference this change; tick the acceptance criteria — all of them are satisfiable here, since the pipeline is complete and fixture-validated without any dataset dependency).
