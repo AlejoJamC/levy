@@ -442,10 +442,11 @@ edits:
 
 - `openspec/specs/` — living capability specs (the working spec layer, built *on
   top of* the frozen university docs; they must never contradict the frozen
-  research scope). Currently **8 capabilities**, one per shipped capability:
+  research scope). Currently **10 capabilities**, one per shipped capability:
   `embedding-management`, `vector-store`, `ground-truth-dataset`,
   `experiment-harness`, `test-infrastructure`, `anthropic-connector`,
-  `api-router`, `statistical-analysis`.
+  `api-router`, `statistical-analysis`, `release-packaging`,
+  `results-dashboard`.
   **Main specs use main-spec structure** — `# <name> Specification`, a
   `Capability:` line, `## Purpose`, `## Requirements` — *never* delta headers
   (`## ADDED Requirements`) and never a `TBD` Purpose. `openspec archive` creates
@@ -455,11 +456,11 @@ edits:
   `tasks.md` per change); completed changes move to `openspec/changes/archive/`.
   Archived so far: `add-embedding-manager`, `add-faiss-vector-store`,
   `add-experiment-harness`, `add-test-infrastructure`, `add-anthropic-connector`,
-  `add-fastapi-router`, `add-statistical-analysis`. **Still in flight:**
-  `add-ground-truth-dataset` — its tooling shipped and its capability is synced
-  into `openspec/specs/`, but §7 (the real 900-pair data production) is an open
-  author task, so the change stays in flight; `add-release-packaging`; and
-  `add-results-dashboard` (tasks complete, pending archive).
+  `add-fastapi-router`, `add-statistical-analysis`, `add-release-packaging`,
+  `add-results-dashboard`. **Still in flight:** `add-ground-truth-dataset` —
+  its tooling shipped and its capability is synced into `openspec/specs/`, but
+  §7 (the real 900-pair data production) is an open author task, so the change
+  stays in flight.
 - `openspec/config.yaml` — project context injected into artifact generation.
 - Slash commands (in `.claude/commands/opsx/`): `/opsx:propose` (create change +
   artifacts), `/opsx:apply` (implement tasks), `/opsx:archive` (finish + update
@@ -486,8 +487,8 @@ Release (2026-11-02).
 | LEV-6 | `add-anthropic-connector` | High | archived |
 | LEV-7 | `add-fastapi-router` | High | archived |
 | LEV-8 | `add-statistical-analysis` | High | archived |
-| LEV-9 | `add-release-packaging` | Medium | **in flight** |
-| LEV-10 | `add-results-dashboard` | Low (desirable) | **in flight** — tasks complete, not yet archived |
+| LEV-9 | `add-release-packaging` | Medium | archived |
+| LEV-10 | `add-results-dashboard` | Low (desirable) | archived |
 | LEV-11 | — (production run: real dataset + published D2/D3 outputs) | — | not started |
 
 Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 feeding LEV-4.
