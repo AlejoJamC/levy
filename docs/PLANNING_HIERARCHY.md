@@ -1,3 +1,10 @@
+# Planning Hierarchy
+
+> **Status: internal working note.** A reference for the Vision → Epic → Feature
+> → Story → Task vocabulary used to plan this project's backlog. It describes
+> process, not the released system; for the system see
+> [ARCHITECTURE.md](ARCHITECTURE.md).
+
 1. VISION/STRATEGY
    └─ Product Vision Document (todo el producto)
 

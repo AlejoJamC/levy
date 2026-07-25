@@ -1,8 +1,19 @@
 # EPIC-001: Client/Proxy Layer (Request Interception & Routing)
 
+> **Status: historical planning document.** This epic was written before the
+> layer was built and is kept for provenance, not as a description of the
+> released system. The client/proxy layer has shipped — see
+> [`levy/api/`](../../levy/api/) and
+> [docs/ARCHITECTURE.md](../ARCHITECTURE.md) for what was actually built. Where
+> this document and the code differ, the code and the architecture document are
+> authoritative; for research scope, the frozen
+> [Project_Proposal.md](../Project_Proposal.md) and
+> [Specification_and_Design_Report.md](../Specification_and_Design_Report.md)
+> win.
+
 **Epic ID**: EPIC-001  
 **Component**: Component 1 of 5  
-**Status**: 📋 Planning  
+**Status**: 📋 Planning (superseded — shipped as `levy/api/`)  
 **Owner**: Alejandro Mantilla  
 **Timeline**: Weeks 4-5 (Phase Two)  
 **Priority**: P0 (Critical Path)

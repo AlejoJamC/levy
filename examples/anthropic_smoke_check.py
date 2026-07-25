@@ -1,5 +1,5 @@
 """
-One-shot, real-API smoke check for the Anthropic connector (LEV-6).
+One-shot, real-API smoke check for the Anthropic connector.
 
 Not part of the offline test suite: it lives in examples/ (not tests/, and
 not named test_*.py), so pytest never discovers or runs it, and it makes a

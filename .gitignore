@@ -243,3 +243,8 @@ __marimo__/
 
 # Local Folders
 output/
+
+# Generated pipeline outputs (harness runs + analysis bundles).
+# Regenerate with scripts/reproduce.sh; published results are attached to a
+# release rather than tracked here.
+results/

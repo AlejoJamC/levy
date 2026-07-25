@@ -55,11 +55,14 @@ freely as long as they don't rewrite the submitted documents.
 |---|---|---|
 | `docs/Project_Proposal.md` | FROZEN | Research baseline (see above). |
 | `docs/Specification_and_Design_Report.md` | FROZEN | Design baseline (see above). |
-| `docs/RESEARCH_OVERVIEW.md` | Historical/working | Early research framing (CSCK508 module). Predates the proposal; its 12-week timeline and RAG workload were superseded by the frozen docs. Editable. |
-| `docs/LITERATURE_REVIEW.md` | Working skeleton | Paper list + research-gaps matrix. Editable, expand as needed. |
-| `docs/PLANNING_HIERARCHY.md` | Working | Vision → Epic → Feature → Story → Task hierarchy used to plan work. |
-| `docs/epics/EPIC-001-client-proxy-layer.md` | Working | Epic for the FastAPI client/proxy layer (Component 1). Pattern for future epics (`EPIC-00X-*.md`). |
-| `README.md` | Living | User-facing install/usage docs. Keep in sync with code. |
+| `docs/ARCHITECTURE.md` | Living, **user-facing** | The released system's architecture: component map traced to the frozen spec's named components, request flow, experiment flow, ABC+mock provider pattern. **This file (CLAUDE.md) links to it and must not duplicate it** — CLAUDE.md is the agent-facing orientation, ARCHITECTURE.md is what a third party reads. |
+| `docs/REPRODUCTION.md` | Living, **user-facing** | D5 reproduction guide: Docker one-command path and the conda step-by-step path, expected outputs, the "swap in the real dataset" section (changes only `--dataset`), and the release checklist. Its commands come from `scripts/reproduce.sh`. |
+| `docs/RESEARCH_OVERVIEW.md` | Historical (flagged in place) | Early research framing (CSCK508 module). Predates the proposal; its 12-week timeline and RAG workload were superseded by the frozen docs. Editable. |
+| `docs/LITERATURE_REVIEW.md` | Working skeleton (flagged in place) | Paper list + research-gaps matrix. Editable, expand as needed. |
+| `docs/PLANNING_HIERARCHY.md` | Working note (flagged in place) | Vision → Epic → Feature → Story → Task hierarchy used to plan work. |
+| `docs/epics/EPIC-001-client-proxy-layer.md` | Historical planning (flagged in place) | Pre-implementation epic for the client/proxy layer, which shipped as `levy/api/`. Kept for provenance; `docs/ARCHITECTURE.md` and the code are authoritative. Pattern for future epics (`EPIC-00X-*.md`). |
+| `README.md` | Living | User-facing install/usage docs. Keep in sync with code. **No ticket identifiers in user-facing headings** — identifiers belong in CLAUDE.md, OpenSpec, and git history. |
+| `data/README.md`, `data/DATASHEET.md` | Living | What is currently in `data/` (synthetic fixtures) and the full D2 datasheet. |
 | `openspec/` | Living | OpenSpec spec-driven workflow: capability specs + change proposals (see "Spec-driven workflow" below). |
 | `CLAUDE.md` (this file) | Living | Orientation + ground rules for every session. |
 
@@ -245,6 +248,27 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   re-runs the harness over exactly the grid recorded in a reference `results.csv`
   (dataset defaults to that run's `run_meta.json`), compares precision/recall,
   exits non-zero with the diff table when out of tolerance.
+- **Release packaging (LEV-9)** — `scripts/reproduce.sh` is the **single definition
+  of the evaluation pipeline** (`run_experiments.py` → `run_analysis.py` →
+  `check_replication.py`, `set -euo pipefail`, offline defaults: fixture dataset +
+  mock embeddings; overridable via positional args or `LEVY_DATASET` /
+  `LEVY_OUT_DIR` / `LEVY_EMBEDDING_PROVIDER` / `LEVY_MODELS` / `LEVY_WORKLOADS` /
+  `LEVY_THRESHOLDS`). `docs/REPRODUCTION.md` shows those same commands and the
+  container's `CMD` invokes the script — so a flag change breaks the script rather
+  than silently staling the guide. **Do not restate the pipeline commands anywhere
+  else.** `Dockerfile` builds a micromamba image from `environment.yml` (the single
+  dependency source, keeping conda-forge `faiss-cpu`); `docker-compose.yml` gained a
+  `pipeline` service (`docker compose run --rm pipeline`) with the pre-existing
+  `redis:7-alpine` service untouched and not a dependency of the default path.
+  Verified: `--network none`, no `ANTHROPIC_API_KEY`, exit 0, `results.csv`/
+  `decisions.csv` byte-identical to the host conda run; cold build 5m34s, image
+  16.4 GB (torch, via sentence-transformers). Docker is outside the pytest suite by
+  design. `scripts/audit_release.sh` is the re-runnable release audit (LICENSE, no
+  tracked secret file, 9 credential patterns over tracked files *and* over all git
+  history via `git log --all --pickaxe-regex -S`, personal-data markers in `data/`,
+  `.env` gitignored); pass/fail per check, non-zero exit on any finding, failure path
+  verified with a planted secret. `docs/ARCHITECTURE.md` is the user-facing
+  architecture doc (see the documentation map).
 - `tests/test_analysis_io.py`, `test_analysis_hypothesis.py`, `test_analysis_curves.py`,
   `test_analysis_report.py`, `test_analysis_replication.py` — 75 unit tests for
   `levy/analysis/` sharing `tests/analysis_fixtures.py` (hand-crafted 30-row harness
@@ -354,13 +378,25 @@ python examples/anthropic_smoke_check.py  # one real, billed call; requires ANTH
 # HTTP API (LEV-7) — reads .env for the configured provider's credentials
 uvicorn levy.api.app:app --reload
 
-# Experiment sweep (LEV-4) then statistical analysis (LEV-8), fully offline:
+# Whole evaluation pipeline in one command (LEV-9) — the canonical entry point.
+# Offline by default (fixture dataset + mock embeddings); prefer this over
+# retyping the three stages below.
+scripts/reproduce.sh                          # -> results/reproduce/
+scripts/reproduce.sh data/ground_truth.csv results/run-001
+
+# Same pipeline in the container (builds from environment.yml; ~5.5 min cold, 16.4 GB):
+docker compose run --rm pipeline
+
+# Individual stages (LEV-4 sweep, LEV-8 analysis), fully offline:
 python scripts/run_experiments.py --out-dir results/run-001
 python scripts/run_analysis.py --results-dir results/run-001 --out-dir results/run-001/analysis
 python scripts/check_replication.py --reference results/run-001/results.csv  # ±5% criterion
 
-# Local services (Redis 7 for cache_store_type="redis")
-docker-compose up -d
+# Release audit (LICENSE, secrets in tree + all git history, personal data)
+scripts/audit_release.sh
+
+# Local services (Redis 7 for cache_store_type="redis") — unchanged by the pipeline service
+docker compose up -d redis
 ```
 
 Secrets live in `.env` (gitignored; template in `.env.example`). Never commit
@@ -375,9 +411,23 @@ edits:
 
 - `openspec/specs/` — living capability specs (the working spec layer, built *on
   top of* the frozen university docs; they must never contradict the frozen
-  research scope).
+  research scope). Currently **8 capabilities**, one per shipped capability:
+  `embedding-management`, `vector-store`, `ground-truth-dataset`,
+  `experiment-harness`, `test-infrastructure`, `anthropic-connector`,
+  `api-router`, `statistical-analysis`.
+  **Main specs use main-spec structure** — `# <name> Specification`, a
+  `Capability:` line, `## Purpose`, `## Requirements` — *never* delta headers
+  (`## ADDED Requirements`) and never a `TBD` Purpose. `openspec archive` creates
+  the file with a `TBD` placeholder; fill it in the same step. Getting this wrong
+  fails `openspec validate --all` and has had to be repaired twice.
 - `openspec/changes/` — in-flight change proposals (`proposal.md`, `design.md`,
   `tasks.md` per change); completed changes move to `openspec/changes/archive/`.
+  Archived so far: `add-embedding-manager`, `add-faiss-vector-store`,
+  `add-experiment-harness`, `add-test-infrastructure`, `add-anthropic-connector`,
+  `add-fastapi-router`, `add-statistical-analysis`. **Still in flight:**
+  `add-ground-truth-dataset` — its tooling shipped and its capability is synced
+  into `openspec/specs/`, but §7 (the real 900-pair data production) is an open
+  author task, so the change stays in flight; and `add-release-packaging`.
 - `openspec/config.yaml` — project context injected into artifact generation.
 - Slash commands (in `.claude/commands/opsx/`): `/opsx:propose` (create change +
   artifacts), `/opsx:apply` (implement tasks), `/opsx:archive` (finish + update
@@ -394,18 +444,19 @@ criteria that seed the change's `proposal.md`. Milestones: M1 Experiment-Ready
 (2026-06-21), M2 Experiments & Analysis (2026-08-09), M3 Public Artefact
 Release (2026-11-02).
 
-| Linear | OpenSpec change | Priority |
-|---|---|---|
-| LEV-1 | `add-embedding-manager` | Urgent |
-| LEV-2 | `add-faiss-vector-store` | Urgent |
-| LEV-3 | `add-ground-truth-dataset` | Urgent |
-| LEV-4 | `add-experiment-harness` | Urgent |
-| LEV-5 | `add-test-infrastructure` | Urgent |
-| LEV-6 | `add-anthropic-connector` | High |
-| LEV-7 | `add-fastapi-router` | High |
-| LEV-8 | `add-statistical-analysis` | High |
-| LEV-9 | `add-release-packaging` | Medium |
-| LEV-10 | `add-results-dashboard` | Low (desirable) |
+| Linear | OpenSpec change | Priority | State |
+|---|---|---|---|
+| LEV-1 | `add-embedding-manager` | Urgent | archived |
+| LEV-2 | `add-faiss-vector-store` | Urgent | archived |
+| LEV-3 | `add-ground-truth-dataset` | Urgent | **in flight** — tooling shipped, §7 real-data production open |
+| LEV-4 | `add-experiment-harness` | Urgent | archived |
+| LEV-5 | `add-test-infrastructure` | Urgent | archived |
+| LEV-6 | `add-anthropic-connector` | High | archived |
+| LEV-7 | `add-fastapi-router` | High | archived |
+| LEV-8 | `add-statistical-analysis` | High | archived |
+| LEV-9 | `add-release-packaging` | Medium | **in flight** |
+| LEV-10 | `add-results-dashboard` | Low (desirable) | not started |
+| LEV-11 | — (production run: real dataset + published D2/D3 outputs) | — | not started |
 
 Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 feeding LEV-4.
 When an OpenSpec change is created or archived, reference its Linear issue

@@ -1,5 +1,12 @@
 # Literature Review: Semantic Caching for LLMs
 
+> **Status: working skeleton.** This is the author's in-progress reading list and
+> research-gaps matrix, not a finished review; entries marked
+> `[summary + gaps]` are still to be written. The literature positioning that
+> supports the study is in the frozen
+> [Project_Proposal.md](Project_Proposal.md) and
+> [Specification_and_Design_Report.md](Specification_and_Design_Report.md).
+
 ## Core Papers (Must-Read)
 1. GPTCache (Bang, 2023) - [summary + gaps]
 2. MeanCache (Gill et al., 2025) - [summary + gaps]
