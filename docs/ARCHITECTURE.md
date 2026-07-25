@@ -70,7 +70,8 @@ These support the empirical work rather than the serving path:
 | Dataset platform | [`levy/dataset/`](../levy/dataset/) | `schema.py` (`QueryPair`, workload constants, `ground_truth_label()`), `io.py` (CSV/JSON, round-trip identical), `sampling.py` (corpus adapters + seeded stratified sampling), `annotation.py` (blind, resumable re-annotation), `kappa.py` (Cohen's kappa). |
 | Replay harness | [`levy/experiment/`](../levy/experiment/) | `config.py` (the frozen grid), `replay.py` (replay through the *production* lookup path), `metrics.py` (precision, recall, F₀.₅, FPR, hit rate + sanity checks), `runner.py` (sweep + deterministic output files). |
 | Analysis pipeline | [`levy/analysis/`](../levy/analysis/) | `io.py` (harness-contract reader), `hypothesis.py` (two-way ANOVA + conditional Tukey HSD), `curves.py` (threshold-selection tables and figures), `replication.py` (±5% criterion), `report.py` (bundle assembly). |
-| CLIs | [`scripts/`](../scripts/) | Thin argparse wrappers: dataset sampling/annotation/kappa/export, experiment sweep, analysis bundle, replication check, plus `reproduce.sh` (whole pipeline) and `audit_release.sh` (release audit). |
+| Results dashboard (D6, desirable) | [`levy/dashboard/`](../levy/dashboard/), [`scripts/dashboard.py`](../scripts/dashboard.py) | `bundle.py` (loads/validates an analysis bundle, columns sourced from `levy.analysis` itself), `curves.py` (selection helpers), `query.py` (live query decision via a real `SemanticCache`, same `1/(1+L2)` formula). The Streamlit shell in `scripts/` is a thin viewer with no logic of its own; it never recomputes a statistic. Lowest-priority deliverable — safe to drop, not on the `reproduce.sh` path. |
+| CLIs | [`scripts/`](../scripts/) | Thin argparse wrappers: dataset sampling/annotation/kappa/export, experiment sweep, analysis bundle, replication check, plus `reproduce.sh` (whole pipeline), `audit_release.sh` (release audit), and `dashboard.py` (Streamlit UI shell, D6). |
 
 ---
 
@@ -228,5 +229,6 @@ automatically.
 | Add an LLM or embedding provider | [`levy/llm_client.py`](../levy/llm_client.py), [`levy/embeddings.py`](../levy/embeddings.py) |
 | Serve the cache over HTTP | [`levy/api/app.py`](../levy/api/app.py) |
 | Reproduce the experiments | [REPRODUCTION.md](REPRODUCTION.md), [`scripts/reproduce.sh`](../scripts/reproduce.sh) |
+| Explore results interactively (D6) | [`levy/dashboard/`](../levy/dashboard/), [`scripts/dashboard.py`](../scripts/dashboard.py) |
 | Understand the dataset and its provenance | [`data/DATASHEET.md`](../data/DATASHEET.md), [`levy/dataset/`](../levy/dataset/) |
 | Check the research definition | [`docs/Project_Proposal.md`](Project_Proposal.md), [`docs/Specification_and_Design_Report.md`](Specification_and_Design_Report.md) (both frozen) |

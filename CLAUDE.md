@@ -279,6 +279,32 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   degenerate fixtures, Tukey ran-and-skipped paths, curve shape + flags + figure
   files, kappa provenance, byte-identical re-runs, and replication pass/fail. All
   offline.
+- **Results dashboard (LEV-10, D6 — desirable, lowest priority; safe to drop)** —
+  `levy/dashboard/` is the testable, framework-independent core: `bundle.py`
+  (loads/validates an analysis bundle, with required files/columns imported
+  from `levy.analysis` itself rather than re-declared, so a writer change
+  surfaces as a load error here; typed `BundleNotFoundError`/
+  `BundleContractError` naming the gap and `scripts/reproduce.sh`);
+  `curves.py` (available models/workloads/pairs, per-(model, workload) curve
+  slices with `zero_div`/`n` preserved); `query.py` (`build_query_index` /
+  `evaluate_query` — builds a real `SemanticCache` from the dataset's queries
+  and evaluates user text via the same `VectorIndex.search()` + `1/(1+L2)`
+  formula `SemanticCache.get()` uses, extended only to surface the nearest
+  match on a miss too; threshold is passed per call so re-evaluating never
+  re-embeds the dataset). No module here imports Streamlit. `scripts/
+  dashboard.py` is the thin Streamlit shell (`streamlit run scripts/
+  dashboard.py -- --bundle <dir>`): threshold-performance explorer (both
+  metrics, degenerate points marked, 30% viability line), a hypothesis/κ
+  summary read verbatim from the bundle, and a live query box (`mock` /
+  `sentence-transformers` provider choice, the latter documented as
+  needing a first-run download). A missing/incomplete bundle renders the
+  typed error's message and stops cleanly, never a traceback; provenance
+  (fixture-only labelling, providers) is a visible banner. `tests/
+  test_dashboard.py` — 17 unit tests, fully offline, headless (no Streamlit
+  process): bundle load/validation (valid bundle, missing file, missing
+  column), curve selection, query decision (near-duplicate hit, unrelated
+  miss, threshold-flip-without-re-embedding via a counting embedding-manager
+  double), and semantics parity against a direct `SemanticCache` query.
 
 ### Known gaps: current code vs frozen spec
 
@@ -395,6 +421,11 @@ python scripts/check_replication.py --reference results/run-001/results.csv  # �
 # Release audit (LICENSE, secrets in tree + all git history, personal data)
 scripts/audit_release.sh
 
+# Results dashboard (LEV-10, D6 — desirable): a bundle must exist first (any
+# command above that writes an analysis/ dir); the `--` separator is required
+# by Streamlit so --bundle/--dataset reach the script's own argparse.
+streamlit run scripts/dashboard.py -- --bundle results/reproduce/analysis
+
 # Local services (Redis 7 for cache_store_type="redis") — unchanged by the pipeline service
 docker compose up -d redis
 ```
@@ -411,10 +442,11 @@ edits:
 
 - `openspec/specs/` — living capability specs (the working spec layer, built *on
   top of* the frozen university docs; they must never contradict the frozen
-  research scope). Currently **8 capabilities**, one per shipped capability:
+  research scope). Currently **10 capabilities**, one per shipped capability:
   `embedding-management`, `vector-store`, `ground-truth-dataset`,
   `experiment-harness`, `test-infrastructure`, `anthropic-connector`,
-  `api-router`, `statistical-analysis`.
+  `api-router`, `statistical-analysis`, `release-packaging`,
+  `results-dashboard`.
   **Main specs use main-spec structure** — `# <name> Specification`, a
   `Capability:` line, `## Purpose`, `## Requirements` — *never* delta headers
   (`## ADDED Requirements`) and never a `TBD` Purpose. `openspec archive` creates
@@ -424,10 +456,11 @@ edits:
   `tasks.md` per change); completed changes move to `openspec/changes/archive/`.
   Archived so far: `add-embedding-manager`, `add-faiss-vector-store`,
   `add-experiment-harness`, `add-test-infrastructure`, `add-anthropic-connector`,
-  `add-fastapi-router`, `add-statistical-analysis`. **Still in flight:**
-  `add-ground-truth-dataset` — its tooling shipped and its capability is synced
-  into `openspec/specs/`, but §7 (the real 900-pair data production) is an open
-  author task, so the change stays in flight; and `add-release-packaging`.
+  `add-fastapi-router`, `add-statistical-analysis`, `add-release-packaging`,
+  `add-results-dashboard`. **Still in flight:** `add-ground-truth-dataset` —
+  its tooling shipped and its capability is synced into `openspec/specs/`, but
+  §7 (the real 900-pair data production) is an open author task, so the change
+  stays in flight.
 - `openspec/config.yaml` — project context injected into artifact generation.
 - Slash commands (in `.claude/commands/opsx/`): `/opsx:propose` (create change +
   artifacts), `/opsx:apply` (implement tasks), `/opsx:archive` (finish + update
@@ -454,8 +487,8 @@ Release (2026-11-02).
 | LEV-6 | `add-anthropic-connector` | High | archived |
 | LEV-7 | `add-fastapi-router` | High | archived |
 | LEV-8 | `add-statistical-analysis` | High | archived |
-| LEV-9 | `add-release-packaging` | Medium | **in flight** |
-| LEV-10 | `add-results-dashboard` | Low (desirable) | not started |
+| LEV-9 | `add-release-packaging` | Medium | archived |
+| LEV-10 | `add-results-dashboard` | Low (desirable) | archived |
 | LEV-11 | — (production run: real dataset + published D2/D3 outputs) | — | not started |
 
 Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 feeding LEV-4.

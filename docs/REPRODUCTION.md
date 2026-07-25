@@ -312,6 +312,22 @@ Tukey HSD following up any significant effect.
 
 ---
 
+## Exploring results interactively (D6, desirable)
+
+Once a bundle exists (Step 3b above, or `results/reproduce/analysis` from the
+default pipeline run), an optional local dashboard renders it interactively:
+
+```bash
+streamlit run scripts/dashboard.py -- --bundle results/reproduce/analysis
+```
+
+Threshold-vs-metric curves, the ANOVA/Tukey/κ summary, and a live query box
+are all read from the bundle — nothing is recomputed. This is the frozen
+plan's lowest-priority, desirable-only deliverable (D6): it is not part of
+`scripts/reproduce.sh` and not required to reproduce any result above. See the
+[README](../README.md#results-dashboard-d6-desirable) for the offline story
+and the `--dataset` option.
+
 ## Serving the cache over HTTP
 
 Not part of the evaluation pipeline, but part of the artefact:

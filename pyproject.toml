@@ -33,6 +33,9 @@ dev = [
     "black",
     "mypy"
 ]
+dashboard = [
+    "streamlit>=1.30",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

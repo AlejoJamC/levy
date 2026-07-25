@@ -56,6 +56,11 @@ CURVES_PRECISION_FILENAME = "curves_precision.csv"
 KAPPA_FILENAME = "kappa.json"
 META_FILENAME = "analysis_meta.json"
 
+#: Columns of `tukey_status.csv` (see `_tukey_status_table`), exported so
+#: consumers (e.g. the LEV-10 dashboard) validate against this definition
+#: rather than re-declaring it.
+TUKEY_STATUS_COLUMNS = ["effect", "ran", "reason"]
+
 #: The CSVs whose byte-stability across re-runs is part of the contract.
 DETERMINISTIC_TABLES = (
     ANOVA_FILENAME,
@@ -180,7 +185,7 @@ def _tukey_status_table(tukey: TukeyResult) -> pd.DataFrame:
         for effect, reason in sorted(tukey.per_effect.items())
     ]
     rows.append({"effect": "__overall__", "ran": tukey.ran, "reason": tukey.statement})
-    return pd.DataFrame(rows, columns=["effect", "ran", "reason"])
+    return pd.DataFrame(rows, columns=TUKEY_STATUS_COLUMNS)
 
 
 def _library_versions() -> Dict[str, str]:

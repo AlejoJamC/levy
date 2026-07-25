@@ -44,9 +44,12 @@ levy/
 │   ├── dataset/             # Ground-truth dataset platform: schema, CSV/JSON
 │   │                        #   I/O, seeded sampling, blind re-annotation, Cohen's kappa
 │   ├── experiment/          # Experiment harness: grid, replay, metrics, sweep runner
-│   └── analysis/            # Statistical analysis: ANOVA/Tukey, curves, kappa
-│                            #   section, replication check, bundle assembly
+│   ├── analysis/            # Statistical analysis: ANOVA/Tukey, curves, kappa
+│   │                        #   section, replication check, bundle assembly
+│   └── dashboard/           # Results dashboard core (D6, desirable): bundle
+│                            #   loading, curve selection, live query decision
 ├── scripts/                 # CLIs over levy/dataset + levy/experiment + levy/analysis
+│                            #   + dashboard.py (Streamlit UI shell)
 ├── data/                    # Ground-truth dataset (currently synthetic fixtures + datasheet)
 ├── docs/                    # Research docs (proposal & S&D report are frozen)
 ├── examples/                # Demo scripts
@@ -482,6 +485,35 @@ diff table naming the configuration, the metric, both values, and the
 deviation. Under mock providers the harness is byte-deterministic, so a
 self-comparison matches exactly; the tolerance is there for real-provider
 runs.
+
+## Results dashboard (D6, desirable)
+
+`levy/dashboard/` + `scripts/dashboard.py` is a local Streamlit viewer over an
+analysis bundle (the output of `scripts/run_analysis.py`): threshold-vs-metric
+curves per (model, workload) with degenerate points flagged, the ANOVA/Tukey/κ
+summary, and a live query box that reports the cache decision for your own
+text. It **never recomputes a statistic** — everything shown is read from the
+bundle. D6 is the frozen plan's lowest-priority, desirable-only deliverable
+(see `openspec/changes/add-results-dashboard/proposal.md`); it is not part of
+`scripts/reproduce.sh` and nothing else depends on it.
+
+```bash
+# Generate a bundle first (any of the pipeline commands above), then:
+streamlit run scripts/dashboard.py -- --bundle results/reproduce/analysis
+```
+
+The `--` separator is required by Streamlit so `--bundle` (and the optional
+`--dataset`, used by the query panel) reach the script's own argument parser.
+Curve exploration and the hypothesis summary work from the bundle alone; the
+query panel additionally needs a dataset file (default: the one recorded in
+the bundle's `analysis_meta.json`, falling back to `data/ground_truth.csv`).
+
+**Offline story:** the query panel's "mock" embedding provider is fully
+offline and deterministic — no network, no model download. Switching it to
+"sentence-transformers" downloads model weights on first use and needs
+network access. If the bundle directory is missing or incomplete, the app
+reports exactly what's absent and the command to generate it
+(`scripts/reproduce.sh`), and stops cleanly rather than showing a traceback.
 
 ## License
 
