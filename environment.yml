@@ -6,6 +6,9 @@ dependencies:
   - python=3.10
   - pip
   - numpy>=1.24.0
+  - pandas>=2.0  # LEV-8 analysis pipeline: table backbone
+  - statsmodels>=0.14  # LEV-8: two-way ANOVA (anova_lm) + Tukey HSD
+  - matplotlib>=3.7  # LEV-8: threshold-selection figures
   - httpx>=0.24.0
   - python-dotenv>=1.0.0
   - redis-py>=5.0.0  # conda-forge package name for the python client; "redis" is the server

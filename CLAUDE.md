@@ -214,6 +214,47 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   completeness and replayability, OpenAPI contract shape. Fully offline via
   FastAPI's `TestClient` + mock providers (Anthropic scenarios use the same
   `httpx.MockTransport` injection pattern as `test_anthropic_client.py`).
+- `levy/analysis/` (LEV-8) — D3 statistical analysis pipeline, a pure consumer of
+  the LEV-4 harness contract and **dataset-agnostic** (any harness output directory,
+  fixture or real): `io.py` (`load_harness_outputs` over `results.csv`/`decisions.csv`/
+  `run_meta.json`; required-column lists imported from `levy.experiment.runner` so the
+  reader can't drift from the writer; `HarnessContractError` names the missing column
+  and nothing is written on violation); `hypothesis.py` (two-way ANOVA
+  `ols('fpr ~ C(model) * C(workload)')` + `anova_lm(typ=2)` — balanced design, so
+  SS types coincide — reporting df/sum-sq/F/p and explicit `reject`/`retain` at
+  α=0.05 for H0₁/H0₂/H0₃, plus conditional `pairwise_tukeyhsd` over 2 models /
+  3 workloads / the 6 model×workload cells, always with a ran-or-skipped-and-why
+  statement; residual diagnostics — design balance, Shapiro-Wilk, Levene — reported,
+  never acted on. **Degenerate-response rule:** zero variance in `fpr` (what the
+  synthetic fixture yields under mock embeddings) makes the F-tests undefined, so
+  decisions are reported as `undefined`, never as retained nulls);
+  `curves.py` (tidy threshold-vs-hit-rate / threshold-vs-precision tables per
+  (model, workload) with the harness zero-division flags carried through, plus
+  Agg-backend PNG+PDF figures regenerable from the tables alone, 30% viability line
+  on hit-rate); `replication.py` (±5% relative tolerance with a documented 0.01
+  absolute floor for near-zero references — `max(floor, rel·|ref|)` — and an
+  itemized per-configuration diff table); `report.py` (bundle assembly: `anova.csv`,
+  `tukey.csv`, `tukey_status.csv`, `curves_*.csv`, `kappa.json`, `figures/`,
+  `analysis_meta.json`). **Kappa is consumed, not recomputed:** the section calls
+  LEV-3's `levy.dataset.kappa.kappa_report` and labels fixture-derived values
+  `FIXTURE ONLY`. All CSVs are timestamp-free and byte-stable; versions and the
+  generation timestamp live only in `analysis_meta.json`.
+- `scripts/run_analysis.py` — argparse CLI over `build_analysis_bundle`: one
+  invocation emits every table and figure; non-zero exit on a contract or design
+  violation, with no partial bundle written. `scripts/check_replication.py` —
+  re-runs the harness over exactly the grid recorded in a reference `results.csv`
+  (dataset defaults to that run's `run_meta.json`), compares precision/recall,
+  exits non-zero with the diff table when out of tolerance.
+- `tests/test_analysis_io.py`, `test_analysis_hypothesis.py`, `test_analysis_curves.py`,
+  `test_analysis_report.py`, `test_analysis_replication.py` — 75 unit tests for
+  `levy/analysis/` sharing `tests/analysis_fixtures.py` (hand-crafted 30-row harness
+  outputs whose ANOVA outcome is known in advance). ANOVA expectations are
+  **double-sourced**: the balanced-design sums of squares are computed by hand in the
+  tests and compared against statsmodels, so a disagreement fails rather than being
+  trusted. Covers loader contract violations, model-effect / interaction / null /
+  degenerate fixtures, Tukey ran-and-skipped paths, curve shape + flags + figure
+  files, kappa provenance, byte-identical re-runs, and replication pass/fail. All
+  offline.
 
 ### Known gaps: current code vs frozen spec
 
@@ -312,6 +353,11 @@ python examples/anthropic_smoke_check.py  # one real, billed call; requires ANTH
 
 # HTTP API (LEV-7) — reads .env for the configured provider's credentials
 uvicorn levy.api.app:app --reload
+
+# Experiment sweep (LEV-4) then statistical analysis (LEV-8), fully offline:
+python scripts/run_experiments.py --out-dir results/run-001
+python scripts/run_analysis.py --results-dir results/run-001 --out-dir results/run-001/analysis
+python scripts/check_replication.py --reference results/run-001/results.csv  # ±5% criterion
 
 # Local services (Redis 7 for cache_store_type="redis")
 docker-compose up -d

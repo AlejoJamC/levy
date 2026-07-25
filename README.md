@@ -28,8 +28,10 @@ levy/
 │   ├── models.py            # Data classes
 │   ├── dataset/              # Ground-truth dataset platform (LEV-3): schema, CSV/JSON
 │   │                        #   I/O, seeded sampling, blind re-annotation, Cohen's kappa
-│   └── experiment/          # Experiment harness (LEV-4): grid, replay, metrics, sweep runner
-├── scripts/                 # CLIs over levy/dataset + levy/experiment
+│   ├── experiment/          # Experiment harness (LEV-4): grid, replay, metrics, sweep runner
+│   └── analysis/            # Statistical analysis (LEV-8): ANOVA/Tukey, curves, kappa
+│                            #   section, replication check, bundle assembly
+├── scripts/                 # CLIs over levy/dataset + levy/experiment + levy/analysis
 ├── data/                    # Ground-truth dataset (currently synthetic fixtures + datasheet)
 ├── docs/                    # Research docs (proposal & S&D report are frozen)
 ├── examples/                # Demo scripts
@@ -386,6 +388,72 @@ with zero external dependencies against the committed synthetic fixture
 don't capture semantic similarity — this validates the machinery, not
 research results; a real run needs `sentence-transformers` and the real
 900-pair dataset (LEV-11, not yet delivered).
+
+## Statistical analysis (LEV-8)
+
+`levy/analysis/` turns a harness output directory into the D3 evidence
+bundle. It is a pure consumer of the harness contract and is
+**dataset-agnostic**: it analyses *any* `results.csv` produced by
+`scripts/run_experiments.py`, whether that run used the committed synthetic
+fixture or the real 900-pair dataset. The same command produces the
+dissertation's tables once real results exist.
+
+```bash
+# One invocation -> every table and figure:
+python scripts/run_analysis.py --results-dir results/run-001 \
+    --out-dir results/run-001/analysis
+
+# Point the kappa section at an explicit dataset (default: the dataset_path
+# recorded in the run's run_meta.json):
+python scripts/run_analysis.py --results-dir results/run-001 \
+    --dataset data/ground_truth.csv --out-dir results/run-001/analysis
+```
+
+Outputs written to `--out-dir`:
+
+| File | Contents |
+|---|---|
+| `anova.csv` | Two-way ANOVA on false positive rate, `fpr ~ C(model) * C(workload)`: df, sum of squares, F, p, and an explicit `reject`/`retain` at α=0.05 for **H0₁** (no model effect), **H0₂** (no workload effect), **H0₃** (no interaction), plus the residual row. |
+| `tukey.csv` | Tukey HSD pairwise comparisons (mean difference, CI, adjusted p) for whichever effects were significant — the 6 model×workload cells when the interaction is significant. |
+| `tukey_status.csv` | Whether post-hoc ran for each effect **and why** — always written, including when Tukey was skipped. |
+| `curves_hit_rate.csv`, `curves_precision.csv` | Tidy threshold-vs-metric tables, 5 thresholds × 6 (model, workload) pairs, carrying the harness zero-division flags so degenerate cells stay visible. |
+| `kappa.json` | Cohen's kappa **sourced from the LEV-3 dataset tooling** (`levy.dataset.kappa`, not reimplemented), with the 2×2 contingency, the 0.7 bar, and a provenance block that labels fixture-derived values `FIXTURE ONLY`. |
+| `figures/` | `curve_hit_rate.{png,pdf}`, `curve_precision.{png,pdf}` — regenerable from the curve tables alone; the hit-rate figure carries the frozen 30% economic-viability reference line. |
+| `analysis_meta.json` | Input paths, ANOVA diagnostics (design balance, Shapiro-Wilk, Levene), and library versions. The **only** place versions and a timestamp appear. |
+
+Every CSV is timestamp-free and byte-identical across re-runs on identical
+input, matching the harness's determinism convention.
+
+**Degenerate results are reported, not laundered.** If false positive rate
+has zero variance across all configurations — which is exactly what the
+synthetic fixture produces under mock embeddings, since no semantic hits
+occur — the F-tests are undefined, and the three hypotheses are reported as
+`undefined` rather than as retained nulls.
+
+### Replication check (±5%)
+
+Frozen Success Criterion 3: headline results replicate within ±5%.
+`scripts/check_replication.py` re-runs the harness over exactly the grid
+recorded in a reference `results.csv`, then compares precision and recall per
+configuration:
+
+```bash
+python scripts/check_replication.py --reference results/run-001/results.csv
+```
+
+Tolerance rule (stated in every report, so the criterion stays auditable):
+
+```
+|candidate - reference| <= max(0.01, 5% * |reference|)
+```
+
+The absolute floor exists because a purely relative tolerance collapses to
+demanding bit-exact equality near a reference of 0.0. Exit code is zero when
+every value is within tolerance; otherwise non-zero, with a per-configuration
+diff table naming the configuration, the metric, both values, and the
+deviation. Under mock providers the harness is byte-deterministic, so a
+self-comparison matches exactly; the tolerance is there for real-provider
+runs.
 
 ## License
 
