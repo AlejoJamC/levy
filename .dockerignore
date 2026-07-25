@@ -1,0 +1,41 @@
+# Keep the build context small and free of secrets / generated output.
+
+# Version control & tooling metadata
+.git
+.github
+.gitignore
+.idea
+.vscode
+.claude
+
+# Secrets — never enter the image (.env.example is documentation, but the image
+# has no use for either; configuration is passed as environment variables).
+.env
+.env.example
+
+# Generated pipeline outputs — the container writes its own
+results/
+output/
+
+# Python caches / build artefacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Planning / prose that the runtime does not need. The reproduction guide and
+# architecture doc live in the repository, not in the image; README and LICENSE
+# are copied explicitly by the Dockerfile.
+docs/
+openspec/
+memory/
+docker-compose.yml
+Dockerfile
+.dockerignore

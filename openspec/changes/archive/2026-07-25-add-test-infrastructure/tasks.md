@@ -28,4 +28,4 @@
 
 ## 6. Optional CI (skippable)
 
-- [ ] 6.1 Minimal GitHub Actions workflow: build the conda env from `environment.yml`, run the gated pytest command offline. Skippable without affecting acceptance.
+- [x] 6.1 Minimal GitHub Actions workflow: build the conda env from `environment.yml`, run the gated pytest command offline. Skippable without affecting acceptance.

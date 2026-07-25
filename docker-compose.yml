@@ -1,10 +1,39 @@
 services:
+  # Optional local Redis, for cache_store_type="redis".
+  # Unchanged: `docker compose up -d` still starts exactly this service, and the
+  # evaluation pipeline below does not depend on it (the engine defaults to the
+  # in-memory store).
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+
+  # Full evaluation pipeline in one command (deliverable D7):
+  #
+  #   docker compose run --rm pipeline
+  #
+  # Runs scripts/reproduce.sh offline — committed fixture dataset, mock
+  # embeddings, mock LLM — so it needs no API key, no model download, and no
+  # network. Outputs land in ./results on the host.
+  #
+  # Opt-in overrides (each has a cost):
+  #   LEVY_EMBEDDING_PROVIDER=sentence-transformers  downloads model weights (network)
+  #   LEVY_DATASET=data/<real dataset>.csv           swap in the real dataset
+  #   ANTHROPIC_API_KEY=...                          billed; used by the HTTP API only,
+  #                                                  never by this pipeline
+  # e.g. docker compose run --rm -e LEVY_EMBEDDING_PROVIDER=sentence-transformers pipeline
+  pipeline:
+    build: .
+    image: levy:latest
+    environment:
+      LEVY_DATASET: ${LEVY_DATASET:-data/ground_truth.csv}
+      LEVY_OUT_DIR: ${LEVY_OUT_DIR:-/opt/levy/results/reproduce}
+      LEVY_EMBEDDING_PROVIDER: ${LEVY_EMBEDDING_PROVIDER:-mock}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ./results:/opt/levy/results
 
 volumes:
   redis_data:
