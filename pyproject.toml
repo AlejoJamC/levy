@@ -13,6 +13,7 @@ dependencies = [
     "httpx>=0.24.0",
     "numpy>=1.24.0",
     "pandas>=2.0",
+    "pyarrow>=14.0",
     "statsmodels>=0.14",
     "matplotlib>=3.7",
     "sentence-transformers>=3.0",

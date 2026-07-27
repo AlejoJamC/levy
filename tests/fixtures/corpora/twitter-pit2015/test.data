@@ -1,0 +1,3 @@
+31	Fixture Topic Y	fixture test split sentence about fixture-parade	fixture test split sentence on the fixture-parade	4	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+31	Fixture Topic Y	fixture test split sentence about fixture-parade	fixture unrelated test sentence about fixture-rain	1	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+32	Fixture Topic Z	fixture second test sentence about fixture-queue	fixture second test sentence on the fixture-queue	5	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O

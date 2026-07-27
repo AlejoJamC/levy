@@ -1,0 +1,21 @@
+1	Fixture Topic A	fixture chat opener about weekend plans	fixture chat opener asking about the weekend	(5, 0)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+1	Fixture Topic A	fixture question on where to eat tonight	fixture question about dinner spots tonight	(4, 1)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+2	Fixture Topic B	fixture remark that the fixture-match was close	fixture remark the fixture-match nearly went either way	(3, 2)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+2	Fixture Topic B	fixture note about the fixture-release date	fixture note asking when fixture-release lands	(4, 1)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+3	Fixture Topic C	fixture comment praising the fixture-soundtrack	fixture comment that the fixture-soundtrack is great	(5, 0)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+3	Fixture Topic C	fixture line about missing the fixture-train	fixture line saying the fixture-train was missed	(4, 1)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+4	Fixture Topic D	fixture post asking for fixture-tickets	fixture post looking to buy fixture-tickets	(3, 2)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+4	Fixture Topic D	fixture update that fixture-weather turned cold	fixture update the fixture-weather got cold	(5, 0)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+5	Fixture Topic E	fixture reply about the fixture-podcast episode	fixture reply on the newest fixture-podcast episode	(4, 1)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+5	Fixture Topic E	fixture aside about fixture-coffee running out	fixture aside saying fixture-coffee is finished	(3, 2)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+6	Fixture Topic F	fixture chat opener about weekend plans	fixture update the fixture-weather got cold	(0, 5)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+6	Fixture Topic F	fixture question on where to eat tonight	fixture comment praising the fixture-soundtrack	(1, 4)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+7	Fixture Topic G	fixture remark that the fixture-match was close	fixture post asking for fixture-tickets	(0, 5)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+7	Fixture Topic G	fixture note about the fixture-release date	fixture aside about fixture-coffee running out	(1, 4)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+8	Fixture Topic H	fixture line about missing the fixture-train	fixture reply about the fixture-podcast episode	(0, 5)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+8	Fixture Topic H	fixture comment praising the fixture-soundtrack	fixture question on where to eat tonight	(1, 4)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+9	Fixture Topic I	fixture update that fixture-weather turned cold	fixture remark that the fixture-match was close	(0, 5)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+9	Fixture Topic I	fixture post asking for fixture-tickets	fixture note about the fixture-release date	(1, 4)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+10	Fixture Topic J	fixture aside about fixture-coffee running out	fixture chat opener about weekend plans	(0, 5)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+10	Fixture Topic J	fixture reply about the fixture-podcast episode	fixture line about missing the fixture-train	(1, 4)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+11	Fixture Topic K	fixture debatable pair left out of both pools	fixture debatable counterpart left out of both pools	(2, 3)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O

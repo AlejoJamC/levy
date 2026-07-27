@@ -7,6 +7,7 @@ dependencies:
   - pip
   - numpy>=1.24.0
   - pandas>=2.0  # LEV-8 analysis pipeline: table backbone
+  - pyarrow>=14.0  # LEV-12: parquet engine for the SODD corpus adapter
   - statsmodels>=0.14  # LEV-8: two-way ANOVA (anova_lm) + Tukey HSD
   - matplotlib>=3.7  # LEV-8: threshold-selection figures
   - httpx>=0.24.0

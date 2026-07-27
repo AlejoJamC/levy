@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "comment": "Corpus provenance registry (LEV-12). Single machine-readable source for canonical URLs, snapshots, licences, expected filenames, SHA-256 checksums and citations. Read by scripts/fetch_corpora.py, levy/dataset/validation.py and scripts/rehydrate_dataset.py -- do not restate these facts elsewhere. A null sha256 means 'not yet pinned': run `python scripts/fetch_corpora.py --pin` once, against the files you actually hold, and a later mismatch becomes a hard failure.",
+  "corpora": {
+    "quora-qqp": {
+      "title": "Quora Question Pairs",
+      "workload": "faq",
+      "adapter": "QuoraQQPSource",
+      "snapshot": "Kaggle competition release, 2017",
+      "canonical_url": "https://www.kaggle.com/competitions/quora-question-pairs/data",
+      "licence": "Quora Terms of Service - non-commercial research use, no redistribution grant",
+      "licence_url": "https://www.quora.com/about/tos",
+      "redistributable": false,
+      "manual": true,
+      "manual_reason": "The hosting platform requires signing in and accepting the competition rules before the data can be downloaded. This repository does not handle credentials.",
+      "citation": "Iyer, S., Dandekar, N., & Csernai, K. (2017). First Quora Dataset Release: Question Pairs. Quora.",
+      "notes": "QuoraQQPSource reads a tab-separated file with the columns id, qid1, qid2, question1, question2, is_duplicate. The GLUE QQP export ships exactly that as train.tsv; the Kaggle release ships train.csv with the same columns comma-separated, which must be converted to TSV before use.",
+      "files": [
+        {
+          "filename": "train.tsv",
+          "url": null,
+          "sha256": null
+        }
+      ]
+    },
+    "sodd": {
+      "title": "SODD - Stack Overflow Duplicity Dataset",
+      "workload": "code",
+      "adapter": "SODDSource",
+      "snapshot": "MQDD release; derived from the archive.org Stack Overflow dump of June 2020",
+      "canonical_url": "https://github.com/kiv-air/StackOverflowDataset",
+      "download_url": "https://drive.google.com/drive/folders/1JG6Fibvhs0Jz6JD83gwMqAmzUV9rsoX3",
+      "licence": "CC BY-NC-SA 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "redistributable": false,
+      "manual": true,
+      "manual_reason": "Distributed as a Google Drive folder, which has no stable direct-download URL per file. Download the shards from the folder by hand into data/raw/sodd/.",
+      "citation": "Pasek, J., Sido, J., Konopik, M., & Prazak, O. (2023). MQDD: Pre-training of Multimodal Question Duplicity Detection for Software Engineering Domain. In Proceedings of RANLP 2023.",
+      "notes": "Gzipped parquet, one file per split, columns first_post, second_post, first_author, second_author, label, page. Label classes: 0=duplicates, 1=similar (fulltext search), 2=similar (tags), 3=different, 4=accepted answer. The author columns are usernames and are deliberately never read. Posts are HTML and are normalised by levy.dataset.normalize.",
+      "files": [
+        {
+          "filename": "SODD_train.parquet.gzip",
+          "url": null,
+          "sha256": null
+        },
+        {
+          "filename": "SODD_dev.parquet.gzip",
+          "url": null,
+          "sha256": null
+        }
+      ]
+    },
+    "twitter-pit2015": {
+      "title": "Twitter Paraphrase Corpus (SemEval-2015 Task 1, PIT)",
+      "workload": "chat",
+      "adapter": "TwitterPIT2015Source",
+      "snapshot": "SemEval-2015 shared-task release, cocoxu/SemEval-PIT2015 master branch",
+      "canonical_url": "https://github.com/cocoxu/SemEval-PIT2015",
+      "licence": "SemEval-2015 Task 1 shared-task release, research use; see the repository for the organisers' terms",
+      "licence_url": "https://alt.qcri.org/semeval2015/task1/",
+      "redistributable": false,
+      "manual": false,
+      "citation": "Xu, W., Callison-Burch, C., & Dolan, W. B. (2015). SemEval-2015 Task 1: Paraphrase and Semantic Similarity in Twitter (PIT). In Proceedings of SemEval-2015.",
+      "notes": "Tab-separated, seven columns: Topic_Id, Topic_Name, Sent_1, Sent_2, Label, Sent_1_tag, Sent_2_tag. Train and dev carry a 5-annotator vote count such as (4, 1); the test split instead carries a single expert 0-5 grade, so it is rejected rather than coerced onto the vote scale. Both files live inside the release zip, extracted by basename so the archive's internal layout is not encoded here.",
+      "files": [
+        {
+          "filename": "train.data",
+          "url": "https://raw.githubusercontent.com/cocoxu/SemEval-PIT2015/master/data/SemEval-PIT2015-github.zip",
+          "archive_member": "train.data",
+          "sha256": null
+        },
+        {
+          "filename": "dev.data",
+          "url": "https://raw.githubusercontent.com/cocoxu/SemEval-PIT2015/master/data/SemEval-PIT2015-github.zip",
+          "archive_member": "dev.data",
+          "sha256": null
+        }
+      ]
+    }
+  }
+}
