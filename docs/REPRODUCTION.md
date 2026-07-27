@@ -145,6 +145,40 @@ python scripts/compute_kappa.py --dataset data/ground_truth.json
 Full dataset-production protocol — corpora, licences, sampling, blind
 re-annotation, the κ > 0.7 bar — is in [`data/DATASHEET.md`](../data/DATASHEET.md).
 
+#### Step 2b — The real dataset: acquire, then rehydrate
+
+Skip this unless you want the real 900-pair dataset rather than the fixture.
+
+The study's query text comes from Quora Question Pairs, SODD and Twitter
+PIT-2015. None of it is in this repository: Quora grants no redistribution
+right and SODD is CC BY-NC-SA, so what is published is
+`data/ground_truth.ids.csv` — which pairs were sampled and how they are
+labeled, with no text — plus the sidecar recording the seed, adapter options
+and input checksums. You supply the corpora; two commands put the text back.
+
+```bash
+python scripts/fetch_corpora.py
+```
+
+It acquires what it can into `data/raw/`, verifies every file against the
+checksums in [`data/corpora.json`](../data/corpora.json), and exits non-zero
+printing the exact URL, filename and expected checksum for any corpus that
+needs a human step (Quora and SODD both do — one requires accepting terms, the
+other is a Google Drive folder). Re-run it once those are in place; it skips
+what already verifies. See [`data/raw/README.md`](../data/raw/README.md) for
+the per-corpus layout.
+
+```bash
+python scripts/rehydrate_dataset.py
+```
+
+This writes `data/ground_truth.full.{csv,json}` — gitignored, because it
+carries the corpus text. The reconstruction is lossless: it is byte-identical
+to the dataset originally sampled, which is what preserves the ±5% replication
+criterion without anyone redistributing corpus text. Point the pipeline at it
+with `LEVY_DATASET=data/ground_truth.full.csv` (see "Swapping in the real
+dataset" below).
+
 ### Step 3 — Run the whole pipeline
 
 One command, all three stages:
@@ -284,17 +318,18 @@ retained nulls.
 
 The pipeline is dataset-agnostic. Moving from the committed fixture to the real
 900-pair dataset changes **exactly one argument** — the dataset path. No
-different steps, no separate guide, no code change:
+different steps, no separate guide, no code change. (Produce that file first
+with Step 2b above: acquire the corpora, then rehydrate.)
 
 ```bash
-scripts/reproduce.sh data/ground_truth_900.csv results/run-001
+scripts/reproduce.sh data/ground_truth.full.csv results/run-001
 ```
 
 or, stage by stage, the same `--dataset` value in each of the three commands
 above. In Docker:
 
 ```bash
-docker compose run --rm -e LEVY_DATASET=data/ground_truth_900.csv pipeline
+docker compose run --rm -e LEVY_DATASET=data/ground_truth.full.csv pipeline
 ```
 
 For an actual research run, also switch to real embeddings — this downloads
@@ -302,7 +337,7 @@ model weights on first use and needs network access:
 
 ```bash
 LEVY_EMBEDDING_PROVIDER=sentence-transformers \
-    scripts/reproduce.sh data/ground_truth_900.csv results/run-001
+    scripts/reproduce.sh data/ground_truth.full.csv results/run-001
 ```
 
 The output structure is identical; only the numbers change. With real

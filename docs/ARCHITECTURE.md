@@ -185,7 +185,7 @@ mock implementation:
 | Embeddings | `EmbeddingClient` | mock (text-seeded, normalised), `SentenceTransformerClient`, `OllamaEmbeddingClient` |
 | Vector index | `VectorIndex` | `BruteForceVectorIndex` (exact k-NN oracle), `FaissHNSWVectorIndex` |
 | Cache store | `CacheInterface` | `InMemoryStore` (FIFO eviction), `RedisStore` |
-| Corpus | `CorpusSource` | `QuoraQQPSource`, `StackOverflowDuplicatesSource`, `ConvAI2Source`, `MockCorpusSource` |
+| Corpus | `CorpusSource` | `QuoraQQPSource`, `SODDSource`, `TwitterPIT2015Source`, `MockCorpusSource` |
 
 This is not incidental — it is what makes the experiments reproducible offline.
 The whole test suite and the default pipeline run with **zero external

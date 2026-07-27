@@ -49,11 +49,41 @@ ratio used for the released dataset will be recorded here:
 
 **Source corpora (primary):**
 
-| Workload | Corpus | Licence | Notes |
-|---|---|---|---|
-| FAQ | Quora Question Pairs (QQP) | Non-commercial research use, publicly released by Quora / distributed via Kaggle & GLUE | Binary duplicate-question label from Quora's original moderation process |
-| Code | Stack Overflow duplicate questions | CC BY-SA 4.0 (Stack Exchange Data Dump terms) | Binary duplicate label from Stack Overflow's community duplicate-closure process |
-| Chat | ConvAI2 (PersonaChat) — derived same-intent pairs | Data released for the ConvAI2 NeurIPS 2018 competition, research use | ConvAI2 ships dialogues, not duplicate-intent pairs; a derivation step (pairing utterances, labeling same-intent vs. different-intent) is required before sampling — see `levy/dataset/sampling.ConvAI2Source` docstring |
+Canonical URLs, snapshot identifiers, expected filenames, pinned SHA-256
+checksums and citations are recorded machine-readably in
+[`corpora.json`](corpora.json), which the acquisition, validation and
+rehydration code all read. The table below is the human-readable summary, not a
+second source of truth.
+
+| Workload | Corpus | Licence | Positive label | Notes |
+|---|---|---|---|---|
+| FAQ | Quora Question Pairs (QQP) | Quora Terms of Service — non-commercial research use, **no redistribution grant** | `is_duplicate == 1` | Binary duplicate-question label from Quora's original moderation process. Acquisition requires accepting terms on the hosting platform. |
+| Code | SODD — Stack Overflow Duplicity Dataset, released with MQDD (Pasek et al., RANLP 2023) | CC BY-NC-SA 4.0 | `label == 0` (`duplicates`) | Stack Overflow duplicate closures, derived from the archive.org SO dump of June 2020. Native classes: 0 duplicates, 1 similar (fulltext), 2 similar (tags), 3 different, 4 accepted answer. Negatives are class 3 by default; classes 1/2 are available as adversarially hard negatives behind an explicit option. Posts are HTML and are normalised deterministically (`levy/dataset/normalize.py`). |
+| Chat | Twitter PIT-2015 (SemEval-2015 Task 1, Xu et al.) | SemEval-2015 shared-task release, research use | 3–5 of 5 crowdsourced yes-votes | Binary paraphrase judgment crowdsourced via Amazon Mechanical Turk. Only the train and dev splits are used: the test split carries a single expert 0–5 grade instead of a vote count, and the adapter rejects it rather than coercing one scale onto the other. Pairs at 2-of-5 votes are "debatable" by the task's own guidance and are excluded. |
+
+**Deviations from the frozen documents.** Recorded here as decisions with their
+rationale, per the project rule that a conflict with `docs/Project_Proposal.md`
+or `docs/Specification_and_Design_Report.md` is surfaced rather than silently
+resolved. Supervisor sign-off is tracked separately (LEV-11).
+
+1. **Code workload corpus: "Stack Overflow duplicate questions" → SODD.** The
+   same underlying source (Stack Overflow's community duplicate-closure
+   process), taken from a published, pre-processed release rather than from a
+   fresh Stack Exchange dump, given the current dump access situation. The
+   label semantics the frozen design relies on are unchanged.
+2. **Chat workload corpus: ConvAI2 → Twitter PIT-2015.** ConvAI2 ships
+   multi-turn dialogues, not pair-level human same-intent labels. It therefore
+   cannot supply the *original human label* that the Cohen's kappa criterion
+   (§4) compares the author's blind re-annotation against — deriving those
+   labels would mean the author annotating both sides, which is not an
+   independent comparison. PIT-2015 supplies a genuine crowdsourced pair label.
+3. **D2 release format: query text → identifiers plus labels plus a
+   rehydration script.** The frozen design calls for the dataset to be released
+   in CSV and JSON carrying the pairs. Quora Question Pairs grants no
+   redistribution right and SODD is non-commercial share-alike, so publishing
+   the text from an Apache-2.0 repository is not available. This is the same
+   approach Google takes for PAWS-QQP. §6 describes the mechanism; the ±5%
+   replication criterion is preserved through checksums of the raw inputs.
 
 **Fallback corpora** (per `docs/Project_Proposal.md` Risk 1 — "primary
 corpus unavailable or insufficient in size/quality"): if a primary corpus
@@ -82,14 +112,33 @@ identity as part of this project.
 
 `levy/dataset/sampling.py` implements seeded, stratified sampling:
 
-1. A `CorpusSource` adapter reads a local raw corpus file (never downloaded
-   by this code — the raw file must already exist on disk) and yields
-   `RawCandidatePair` records with the corpus's original label.
-2. Candidates are split into positive/negative pools, each sorted by
+0. `scripts/fetch_corpora.py` acquires the raw corpora into `data/raw/` and
+   verifies each file against the checksum pinned in `corpora.json`. It is the
+   only step that touches the network; everything after it is offline.
+1. A `CorpusSource` adapter reads a local raw corpus file and yields
+   `RawCandidatePair` records, mapping the corpus's native label onto the
+   binary study label via the mapping the adapter declares. Values outside the
+   declared domain are reported, never coerced; in-domain values in neither
+   class (a debatable PIT pair, a SODD accepted-answer row) are excluded.
+2. `levy/dataset/validation.py` runs one pre-flight pass over all three
+   workloads, reporting every problem at once — file presence, checksum
+   agreement, required columns, positive/negative pool sufficiency, label
+   domains, and absence of corpus overlap between workloads. Sampling does not
+   start, and nothing is written, unless that pass is clean.
+3. Candidates are split into positive/negative pools, each sorted by
    `source_pair_id` for determinism, then sampled via `random.Random(seed)`
    to hit the target `n` and `positive_ratio` for that workload.
-3. The chosen pairs are shuffled (same `random.Random(seed)`) and assigned
+4. The chosen pairs are shuffled (same `random.Random(seed)`) and assigned
    sequential `pair_id`s (`<workload>-0000`, `<workload>-0001`, ...).
+
+**Adapter options that affect content** are explicit, defaulted, and recorded
+in the run manifest rather than left implicit: SODD's `hard_negatives` (default
+off), the shards and splits read per corpus, and the HTML normalisation rule.
+
+**Production runs refuse synthetic data.** `scripts/sample_dataset.py
+--require-real` turns the offline `MockCorpusSource` fallback into a hard error
+naming the missing corpus, so a released dataset cannot silently contain pairs
+whose `source_corpus` is `mock`.
 
 **Seed:** `42` (default; see `scripts/sample_dataset.py --seed`). Same seed
 + same raw corpus file + same `n` + same `positive_ratio` reproduces an
@@ -101,6 +150,13 @@ identical sample — this is unit-tested (`tests/test_dataset.py`,
 **Traceability:** every `QueryPair` retains `source_corpus` (which corpus)
 and `source_pair_id` (the pair's id within that corpus), so any sampled pair
 can be traced back to its origin for audit.
+
+**Run manifest.** `data/ground_truth.ids.meta.json`, written by the sampling
+run and published alongside the dataset, records the seed, `positive_ratio`,
+every content-affecting adapter option, the corpus snapshots and the SHA-256 of
+each raw input file, plus tool versions. It contains no query text, so a third
+party can prove they hold byte-identical inputs without anyone redistributing
+corpus text.
 
 `TODO (post data-production): record the exact seed, positive_ratio, raw
 corpus file versions/checksums, and sampling date actually used for the
@@ -165,13 +221,50 @@ a training corpus); any purpose requiring the underlying corpora's licences
 to be waived (redistribution must respect each source corpus's licence,
 §2).
 
-## 6. Distribution
+## 6. Distribution — identifiers and labels, not text
 
-Released publicly alongside the Levy code repository under Apache-2.0 (code
-licence — see root `LICENSE`; the query text itself remains subject to its
-originating corpus's licence, §2), in both CSV and JSON, with identical
-content (`levy/dataset/io.py` guarantees round-trip equality — see
-`tests/test_dataset.py::TestCsvJsonRoundTrip`).
+The dataset is released alongside the Levy code repository under Apache-2.0
+(the code licence — see root `LICENSE`). The **query text is not
+redistributed**: Quora Question Pairs grants no redistribution right and SODD
+is CC BY-NC-SA 4.0, and both terms are incompatible with an Apache-2.0 public
+repository. Treatment is uniform across all three corpora regardless of each
+licence's individual terms.
+
+What is published:
+
+| File | Contents | Tracked |
+|---|---|---|
+| `ground_truth.ids.csv` | `pair_id`, `workload`, `source_corpus`, `source_pair_id`, `original_label`, `author_label`, `metadata` — **no query text** | yes |
+| `ground_truth.ids.meta.json` | the run manifest of §3 | yes |
+| `corpora.json` | per-corpus URL, snapshot, licence, filenames, checksums, citation | yes |
+| `ground_truth.full.{csv,json}` | the reconstructed working dataset, query text included | **no** — gitignored |
+| `ground_truth.{csv,json}` | 15 synthetic fixture pairs (see `README.md`) | yes |
+
+To obtain the working dataset, a reader acquires the corpora themselves and
+rehydrates:
+
+```bash
+python scripts/fetch_corpora.py
+python scripts/rehydrate_dataset.py
+```
+
+The reconstruction is **lossless**: a dataset sampled, reduced to identifiers,
+and rehydrated is byte-identical to the dataset originally sampled. Ordering is
+taken from the identifiers file and the adapter options from the manifest, so
+nothing is re-derived and nothing can drift. This is what preserves the ±5%
+replication criterion under a distribution model that carries no text; it is
+the same approach Google uses for PAWS-QQP.
+
+The two formats have distinct code paths in `levy/dataset/io.py`, and the
+identifiers file is deliberately **not** a harness input — pointing
+`load_dataset` at it fails with an instruction to rehydrate first, rather than
+replaying pairs with absent text. Full-dataset CSV/JSON round-trip equality is
+unchanged (`tests/test_dataset.py::TestCsvJsonRoundTrip`).
+
+`scripts/audit_release.sh` enforces the property rather than trusting it: it
+fails if any tracked file carries query text attributed to a third-party
+corpus, and separately spot-checks tracked files against strings sampled from a
+populated `data/raw/`.
 
 ## 7. Maintenance
 
@@ -191,16 +284,25 @@ reproducibility of any published results.
   original corpus's annotation process, not a full inter-annotator-agreement
   study).
 - **Workload-corpus mapping is a design choice, not a guarantee of
-  representativeness.** Quora QQP (FAQ), Stack Overflow duplicates (code),
-  and ConvAI2-derived pairs (chat) are proxies for "FAQ", "code generation",
-  and "conversational chat" LLM-API workloads respectively; they are not
-  drawn from actual LLM-API traffic logs.
-- **ConvAI2 requires a derivation step.** Unlike QQP and Stack Overflow,
-  ConvAI2 does not natively ship duplicate-intent pair labels; the chat
-  workload's pairs depend on an author-performed pairing/labeling step
-  before `ConvAI2Source` can run (documented in
-  `levy/dataset/sampling.py`), which is itself a light annotation act
-  distinct from the blind re-annotation in §4.
+  representativeness.** Quora QQP (FAQ), SODD (code), and Twitter PIT-2015
+  (chat) are proxies for "FAQ", "code generation", and "conversational chat"
+  LLM-API workloads respectively; they are not drawn from actual LLM-API
+  traffic logs.
+- **The chat corpus is Twitter, not assistant dialogue.** PIT-2015 supplies a
+  real crowdsourced paraphrase label, which ConvAI2 could not (§2, deviation
+  2), but tweets on trending topics are short, informal and topical in ways
+  conversational LLM traffic is not. Read the chat workload's results as
+  "short informal paraphrase", not as "chat assistant traffic".
+- **SODD text is normalised, and the normalisation is part of the artifact.**
+  SODD posts are HTML containing code; they are reduced to plain text by a
+  fixed stdlib rule recorded in the run manifest. The rule keeps code-block
+  content, but it is a simplification of the original posts, and any
+  imperfection in it is reproducible rather than divergent.
+- **The released dataset requires the reader to acquire the corpora.** Because
+  no query text is redistributed (§6), reproducing the working dataset depends
+  on the upstream corpora remaining available in the pinned snapshot. A
+  checksum mismatch is reported loudly, but an upstream that disappears cannot
+  be recovered from this repository.
 - **Small fixture data ships in its place today.** See `data/README.md` —
   `data/ground_truth.{csv,json}` currently contain only 15 synthetic
   placeholder pairs, not the real 900.

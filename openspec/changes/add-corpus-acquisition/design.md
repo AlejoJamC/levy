@@ -60,9 +60,13 @@ The distribution file preserves the sampled order of `pair_id`s. Rehydration emi
 
 ### QQP acquisition prints a manual step rather than integrating with Kaggle
 
-Acquisition handles SODD and PIT-2015 directly (both are plain repository downloads). QQP requires accepting terms on the hosting platform, so acquisition exits non-zero printing the canonical URL, the expected filename and the expected SHA-256.
+Acquisition handles PIT-2015 directly. QQP requires accepting terms on the hosting platform, so acquisition exits non-zero printing the canonical URL, the expected filename and the expected SHA-256.
 
 *Alternative rejected:* integrate the Kaggle API. It requires storing a credential token, which this repository does not do, and it would put a credential path into the one script a replicator is most likely to run.
+
+**Correction recorded during implementation:** this decision originally asserted that SODD was also a plain repository download. It is not — the MQDD authors distribute it as a **Google Drive folder** (`kiv-air/StackOverflowDataset`), which has no stable per-file direct-download URL. SODD therefore takes the same manual path as QQP. No mechanism changed: `manual` is a per-corpus flag in `data/corpora.json`, so this is a registry value, not a second code path. Two of three corpora needing a human step makes the "not literally one command end to end" trade-off below more prominent than anticipated, but every other stage remains automated and idempotent.
+
+Also corrected: PIT-2015's `train.data` and `dev.data` are not served as loose files — they ship inside `data/SemEval-PIT2015-github.zip` in the shared-task repository. A file entry may therefore declare `archive_member`, and acquisition extracts the unique member with that basename. Matching on basename rather than full path keeps the archive's internal layout out of the registry, and zero-or-several matches is an error rather than a pick.
 
 ### File naming keeps the three roles unambiguous
 
