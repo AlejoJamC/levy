@@ -248,3 +248,20 @@ output/
 # Regenerate with scripts/reproduce.sh; published results are attached to a
 # release rather than tracked here.
 results/
+
+# Raw third-party corpora (LEV-12). The directory tree is tracked so a clean
+# clone has somewhere to acquire into; the corpus files themselves never reach
+# the remote — Quora QQP grants no redistribution right and SODD is CC BY-NC-SA.
+# Populate with scripts/fetch_corpora.py.
+#   `!data/raw/**/` re-includes the directories: git cannot re-include a file
+#   whose parent directory is excluded, so the keepers need their dirs back.
+data/raw/**
+!data/raw/**/
+!data/raw/**/.gitkeep
+!data/raw/README.md
+
+# Rehydrated working dataset (scripts/rehydrate_dataset.py). Carries corpus
+# query text, so it is reconstructed locally and never committed — the tracked
+# artifact is data/ground_truth.ids.csv plus its sidecar.
+data/ground_truth.full.csv
+data/ground_truth.full.json
