@@ -968,9 +968,17 @@ class TestCliSmoke(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             out_csv = Path(tmp) / "sampled.csv"
             out_json = Path(tmp) / "sampled.json"
+            # An explicit empty raw dir, not the default `data/raw`: once the
+            # author acquires the corpora locally, the default is populated and
+            # this run would legitimately sample real data instead of falling
+            # back to a synthetic source. The test is about the fallback, so it
+            # has to own the condition that triggers it.
+            empty_raw = Path(tmp) / "raw"
+            empty_raw.mkdir()
             result = self._run(
                 "sample_dataset.py",
                 [
+                    "--raw-dir", str(empty_raw),
                     "--n-per-workload", "5", "--seed", "42",
                     "--out-csv", str(out_csv), "--out-json", str(out_json),
                 ],
