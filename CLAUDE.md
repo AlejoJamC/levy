@@ -62,7 +62,7 @@ freely as long as they don't rewrite the submitted documents.
 | `docs/PLANNING_HIERARCHY.md` | Working note (flagged in place) | Vision → Epic → Feature → Story → Task hierarchy used to plan work. |
 | `docs/epics/EPIC-001-client-proxy-layer.md` | Historical planning (flagged in place) | Pre-implementation epic for the client/proxy layer, which shipped as `levy/api/`. Kept for provenance; `docs/ARCHITECTURE.md` and the code are authoritative. Pattern for future epics (`EPIC-00X-*.md`). |
 | `README.md` | Living | User-facing install/usage docs. Keep in sync with code. **No ticket identifiers in user-facing headings** — identifiers belong in CLAUDE.md, OpenSpec, and git history. |
-| `data/README.md`, `data/DATASHEET.md` | Living | What is currently in `data/` (synthetic fixtures) and the full D2 datasheet. |
+| `data/README.md`, `data/DATASHEET.md`, `data/raw/README.md` | Living | What is committed vs. generated in `data/`, the acquire→sample→rehydrate sequence, the full D2 datasheet (corpora, licences, the three recorded frozen-doc deviations, ids-only distribution), and the per-corpus acquisition layout. `data/corpora.json` is the machine-readable provenance registry those docs point at — **read by code, so do not restate its URLs, filenames or checksums elsewhere**. |
 | `openspec/` | Living | OpenSpec spec-driven workflow: capability specs + change proposals (see "Spec-driven workflow" below). |
 | `CLAUDE.md` (this file) | Living | Orientation + ground rules for every session. |
 
@@ -138,32 +138,94 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   (`qwen3` LLM + `nomic-embed-text` embeddings). `examples/anthropic_smoke_check.py`
   — one-shot real-API smoke check for the Anthropic connector (billed, requires a
   real `ANTHROPIC_API_KEY`; not collected by pytest — lives outside `tests/`).
-- `levy/dataset/` (LEV-3) — ground-truth dataset **platform tooling** (D2), data-agnostic:
+- `levy/dataset/` (LEV-3, extended by LEV-12) — ground-truth dataset **platform
+  tooling** (D2), data-agnostic. Nothing here touches the network:
   `schema.py` (`QueryPair` dataclass + workload constants `faq`/`code`/`chat` +
   validation; `ground_truth_label()` returns the author's blind label if set, else the
-  original corpus label — the eval contract LEV-4 replays against); `io.py` (CSV/JSON
+  original corpus label — the eval contract LEV-4 replays against; plus
+  `DistributionRecord`, the ids-and-labels record with **no query text** —
+  deliberately a separate type, because `QueryPair`'s non-empty-text invariant is
+  what LEV-4's replay path relies on and must not be weakened); `io.py` (CSV/JSON
   load/save, round-trip and cross-format identical; `metadata` JSON-encoded into one CSV
-  column); `sampling.py` (`CorpusSource` ABC + `QuoraQQPSource` / `StackOverflowDuplicatesSource`
-  / `ConvAI2Source` adapters, each documenting its expected local raw file format — no
-  network access — + `MockCorpusSource`; seeded, stratified, deterministic
-  `sample_workload`/`sample_dataset`); `annotation.py` (`BlindAnnotationSession` — shows
-  only `query_1`/`query_2`, never the original label; per-answer progress persistence for
-  resumable 900-pair sessions; never overwrites an existing `author_label` unless
-  `overwrite=True`); `kappa.py` (`cohen_kappa`/`kappa_report`, stdlib-only 2×2
-  contingency, documented zero-annotated and `pe==1` edge cases). `scripts/*.py`
-  (`sample_dataset.py`, `annotate_dataset.py`, `compute_kappa.py`, `export_dataset.py`)
-  are thin argparse CLIs over this package, runnable fully offline.
-- `data/` — `ground_truth.csv` + `ground_truth.json` currently hold **15 synthetic
+  column; plus `save/load_distribution_csv` + `to_distribution_records` on their own
+  code path with their own `DISTRIBUTION_FIELDNAMES` — and `load_dataset` **rejects** a
+  distribution file with "rehydrate first" rather than replaying absent text);
+  `corpora.py` (LEV-12 — reader for `data/corpora.json`, the machine-readable
+  provenance registry: URL, snapshot, licence, filenames, SHA-256, citation per
+  corpus; `sha256_file`, `pin_checksums`; typed `CorpusRegistryError` naming the
+  missing corpus or field); `normalize.py` (LEV-12 — stdlib `HTMLParser`
+  normaliser for SODD's HTML posts, keeping code-block text; stdlib deliberately,
+  because BeautifulSoup/lxml output can shift across versions and would silently
+  break the rehydration round-trip); `sampling.py` (`CorpusSource` ABC +
+  `QuoraQQPSource` / `SODDSource` (gzipped parquet, streamed per row-group) /
+  `TwitterPIT2015Source` (tab-separated, train+dev only — the graded 0–5 test split
+  is rejected, not coerced) + `MockCorpusSource`; every adapter declares its
+  `label_mapping()`, `options()` and a cheap `check_fields()`; `make_source()`
+  factory driven by the registry's `adapter` field; seeded, stratified,
+  deterministic `sample_workload`/`sample_dataset`); `validation.py` (LEV-12 —
+  pre-flight pass returning a `ValidationReport` of **every** finding rather than
+  raising on the first: presence, checksum, required fields, per-class pool
+  sufficiency for all three workloads at once, label domain, cross-workload corpus
+  overlap. Overlap is keyed on `corpus_key`, not the display name, so three
+  independent `MockCorpusSource`s are not a false positive); `annotation.py`
+  (`BlindAnnotationSession` — shows only `query_1`/`query_2`, never the original
+  label; per-answer progress persistence for resumable 900-pair sessions; never
+  overwrites an existing `author_label` unless `overwrite=True`); `kappa.py`
+  (`cohen_kappa`/`kappa_report`, stdlib-only 2×2 contingency, documented
+  zero-annotated and `pe==1` edge cases). `scripts/*.py` (`sample_dataset.py`,
+  `rehydrate_dataset.py`, `annotate_dataset.py`, `compute_kappa.py`,
+  `export_dataset.py`) are thin argparse CLIs over this package, runnable fully
+  offline. **`scripts/fetch_corpora.py` is the sole exception** — the only
+  network-touching entry point in the repository, excluded from pytest by design
+  and guarded by `TestAcquisitionIsOutOfBand`.
+- **Corpus acquisition + licence-safe distribution (LEV-12)** — the study's query
+  text is **never committed**: Quora QQP grants no redistribution right and SODD is
+  CC BY-NC-SA 4.0. `scripts/fetch_corpora.py` acquires into `data/raw/<corpus>/`
+  (idempotent, checksum-verified, `.part`-then-rename so a mismatch never looks
+  acquired, `--pin` to record checksums once, and a non-zero exit printing URL +
+  filename + expected SHA-256 for corpora needing a human step — Quora requires
+  accepting terms, SODD is a Google Drive folder). `scripts/rehydrate_dataset.py`
+  rebuilds `data/ground_truth.full.{csv,json}` from `data/ground_truth.ids.csv` +
+  its sidecar + `data/raw/`, **byte-identical** to what was originally sampled
+  (ordering comes from the ids file, adapter options from the sidecar — nothing is
+  re-derived). `scripts/sample_dataset.py` gained `--require-real` (refuses the
+  mock fallback), registry-driven corpus resolution under `--raw-dir`, the
+  pre-flight gate, and writes the ids file + sidecar alongside the full dataset.
+  **BREAKING:** `StackOverflowDuplicatesSource` / `ConvAI2Source` and the
+  `--stackoverflow-csv` / `--convai2-json` flags are gone.
+- `data/` — `ground_truth.csv` + `ground_truth.json` hold **15 synthetic
   fixture pairs** (5/workload, obviously fake text, `source_corpus="synthetic-fixture"`)
-  standing in for the real 900-pair dataset; `data/README.md` documents the placeholder
-  status, `data/DATASHEET.md` is the full D2 datasheet skeleton (source corpora +
-  licences, sampling protocol, annotation guidelines, kappa result placeholder, fallback
-  corpora) with `TODO (post data-production)` markers only where the real
+  and **stay**: the offline test suite and `scripts/reproduce.sh` defaults depend on
+  them, and synthetic text carries no third-party licence. `corpora.json` is the
+  provenance registry; `raw/` is the acquisition target (directories tracked via
+  `.gitkeep`, contents gitignored); `ground_truth.ids.csv` + `ground_truth.ids.meta.json`
+  are the released D2 artifact and its run manifest; `ground_truth.full.{csv,json}`
+  are the rehydrated working dataset and are gitignored. `data/README.md` documents
+  what is committed vs. generated and the acquire→sample→rehydrate sequence;
+  `data/DATASHEET.md` is the D2 datasheet (corpora + licences, sampling protocol,
+  the three recorded deviations from the frozen docs, ids-only distribution model,
+  limitations) with `TODO (post data-production)` markers only where the real
   sampling/annotation run is required.
-- `tests/test_dataset.py` — 48 unit tests for `levy/dataset/`: schema validation, CSV/JSON
-  round-trip + cross-format equality, sampling determinism/stratification, blind
-  annotation (blindness, resume, no-overwrite), Cohen's kappa (perfect/chance/worked/
-  degenerate cases), and CLI smoke tests against the `data/` fixtures. All offline.
+- `tests/test_dataset.py` — 93 unit tests for `levy/dataset/`: schema validation
+  (including a test that pins `QueryPair`'s non-empty-text invariant against future
+  relaxation), CSV/JSON round-trip + cross-format equality, the three corpus adapters
+  against committed fixtures (field/label mapping, `hard_negatives`, debatable-pair
+  exclusion, graded-test-split rejection, out-of-domain labels), the `make_source`
+  factory, sampling determinism/stratification, blind annotation (blindness, resume,
+  no-overwrite), Cohen's kappa (perfect/chance/worked/degenerate cases), and CLI smoke
+  tests against the `data/` fixtures. All offline.
+- `tests/test_corpus_acquisition.py` (LEV-12) — 74 unit tests: provenance-registry
+  reader (every malformed-registry path), checksum pinning, the validation report
+  (two simultaneous problems both reported, pool shortfall across all three workloads
+  at once, cross-workload overlap, out-of-domain label, checksum mismatch, nothing
+  written on failure), the ids-only distribution format (round-trip, no text in any
+  field, harness rejection), HTML normalisation (malformed markup, code blocks,
+  entities), and the full sample→distribute→rehydrate round-trip asserted
+  **byte-identical**. Plus `TestAcquisitionIsOutOfBand`: an AST guard that no test
+  invokes `fetch_corpora.py` and no `levy/dataset/` module imports a network library.
+  All offline, driven by `tests/fixtures/corpora/` — real column structure, synthetic
+  content, laid out as a valid `--raw-dir` (regenerate the parquet shards with
+  `python tests/fixtures/corpora/make_sodd_fixture.py`).
 - `levy/experiment/` (LEV-4) — offline replay harness per S&D Report Algorithm 2:
   `config.py` (`ExperimentConfig` + `full_grid()`, the frozen 2 models × 3 workloads ×
   5 thresholds = 30 configurations, thresholds carried verbatim on the `1/(1+L2)` scale);
@@ -353,14 +415,26 @@ implied by the spec, not bugs:
    `LevyConfig` now defaults to `sentence-transformers` / `all-MiniLM-L6-v2`;
    `EmbeddingManager` supports runtime switching to `modernbert`
    (`nomic-ai/modernbert-embed-base`) with symmetric task-prefix handling.
-6. ~~**No annotated dataset**~~ — **Platform tooling resolved (LEV-3).** `levy/dataset/`
-   + `scripts/` implement the schema, CSV/JSON loader (the LEV-4 contract), seeded
-   stratified sampling, blind re-annotation, and Cohen's kappa. **Still open (author
-   task, tracked in `openspec/changes/add-ground-truth-dataset/tasks.md` §7):** the real
-   900-pair sample from Quora QQP / Stack Overflow duplicates / ConvAI2 (or an approved
-   fallback corpus), the author's actual blind re-annotation of all 900 pairs, the final
-   Cohen's kappa result, and replacing the synthetic fixtures currently in `data/` with
-   the released dataset.
+6. ~~**No annotated dataset**~~ — **Platform tooling resolved (LEV-3); acquisition
+   and licence-safe distribution resolved (LEV-12).** `levy/dataset/` + `scripts/`
+   implement the schema, CSV/JSON loader (the LEV-4 contract), the ids-only
+   distribution format, the corpus provenance registry, seeded stratified sampling,
+   pre-flight validation, one-command acquisition, rehydration, blind re-annotation,
+   and Cohen's kappa. **Corpus deviations from the frozen docs, flagged not silently
+   resolved** (rationale in `data/DATASHEET.md` §2, supervisor sign-off tracked in
+   LEV-11): code workload "Stack Overflow duplicate questions" → **SODD** (same
+   duplicate-closure source, published pre-processed release); chat workload
+   **ConvAI2 → Twitter PIT-2015** (ConvAI2 ships dialogues, not pair-level human
+   same-intent labels, so it cannot supply the original label the kappa criterion
+   compares against); D2 released as **identifiers + labels + a rehydration script**
+   rather than as query text, because QQP grants no redistribution right (the
+   PAWS-QQP approach; the ±5% criterion is preserved through input checksums).
+   **Still open (author task, tracked in `openspec/changes/add-corpus-acquisition/tasks.md`
+   §7 and `add-ground-truth-dataset/tasks.md` §7):** acquiring the three corpora and
+   pinning their checksums, the real 900-pair sample, the author's blind
+   re-annotation of all 900 pairs, and the final Cohen's kappa result. The synthetic
+   fixtures in `data/ground_truth.{csv,json}` are **not** replaced — they stay as the
+   offline default; the real dataset lives in the gitignored `.full.` files.
 7. ~~**pytest declared but not installed**~~ — **Resolved (LEV-5).** `pytest` and
    `pytest-cov` are installed in the `levy` conda env (`environment.yml`, conda-forge)
    and mirrored in `pyproject.toml` `[dev]` extras. pytest is the canonical runner;
@@ -396,6 +470,17 @@ python -m pytest tests/ -q --cov=levy --cov-branch --cov-fail-under=90  # gated 
 # unittest still works (tests are plain unittest.TestCase):
 python -m unittest discover -s tests -p "test_*.py"
 
+# Corpora + real dataset (LEV-12). fetch_corpora.py is the ONLY networked entry
+# point in the repo; everything else is offline. It exits non-zero printing the
+# URL/filename/SHA-256 for corpora needing a human step (Quora, SODD).
+python scripts/fetch_corpora.py                 # -> data/raw/ (gitignored contents)
+python scripts/fetch_corpora.py --pin           # record checksums into data/corpora.json
+python scripts/rehydrate_dataset.py             # ids + data/raw/ -> data/ground_truth.full.*
+# Author-only, once: sample the real 900 pairs (refuses synthetic fallback)
+python scripts/sample_dataset.py --require-real --n-per-workload 300 --seed 42 \
+    --out-csv data/ground_truth.full.csv --out-json data/ground_truth.full.json \
+    --out-ids data/ground_truth.ids.csv
+
 # Demos
 python examples/simple_replay.py     # mock LLM; uses sentence-transformers if installed
 python examples/ollama_demo.py       # requires `ollama serve` + qwen3 + nomic-embed-text
@@ -418,7 +503,8 @@ python scripts/run_experiments.py --out-dir results/run-001
 python scripts/run_analysis.py --results-dir results/run-001 --out-dir results/run-001/analysis
 python scripts/check_replication.py --reference results/run-001/results.csv  # ±5% criterion
 
-# Release audit (LICENSE, secrets in tree + all git history, personal data)
+# Release audit (LICENSE, secrets in tree + all git history, personal data,
+# third-party corpus text in tracked files, data/raw/ spot-check)
 scripts/audit_release.sh
 
 # Results dashboard (LEV-10, D6 — desirable): a bundle must exist first (any
@@ -446,7 +532,8 @@ edits:
   `embedding-management`, `vector-store`, `ground-truth-dataset`,
   `experiment-harness`, `test-infrastructure`, `anthropic-connector`,
   `api-router`, `statistical-analysis`, `release-packaging`,
-  `results-dashboard`.
+  `results-dashboard`. An eleventh, `corpus-acquisition`, is written as a delta
+  under `add-corpus-acquisition` and syncs into `openspec/specs/` on archive.
   **Main specs use main-spec structure** — `# <name> Specification`, a
   `Capability:` line, `## Purpose`, `## Requirements` — *never* delta headers
   (`## ADDED Requirements`) and never a `TBD` Purpose. `openspec archive` creates
@@ -457,10 +544,10 @@ edits:
   Archived so far: `add-embedding-manager`, `add-faiss-vector-store`,
   `add-experiment-harness`, `add-test-infrastructure`, `add-anthropic-connector`,
   `add-fastapi-router`, `add-statistical-analysis`, `add-release-packaging`,
-  `add-results-dashboard`. **Still in flight:** `add-ground-truth-dataset` —
-  its tooling shipped and its capability is synced into `openspec/specs/`, but
-  §7 (the real 900-pair data production) is an open author task, so the change
-  stays in flight.
+  `add-results-dashboard`. **Still in flight:** `add-ground-truth-dataset` and
+  `add-corpus-acquisition` — both shipped their tooling, but each has an open
+  §7 that is an author data-production task (the real 900-pair sample, the
+  blind re-annotation, the kappa result), so the changes stay in flight.
 - `openspec/config.yaml` — project context injected into artifact generation.
 - Slash commands (in `.claude/commands/opsx/`): `/opsx:propose` (create change +
   artifacts), `/opsx:apply` (implement tasks), `/opsx:archive` (finish + update
@@ -490,8 +577,9 @@ Release (2026-11-02).
 | LEV-9 | `add-release-packaging` | Medium | archived |
 | LEV-10 | `add-results-dashboard` | Low (desirable) | archived |
 | LEV-11 | — (production run: real dataset + published D2/D3 outputs) | — | not started |
+| LEV-12 | `add-corpus-acquisition` | High | **in flight** — code shipped, §7 real acquisition + sampling open |
 
-Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 feeding LEV-4.
+Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 feeding LEV-11.
 When an OpenSpec change is created or archived, reference its Linear issue
 and keep the issue status in sync.
 

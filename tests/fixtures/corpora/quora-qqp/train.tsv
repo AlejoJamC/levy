@@ -1,0 +1,22 @@
+id	qid1	qid2	question1	question2	is_duplicate
+1	101	102	How do I reset my fixture-account password?	What is the way to reset a fixture-account password?	1
+2	103	104	Where can I find the fixture-billing settings?	How do I open fixture-billing settings?	1
+3	105	106	Why is my fixture-widget not loading?	My fixture-widget will not load, why?	1
+4	107	108	How do I export fixture-reports to CSV?	What is the CSV export path for fixture-reports?	1
+5	109	110	Can I rename a fixture-workspace after creating it?	Is renaming a fixture-workspace possible later?	1
+6	111	112	How do I invite a teammate to fixture-workspace?	What are the steps to add a teammate to fixture-workspace?	1
+7	113	114	What is the fixture-plan storage limit?	How much storage does the fixture-plan include?	1
+8	115	116	How do I enable fixture-notifications on mobile?	Turning on fixture-notifications for mobile, how?	1
+9	117	118	Where is the fixture-audit log kept?	How can I view the fixture-audit log?	1
+10	119	120	How do I cancel my fixture-subscription?	What is the process to cancel a fixture-subscription?	1
+11	121	122	How do I reset my fixture-account password?	What is the fixture-plan storage limit?	0
+12	123	124	Where can I find the fixture-billing settings?	How do I enable fixture-notifications on mobile?	0
+13	125	126	Why is my fixture-widget not loading?	Can I rename a fixture-workspace after creating it?	0
+14	127	128	How do I export fixture-reports to CSV?	Where is the fixture-audit log kept?	0
+15	129	130	How do I invite a teammate to fixture-workspace?	How do I cancel my fixture-subscription?	0
+16	131	132	What is the fixture-plan storage limit?	Why is my fixture-widget not loading?	0
+17	133	134	How do I enable fixture-notifications on mobile?	How do I export fixture-reports to CSV?	0
+18	135	136	Where is the fixture-audit log kept?	How do I invite a teammate to fixture-workspace?	0
+19	137	138	How do I cancel my fixture-subscription?	Where can I find the fixture-billing settings?	0
+20	139	140	Can I rename a fixture-workspace after creating it?	How do I reset my fixture-account password?	0
+21	141	142		Blank first question is skipped by the adapter	0

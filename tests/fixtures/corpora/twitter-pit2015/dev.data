@@ -1,0 +1,6 @@
+21	Fixture Topic V	fixture dev split opener about fixture-transit	fixture dev split asking about fixture-transit	(4, 1)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+21	Fixture Topic V	fixture dev note on the fixture-keynote	fixture dev note about the fixture-keynote talk	(5, 0)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+22	Fixture Topic W	fixture dev remark about fixture-battery life	fixture dev remark on how long fixture-battery lasts	(3, 2)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+22	Fixture Topic W	fixture dev split opener about fixture-transit	fixture dev note on the fixture-keynote	(0, 5)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+23	Fixture Topic X	fixture dev remark about fixture-battery life	fixture dev split opener about fixture-transit	(1, 4)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O
+23	Fixture Topic X	fixture dev note on the fixture-keynote	fixture dev remark about fixture-battery life	(0, 5)	fixture/O/NN/B-NP/O	fixture/O/NN/B-NP/O

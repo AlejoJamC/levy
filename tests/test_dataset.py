@@ -13,6 +13,8 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytest
+
 from levy.dataset.annotation import BlindAnnotationSession
 from levy.dataset.io import (
     DatasetValidationError,
@@ -25,12 +27,13 @@ from levy.dataset.io import (
 )
 from levy.dataset.kappa import cohen_kappa, kappa_report
 from levy.dataset.sampling import (
-    ConvAI2Source,
     CorpusSource,
     CorpusSourceError,
     MockCorpusSource,
     QuoraQQPSource,
-    StackOverflowDuplicatesSource,
+    SODDSource,
+    TwitterPIT2015Source,
+    make_source,
     sample_dataset,
     sample_workload,
 )
@@ -46,6 +49,18 @@ from levy.dataset.schema import (
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURE_CSV = REPO_ROOT / "data" / "ground_truth.csv"
 FIXTURE_JSON = REPO_ROOT / "data" / "ground_truth.json"
+
+# Committed raw-corpus fixtures: the real column structure of each corpus with
+# entirely synthetic content, laid out as a valid `--raw-dir` so the same tree
+# also drives the CLI tests. Regenerate the parquet shards with
+# `python tests/fixtures/corpora/make_sodd_fixture.py`.
+CORPUS_FIXTURES = REPO_ROOT / "tests" / "fixtures" / "corpora"
+QQP_TSV = CORPUS_FIXTURES / "quora-qqp" / "train.tsv"
+SODD_TRAIN = CORPUS_FIXTURES / "sodd" / "SODD_train.parquet.gzip"
+SODD_DEV = CORPUS_FIXTURES / "sodd" / "SODD_dev.parquet.gzip"
+PIT_TRAIN = CORPUS_FIXTURES / "twitter-pit2015" / "train.data"
+PIT_DEV = CORPUS_FIXTURES / "twitter-pit2015" / "dev.data"
+PIT_TEST = CORPUS_FIXTURES / "twitter-pit2015" / "test.data"
 
 
 def _make_pair(**overrides) -> QueryPair:
@@ -92,6 +107,22 @@ class TestQueryPairSchema(unittest.TestCase):
     def test_empty_query_2_rejected(self):
         with self.assertRaises(QueryPairValidationError):
             _make_pair(query_2="   ")
+
+    def test_query_text_invariant_is_not_relaxed(self):
+        """
+        Pins the non-empty-text invariant against future relaxation.
+
+        The licence-safe distribution format (`DistributionRecord`) exists
+        precisely because this invariant must hold: the LEV-4 replay path
+        depends on a constructed `QueryPair` always having replayable text, so
+        an identifiers-only dataset must be a different type, not a `QueryPair`
+        with blanked columns.
+        """
+        for field in ("query_1", "query_2"):
+            for value in ("", "   ", "\t\n"):
+                with self.subTest(field=field, value=repr(value)):
+                    with self.assertRaises(QueryPairValidationError):
+                        _make_pair(**{field: value})
 
     def test_empty_pair_id_rejected(self):
         with self.assertRaises(QueryPairValidationError):
@@ -371,86 +402,224 @@ class TestQuoraQQPSource(unittest.TestCase):
                 list(source.iter_candidates())
 
 
-class TestStackOverflowDuplicatesSource(unittest.TestCase):
-
-    def test_parses_valid_csv(self):
+    def test_rejects_label_outside_declared_domain(self):
         with TemporaryDirectory() as tmp:
-            path = Path(tmp) / "so.csv"
+            path = Path(tmp) / "qqp.tsv"
             path.write_text(
-                "pair_id,question1_id,question1,question2_id,question2,is_duplicate\n"
-                "p1,1,How to reverse a list in Python?,2,How do I reverse a Python list?,1\n"
-                "p2,3,What is a decorator?,4,How does TCP work?,0\n"
-                "p3,5,,6,Empty question one,0\n",  # blank question1 -> skipped
+                "id\tqid1\tqid2\tquestion1\tquestion2\tis_duplicate\n"
+                "1\t10\t11\tA fixture question?\tAnother fixture question?\t7\n",
                 encoding="utf-8",
             )
-            source = StackOverflowDuplicatesSource(path)
-            self.assertEqual(source.workload, "code")
-            candidates = list(source.iter_candidates())
-        self.assertEqual(len(candidates), 2)
-        self.assertEqual(candidates[0].source_pair_id, "p1")
+            with self.assertRaises(CorpusSourceError) as ctx:
+                list(QuoraQQPSource(path).iter_candidates())
+        self.assertIn("outside the declared domain", str(ctx.exception))
 
-    def test_missing_columns_raises(self):
+    def test_rejects_non_integer_label(self):
         with TemporaryDirectory() as tmp:
-            path = Path(tmp) / "so.csv"
-            path.write_text("pair_id,question1\np1,Hello\n", encoding="utf-8")
-            source = StackOverflowDuplicatesSource(path)
-            with self.assertRaises(CorpusSourceError):
-                list(source.iter_candidates())
-
-
-class TestConvAI2Source(unittest.TestCase):
-
-    def test_parses_valid_json(self):
-        with TemporaryDirectory() as tmp:
-            path = Path(tmp) / "convai2.json"
+            path = Path(tmp) / "qqp.tsv"
             path.write_text(
-                json.dumps(
-                    [
-                        {
-                            "pair_id": "c1",
-                            "utterance_1": "I love hiking on weekends.",
-                            "utterance_2": "Hiking is my favorite weekend activity.",
-                            "same_intent": 1,
-                        },
-                        {
-                            "pair_id": "c2",
-                            "utterance_1": "What's your favorite food?",
-                            "utterance_2": "It's raining outside.",
-                            "same_intent": 0,
-                        },
-                    ]
-                ),
+                "id\tqid1\tqid2\tquestion1\tquestion2\tis_duplicate\n"
+                "1\t10\t11\tA fixture question?\tAnother fixture question?\tmaybe\n",
                 encoding="utf-8",
             )
-            source = ConvAI2Source(path)
-            self.assertEqual(source.workload, "chat")
-            candidates = list(source.iter_candidates())
-        self.assertEqual(len(candidates), 2)
-        self.assertEqual(candidates[0].label, 1)
+            with self.assertRaises(CorpusSourceError) as ctx:
+                list(QuoraQQPSource(path).iter_candidates())
+        self.assertIn("not an integer", str(ctx.exception))
 
-    def test_invalid_json_raises(self):
+    def test_check_fields_reports_missing_columns_without_raising(self):
         with TemporaryDirectory() as tmp:
-            path = Path(tmp) / "convai2.json"
-            path.write_text("{not valid json", encoding="utf-8")
-            source = ConvAI2Source(path)
+            path = Path(tmp) / "qqp.tsv"
+            path.write_text("id\tquestion1\n1\tHello\n", encoding="utf-8")
+            problems = QuoraQQPSource(path).check_fields()
+        self.assertEqual(len(problems), 1)
+        self.assertIn("missing columns", problems[0])
+
+    def test_check_fields_reports_unreadable_file(self):
+        problems = QuoraQQPSource(Path("/nonexistent/qqp.tsv")).check_fields()
+        self.assertEqual(len(problems), 1)
+        self.assertIn("cannot read", problems[0])
+
+
+class TestSODDSource(unittest.TestCase):
+    """SODD (code workload) — gzipped parquet, HTML posts, five label classes."""
+
+    def test_parses_fixture_shards(self):
+        source = SODDSource([SODD_TRAIN, SODD_DEV])
+        self.assertEqual(source.workload, "code")
+        self.assertEqual(source.name, "sodd")
+        self.assertEqual(source.check_fields(), [])
+        candidates = list(source.iter_candidates())
+
+        # 10 duplicates + 10 different in train, 1 + 1 in dev. Classes 1, 2 and
+        # 4 are in-domain but not in either pool with the default options.
+        self.assertEqual(len(candidates), 22)
+        self.assertEqual(sum(c.label for c in candidates), 11)
+
+    def test_html_posts_are_normalised_and_keep_code(self):
+        candidate = next(iter(SODDSource([SODD_TRAIN]).iter_candidates()))
+        self.assertNotIn("<", candidate.query_1)
+        self.assertIn("fixture_call_0(a, b)", candidate.query_1)  # code kept
+        self.assertNotIn("  ", candidate.query_1)  # whitespace collapsed
+
+    def test_source_pair_id_is_shard_scoped(self):
+        candidates = list(SODDSource([SODD_TRAIN, SODD_DEV]).iter_candidates())
+        shards = {c.source_pair_id.split(":")[0] for c in candidates}
+        self.assertEqual(shards, {"SODD_train", "SODD_dev"})
+
+    def test_hard_negatives_option_widens_the_negative_pool(self):
+        default = SODDSource([SODD_TRAIN])
+        hard = SODDSource([SODD_TRAIN], hard_negatives=True)
+
+        self.assertEqual(default.label_mapping().negative, (3,))
+        self.assertEqual(hard.label_mapping().negative, (1, 2, 3))
+        n_default = sum(1 for c in default.iter_candidates() if c.label == 0)
+        n_hard = sum(1 for c in hard.iter_candidates() if c.label == 0)
+        self.assertEqual(n_hard, n_default + 2)  # the two "similar" fixtures
+
+    def test_options_are_reported_for_the_manifest(self):
+        options = SODDSource([SODD_TRAIN], hard_negatives=True).options()
+        self.assertTrue(options["hard_negatives"])
+        self.assertEqual(options["shards"], ["SODD_train.parquet.gzip"])
+        self.assertIn("html.parser", options["normalisation"])
+
+    def test_requires_at_least_one_shard(self):
+        with self.assertRaises(CorpusSourceError):
+            SODDSource([])
+
+    def test_rejects_label_outside_declared_domain(self):
+        pa = pytest.importorskip("pyarrow")
+        pq = pytest.importorskip("pyarrow.parquet")
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "SODD_bad.parquet.gzip"
+            table = pa.table(
+                {
+                    "first_post": ["<p>fixture one</p>"],
+                    "second_post": ["<p>fixture two</p>"],
+                    "label": [9],  # outside 0..4
+                }
+            )
+            pq.write_table(table, path, compression="gzip")
+            with self.assertRaises(CorpusSourceError) as ctx:
+                list(SODDSource([path]).iter_candidates())
+        self.assertIn("outside the declared domain", str(ctx.exception))
+
+    def test_missing_columns_reported_and_raised(self):
+        pa = pytest.importorskip("pyarrow")
+        pq = pytest.importorskip("pyarrow.parquet")
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "SODD_thin.parquet.gzip"
+            pq.write_table(pa.table({"first_post": ["x"]}), path, compression="gzip")
+            source = SODDSource([path])
+            self.assertIn("missing columns", source.check_fields()[0])
             with self.assertRaises(CorpusSourceError):
                 list(source.iter_candidates())
 
-    def test_non_list_raises(self):
+    def test_unreadable_shard_is_reported_not_raised_by_check(self):
+        source = SODDSource([Path("/nonexistent/SODD_train.parquet.gzip")])
+        self.assertIn("cannot read", source.check_fields()[0])
+        with self.assertRaises(CorpusSourceError):
+            list(source.iter_candidates())
+
+
+class TestTwitterPIT2015Source(unittest.TestCase):
+    """PIT-2015 (chat workload) — vote-count labels, graded test split rejected."""
+
+    def test_parses_fixture_splits(self):
+        source = TwitterPIT2015Source([PIT_TRAIN, PIT_DEV])
+        self.assertEqual(source.workload, "chat")
+        self.assertEqual(source.check_fields(), [])
+        candidates = list(source.iter_candidates())
+
+        # 10 positive + 10 negative in train (the (2, 3) debatable row is
+        # excluded), 3 + 3 in dev.
+        self.assertEqual(len(candidates), 26)
+        self.assertEqual(sum(c.label for c in candidates), 13)
+
+    def test_debatable_vote_is_excluded_not_coerced(self):
+        texts = {c.query_1 for c in TwitterPIT2015Source([PIT_TRAIN]).iter_candidates()}
+        self.assertFalse(any("debatable" in t for t in texts))
+
+    def test_vote_counts_map_to_binary_labels(self):
+        mapping = TwitterPIT2015Source([PIT_TRAIN]).label_mapping()
+        self.assertEqual(mapping.positive, (3, 4, 5))
+        self.assertEqual(mapping.negative, (0, 1))
+        self.assertIsNone(mapping.classify(2))  # debatable
+        self.assertTrue(mapping.in_domain(5))
+        self.assertFalse(mapping.in_domain(6))
+
+    def test_source_pair_id_is_split_scoped(self):
+        candidates = list(TwitterPIT2015Source([PIT_TRAIN, PIT_DEV]).iter_candidates())
+        self.assertEqual(
+            {c.source_pair_id.split(":")[0] for c in candidates}, {"train", "dev"}
+        )
+
+    def test_graded_test_split_is_rejected(self):
+        source = TwitterPIT2015Source([PIT_TEST])
+        problems = source.check_fields()
+        self.assertEqual(len(problems), 1)
+        self.assertIn("graded test split", problems[0])
+        with self.assertRaises(CorpusSourceError) as ctx:
+            list(source.iter_candidates())
+        self.assertIn("not a PIT-2015 vote count", str(ctx.exception))
+
+    def test_wrong_column_count_reported_and_raised(self):
         with TemporaryDirectory() as tmp:
-            path = Path(tmp) / "convai2.json"
-            path.write_text(json.dumps({"not": "a list"}), encoding="utf-8")
-            source = ConvAI2Source(path)
+            path = Path(tmp) / "train.data"
+            path.write_text("1\tTopic\tonly three columns\n", encoding="utf-8")
+            source = TwitterPIT2015Source([path])
+            self.assertIn("tab-separated columns", source.check_fields()[0])
             with self.assertRaises(CorpusSourceError):
                 list(source.iter_candidates())
 
-    def test_missing_fields_raises(self):
+    def test_empty_file_reported(self):
         with TemporaryDirectory() as tmp:
-            path = Path(tmp) / "convai2.json"
-            path.write_text(json.dumps([{"pair_id": "c1"}]), encoding="utf-8")
-            source = ConvAI2Source(path)
-            with self.assertRaises(CorpusSourceError):
-                list(source.iter_candidates())
+            path = Path(tmp) / "train.data"
+            path.write_text("", encoding="utf-8")
+            self.assertIn("is empty", TwitterPIT2015Source([path]).check_fields()[0])
+
+    def test_unreadable_file_reported(self):
+        source = TwitterPIT2015Source([Path("/nonexistent/train.data")])
+        self.assertIn("cannot read", source.check_fields()[0])
+
+    def test_requires_at_least_one_file(self):
+        with self.assertRaises(CorpusSourceError):
+            TwitterPIT2015Source([])
+
+    def test_blank_lines_and_blank_sentences_are_skipped(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "train.data"
+            path.write_text(
+                "1\tT\tfixture a\tfixture b\t(4, 1)\ttag\ttag\n"
+                "\n"
+                "1\tT\t   \tfixture d\t(5, 0)\ttag\ttag\n",
+                encoding="utf-8",
+            )
+            candidates = list(TwitterPIT2015Source([path]).iter_candidates())
+        self.assertEqual(len(candidates), 1)
+
+
+class TestMakeSource(unittest.TestCase):
+    """The registry-driven adapter factory shared by sampling and rehydration."""
+
+    def test_builds_each_adapter(self):
+        self.assertIsInstance(make_source("QuoraQQPSource", [QQP_TSV]), QuoraQQPSource)
+        self.assertIsInstance(make_source("SODDSource", [SODD_TRAIN]), SODDSource)
+        self.assertIsInstance(
+            make_source("TwitterPIT2015Source", [PIT_TRAIN]), TwitterPIT2015Source
+        )
+
+    def test_passes_adapter_options_through(self):
+        source = make_source("SODDSource", [SODD_TRAIN], hard_negatives=True)
+        self.assertTrue(source.hard_negatives)
+
+    def test_unknown_adapter_named_not_guessed(self):
+        with self.assertRaises(CorpusSourceError) as ctx:
+            make_source("NotAnAdapter", [QQP_TSV])
+        self.assertIn("NotAnAdapter", str(ctx.exception))
+
+    def test_single_file_adapter_rejects_multiple_paths(self):
+        with self.assertRaises(CorpusSourceError):
+            make_source("QuoraQQPSource", [QQP_TSV, QQP_TSV])
 
 
 # ---------------------------------------------------------------------------
