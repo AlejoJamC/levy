@@ -45,31 +45,23 @@ the corpora. `scripts/audit_release.sh` enforces this rather than trusting it.
 
 ## Producing (or reproducing) the real dataset
 
-```bash
-python scripts/fetch_corpora.py        # 1. acquire corpora into data/raw/
-python scripts/sample_dataset.py \     # 2. sample — author, once
-    --require-real --n-per-workload 300 --seed 42 \
-    --out-csv data/ground_truth.full.csv \
-    --out-json data/ground_truth.full.json \
-    --out-ids data/ground_truth.ids.csv
-python scripts/rehydrate_dataset.py    # 3. rebuild the text from data/raw/
-```
+The sequence is acquire → sample → rehydrate → annotate → kappa. The
+step-by-step procedure, with every command and the manual download steps, is
+**[`docs/DATA_PRODUCTION.md`](../docs/DATA_PRODUCTION.md)** — the single place
+it is written down, so it cannot drift here.
 
-Step 1 exits non-zero with the exact URL, filename and expected checksum for
-each corpus needing a human step. Step 2 refuses to substitute synthetic data
-(`--require-real`) and runs a pre-flight validation pass that reports every
-problem across all three workloads at once, writing nothing if any of them
-fails. A reader reproducing the dataset runs steps 1 and 3 only — step 3 alone
-reconstructs a byte-identical copy of what step 2 produced.
+In short: `scripts/fetch_corpora.py` populates `data/raw/` (exiting non-zero
+with the exact URL, filename and expected checksum for each corpus needing a
+human step); `scripts/sample_dataset.py --require-real` draws the 900 pairs
+behind a pre-flight validation gate that reports every problem across all
+three workloads at once and writes nothing if any of them fails; and
+`scripts/rehydrate_dataset.py` rebuilds the query text from `data/raw/`.
 
-Then, for the author's annotation pass:
+**A reader reproducing the study runs only the fetch and the rehydrate** —
+rehydration alone reconstructs a byte-identical copy of the dataset the author
+sampled. See [`docs/REPRODUCTION.md`](../docs/REPRODUCTION.md).
 
-4. `scripts/annotate_dataset.py` in blind mode (original labels are never
-   shown during annotation), against the rehydrated dataset.
-5. `scripts/compute_kappa.py` to confirm Cohen's kappa > 0.7 over the 900
-   pairs.
-
-See `data/DATASHEET.md` for the full protocol, corpus licences, the three
+See `data/DATASHEET.md` for corpus licences, the sampling protocol, the three
 recorded deviations from the frozen documents, and known limitations. The
 experiment harness reads the rehydrated dataset through the existing
 `--dataset` flag; the fixture defaults are untouched, so the offline pipeline

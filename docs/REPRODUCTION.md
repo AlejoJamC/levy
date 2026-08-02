@@ -148,6 +148,10 @@ re-annotation, the κ > 0.7 bar — is in [`data/DATASHEET.md`](../data/DATASHEE
 #### Step 2b — The real dataset: acquire, then rehydrate
 
 Skip this unless you want the real 900-pair dataset rather than the fixture.
+(Producing that dataset in the first place — sampling, blind annotation,
+kappa — is the author's one-time procedure, in
+[`DATA_PRODUCTION.md`](DATA_PRODUCTION.md). This section is the reader's
+half: acquire and rehydrate.)
 
 The study's query text comes from Quora Question Pairs, SODD and Twitter
 PIT-2015. None of it is in this repository: Quora grants no redistribution
