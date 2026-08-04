@@ -1,0 +1,50 @@
+# ===========================================================================
+# data/ — deny-by-default for tabular data files
+# ===========================================================================
+# This is a second, local copy of the rule in the repository root .gitignore,
+# deliberately duplicated. This directory is the one place in the project where
+# licensed third-party corpus text lands, and the cost of a mistake here is a
+# licence breach in a public repository. If someone edits or reorders the root
+# file, this one still holds.
+#
+# Two of the three source corpora cannot be redistributed at all:
+#   - Quora Question Pairs — Quora Terms of Service, no redistribution grant
+#   - SODD                 — CC BY-NC-SA 4.0
+# Every .csv and .tsv here is therefore ignored unless it is named below.
+#
+# Patterns in this file are relative to data/.
+#
+# To add an exception you must be able to state why the file is publishable:
+# either it contains no third-party corpus text at all, or its text is
+# synthetic and carries no upstream licence. If you cannot state that, it does
+# not go on the list.
+
+*.csv
+*.tsv
+
+# ------------------------------------------------------------------ allowed
+# 15 synthetic fixture pairs. Fabricated text, source_corpus =
+# "synthetic-fixture". No third-party licence. The offline test suite and the
+# scripts/reproduce.sh defaults read this file.
+!ground_truth.csv
+
+# The published D2 artifact: identifiers and labels only. Carries pair_id,
+# workload, source_corpus, source_pair_id, original_label, author_label and
+# metadata — and no query text in any column, because DistributionRecord has no
+# text fields. This is what a third party rehydrates from.
+!ground_truth.ids.csv
+
+# ------------------------------------------------- deliberately NOT allowed
+# Named here so the reasoning is on the record, not to add a rule — the
+# blanket *.csv above already covers them:
+#
+#   ground_truth.full.csv        the rehydrated working dataset — full query
+#                                text from all three corpora. Regenerate it
+#                                with scripts/rehydrate_dataset.py; never
+#                                commit it.
+#   annotated-900.backup.csv     any hand-made backup or export of the working
+#   *.backup.csv, *export*.csv   dataset carries exactly the same text.
+#
+# Anything under raw/ is already excluded by the root .gitignore
+# (`data/raw/**`), which keeps the per-corpus directories but never their
+# contents. See raw/README.md.

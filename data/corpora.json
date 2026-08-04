@@ -19,7 +19,7 @@
         {
           "filename": "train.tsv",
           "url": null,
-          "sha256": null
+          "sha256": "2073b2c5f824f278ae388398846f0d10b3aedc1ade82ebec5c481be7fd92bf26"
         }
       ]
     },
@@ -41,12 +41,12 @@
         {
           "filename": "SODD_train.parquet.gzip",
           "url": null,
-          "sha256": null
+          "sha256": "74b68fb846ce4620b5cc2032cbb4c9104c82e50b890ed0227f0acaac4d28d643"
         },
         {
           "filename": "SODD_dev.parquet.gzip",
           "url": null,
-          "sha256": null
+          "sha256": "5d9bae32bf817883d0d1e8c409479f90f6aba17dec7ccee9ea211bc8a75b8bda"
         }
       ]
     },
@@ -67,13 +67,13 @@
           "filename": "train.data",
           "url": "https://raw.githubusercontent.com/cocoxu/SemEval-PIT2015/master/data/SemEval-PIT2015-github.zip",
           "archive_member": "train.data",
-          "sha256": null
+          "sha256": "c14111f8c864e13c826c3a19dabf449759acb1541ce9914d160b2eb1199cc93b"
         },
         {
           "filename": "dev.data",
           "url": "https://raw.githubusercontent.com/cocoxu/SemEval-PIT2015/master/data/SemEval-PIT2015-github.zip",
           "archive_member": "dev.data",
-          "sha256": null
+          "sha256": "0169127ac96b8225b183b068e67f47999495ccbf83ad4a4d640694ff780a195d"
         }
       ]
     }
