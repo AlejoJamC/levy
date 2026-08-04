@@ -297,3 +297,60 @@ data/ground_truth.full.json
 # Corpus adapter fixtures: real column structure, entirely synthetic content
 # ("fixture-" prefixed). Required by the offline test suite.
 !tests/fixtures/corpora/**/*.tsv
+
+# ===========================================================================
+# Update 2026-08-04 — DENY-BY-DEFAULT EXTENDED BEYOND .csv / .tsv
+# ===========================================================================
+# The block above inverted the rule for .csv and .tsv only. That left the
+# other half of the same artifact unprotected: `save_dataset()` writes the
+# working dataset as CSV *and* JSON, so ground_truth.full.json was covered by
+# its exact filename (line 267) and nothing else. Any other JSON carrying the
+# same 900 pairs — data/annotated-900.json, data/backup.json, an ad-hoc export
+# — was not ignored and would have been staged by `git add .`. The same held
+# for a raw shard copied out of data/raw/ into data/ (SODD .parquet.gzip,
+# PIT-2015 .data), which was covered only while it stayed under raw/.
+#
+# Scoped to data/ rather than repo-wide, because .json is a normal source
+# extension everywhere else (openspec/, .claude/, tests/fixtures/, pyproject
+# tooling). data/ is the one directory where licensed corpus text lands.
+#
+# Mirrored in data/.gitignore, deliberately — same reasoning as the .csv rule:
+# if someone edits or reorders one file, the other still holds.
+data/**/*.json
+data/**/*.parquet
+data/**/*.parquet.gzip
+data/**/*.data
+
+# Admissible, each for a stated reason — not merely because it is tracked:
+#   ground_truth.json           JSON twin of the 15 synthetic fixture pairs;
+#                               fabricated text, no third-party licence.
+#   corpora.json                provenance registry: URLs, snapshots, licences,
+#                               filenames, checksums, citations. No query text.
+#   ground_truth.ids.meta.json  sampling run manifest: seed, ratio, adapter
+#                               options, corpus snapshots, input checksums.
+#                               No query text, by construction.
+#
+# data/annotation_progress.json is deliberately NOT admitted: it is the
+# annotation working file, superseded by the author_label column of the ids
+# file (docs/DATA_PRODUCTION.md step 9). It carries no corpus text, so this is
+# a procedure rule and not a licence rule — but it was committed in e4aaa6f
+# before this rule existed, and .gitignore never untracks an already-tracked
+# file. Clearing it needs `git rm --cached data/annotation_progress.json`.
+!data/ground_truth.json
+!data/corpora.json
+!data/ground_truth.ids.meta.json
+
+# ---------------------------------------------------------------------------
+# What .gitignore does NOT protect against
+# ---------------------------------------------------------------------------
+# It is a staging filter, and it is bypassed by `git add -f`, by
+# `git stash -u` (untracked files) and by `git stash --all` (ignored files
+# too). On 2026-08-04 a `git stash --all` put data/annotated-900.backup.csv —
+# 900 rows of Quora QQP + SODD + PIT-2015 query text — into refs/stash, where
+# the `*.csv` rule could not reach it. Nothing was pushed (refs/stash is not
+# pushed by `git push` or `git push --all`), but `git push --mirror` does push
+# it and a filesystem copy of .git carries it either way.
+#
+# scripts/audit_release.sh check 4 is the backstop for this whole class of
+# mistake: it scans `git log --all`, which includes refs/stash, not just the
+# working tree. Run it before any release and before pushing a new ref.

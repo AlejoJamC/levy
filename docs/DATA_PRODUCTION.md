@@ -16,9 +16,37 @@ procedure. It covers exactly one subject — producing D2 — and nothing else:
   the frozen documents, and the dataset's known limitations are in
   [`../data/DATASHEET.md`](../data/DATASHEET.md). This file is procedure only.
 
-Work through the steps in order. Steps 1–5 can be re-run freely; they are
-idempotent and deterministic. Step 6 is the long one — 900 judgments — and is
+Work through the steps in order. ~~Steps 1–5 can be re-run freely; they are
+idempotent and deterministic.~~ Step 6 is the long one — 900 judgments — and is
 resumable.
+
+> **Update 2026-08-04 — the struck claim is only true before step 6.**
+> Steps 1–4 are re-runnable at any time. **Step 5 is not, once step 6 has
+> started:** `scripts/rehydrate_dataset.py` writes
+> `data/ground_truth.full.{csv,json}` from `ground_truth.ids.csv`, whose
+> `author_label` column is empty until step 8 — so re-running step 5 after
+> annotating overwrites the working dataset with an unlabelled copy. The labels
+> are recoverable (`data/annotation_progress.json` holds all 900 and step 6
+> re-applies them on the next run), but the working file is clobbered in the
+> meantime. To verify the round-trip after step 6, write somewhere else:
+>
+> ```bash
+> python scripts/rehydrate_dataset.py --out-csv /tmp/rt.csv --out-json /tmp/rt.json
+> ```
+
+---
+
+## Run status — Update 2026-08-04
+
+| Step | State |
+|---|---|
+| 1–3 acquire, verify, pin | done — all three corpora present, checksums pinned |
+| 4 sample 900 | done — seed 42, ratio 0.5, 300/workload |
+| 5 round-trip on real data | done — every field of all 900 matched exactly |
+| 6 blind re-annotation | done — 900 / 900 |
+| 7 Cohen's kappa | done — **κ = 0.3267, below the frozen κ > 0.7 bar**; see [`../data/DATASHEET.md`](../data/DATASHEET.md) §4 for the breakdown and the contingency options. Escalate to the supervisor; do not adjust the threshold or re-annotate non-blind. |
+| **8 refresh the ids file with your labels** | **NOT DONE** — `data/ground_truth.ids.csv` still ships `author_label` empty for all 900 rows. The published D2 artifact currently carries no re-annotation. |
+| 9 audit, then commit | audit passes (8/8), but see the two notes at step 9 below |
 
 ---
 
@@ -256,6 +284,23 @@ print(sum(p.author_label is not None for p in pairs), 'of', len(pairs), 'annotat
 It should print `900 of 900 annotated`. Anything less means step 6 is
 unfinished.
 
+> **Update 2026-08-04 — this step has NOT been run, and it is the one blocking
+> gap in the published artifact.** Verified against the tracked file: all 900
+> rows of `data/ground_truth.ids.csv` have an empty `author_label`, while
+> `data/ground_truth.full.csv` and `data/annotation_progress.json` both hold the
+> complete 900. So the re-annotation exists locally but is absent from the
+> artifact a third party would rehydrate from — meaning a replicator's
+> `ground_truth_label()` silently falls back to `original_label`, and reproduces
+> a *different study* from the author's.
+>
+> Running it is licence-safe: `save_distribution_csv` writes only the
+> `DistributionRecord` fields, which have no query text by construction. The
+> sidecar `ground_truth.ids.meta.json` does **not** need regenerating — it
+> records sampling inputs, not labels.
+>
+> Re-run `scripts/audit_release.sh` afterwards, then commit
+> `data/ground_truth.ids.csv` on its own.
+
 ---
 
 ## Step 9 — Audit, then commit
@@ -290,6 +335,56 @@ git commit
 
 The first two are gitignored and the audit enforces the outcome, but check
 `git status` anyway — a `git add -f` would defeat both.
+
+> **Update 2026-08-04 — two things went wrong here in the real run. Both are
+> worth knowing before the next one.**
+>
+> **1. `data/annotation_progress.json` was committed, contrary to the table
+> above.** It went in with `e4aaa6f`, and it is on the pushed branch. It carries
+> pair ids and the author's labels only — **no corpus text — so this is not a
+> licence breach**, but it does contradict this runbook and it duplicates, in a
+> working file, what the ids file is supposed to publish. The ordering that fixes
+> it is: run step 8 first (so the labels live in the artifact), then untrack the
+> working file:
+>
+> ```bash
+> git rm --cached data/annotation_progress.json
+> ```
+>
+> It stays on disk, and the `*.json` rule added to `data/.gitignore` on
+> 2026-08-04 keeps it out from then on. Do not simply delete it before step 8 —
+> it is currently the only committed record of the 900 labels.
+>
+> **2. `git add -f` is not the only way past `.gitignore` — `git stash` is.**
+> `git stash -u` stashes untracked files and `git stash --all` stashes **ignored**
+> files too, straight into `refs/stash`, with no ignore rule consulted. In this
+> run a `git stash --all` put `data/annotated-900.backup.csv` — the full annotated
+> 900 *with query text* from all three corpora — into this repository's object
+> database. The `*.csv` deny-by-default rule was working correctly and was simply
+> not consulted.
+>
+> What caught it was **`scripts/audit_release.sh` check 4**, because it scans
+> `git log --all`, and `--all` includes `refs/stash`. No remote ref ever contained
+> the blob (`git push` and `git push --all` do not push `refs/stash`; **`git push
+> --mirror` does** — never mirror-push this repository). It was cleared the same
+> day and the audit now passes 8/8.
+>
+> Practical rules that follow:
+>
+> - Treat the audit, not `.gitignore`, as the release gate. Run it before every
+>   push of a new ref, not only before a release.
+> - Prefer `git stash push -- <paths>` over `git stash --all` in this repository.
+>   Note that everything after `--` is a pathspec, so `-m "msg"` must come
+>   *before* it — `git stash push -m "msg" -- <paths>`.
+> - After dropping a stash that held corpus text, expire it for real; until then
+>   it survives as a dangling object that any copy of `.git` carries:
+>
+>   ```bash
+>   git reflog expire --expire-unreachable=now --all && git gc --prune=now
+>   ```
+>
+> - `git stash list` should be empty, or hold only stashes you have checked, before
+>   any release.
 
 ---
 

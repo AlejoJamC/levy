@@ -11,6 +11,34 @@ are marked `TODO (post data-production)` — see `data/README.md` for what
 currently ships in `data/ground_truth.{csv,json}` instead (15 synthetic
 fixture pairs, not real data).
 
+---
+
+> ### Update 2026-08-04 — data production has run; the kappa criterion is NOT met
+>
+> The real sampling and the author's blind re-annotation are **complete**. The
+> `TODO (post data-production)` markers below are kept in place (nothing in this
+> datasheet is deleted) and each is now answered by a dated note beside it.
+>
+> | | |
+> |---|---|
+> | Corpora acquired | all three, checksums pinned in `corpora.json` |
+> | Sample | 900 pairs, seed 42, `positive_ratio` 0.5, 300 per workload, 150/150 per class |
+> | Rehydration round-trip | verified byte-identical on the real 900 (not only on fixtures) |
+> | Blind re-annotation | 900 / 900 complete |
+> | **Cohen's kappa (overall)** | **κ = 0.3267** — **below the frozen success threshold of κ > 0.7** |
+>
+> **This is a research-scope finding, not a defect to code around.** Per the
+> project rule on the frozen documents, and per `docs/Project_Proposal.md`
+> Risk 1, it is surfaced to the supervisor rather than resolved by adjusting the
+> threshold, re-annotating non-blind, or re-sampling for agreement. §4 records
+> the full breakdown and what the disagreement actually consists of.
+>
+> Two statements elsewhere in this datasheet are superseded by this run and are
+> struck through in place: §7's expectation that the real dataset replaces
+> `data/ground_truth.{csv,json}`, and §8's last bullet. Both were written before
+> the identifiers-only distribution model (§2 deviation 3, §6) made committing
+> query text impossible.
+
 ## 1. Motivation
 
 **For what purpose was the dataset created?**
@@ -46,6 +74,21 @@ stratified — target 50/50 duplicate/non-duplicate — from its source corpus
 (see `positive_ratio` in `levy/dataset/sampling.sample_workload`; the actual
 ratio used for the released dataset will be recorded here:
 `TODO (post data-production): record actual positive_ratio and per-workload counts`).
+
+> **Update 2026-08-04 — answered.** `positive_ratio = 0.5`, achieved exactly.
+> Counts as sampled and as re-annotated:
+>
+> | Workload | Corpus | n | `original_label == 1` | `author_label == 1` | Median query length (chars) |
+> |---|---|---:|---:|---:|---:|
+> | faq | quora-qqp | 300 | 150 | 163 | 51 |
+> | code | sodd | 300 | 150 | 34 | 600 |
+> | chat | twitter-pit2015 | 300 | 150 | 68 | 41 |
+> | **total** | | **900** | **450** | **265** | |
+>
+> The sample is balanced by construction on `original_label`. It is *not*
+> balanced on `author_label`, and that asymmetry is the kappa result of §4: the
+> author judged far fewer pairs to be same-intent than the source corpora did,
+> overwhelmingly in the `code` workload.
 
 **Source corpora (primary):**
 
@@ -162,6 +205,28 @@ corpus text.
 corpus file versions/checksums, and sampling date actually used for the
 released 900-pair dataset.`
 
+> **Update 2026-08-04 — answered, and the authoritative copy is machine-readable.**
+> Seed `42`, `positive_ratio` 0.5, `n_per_workload` 300, sampled 2026-08-04. The
+> per-file SHA-256 of all five raw inputs, the corpus snapshots, the adapter
+> options and the tool versions (Python 3.10.19, pyarrow 23.0.1, pandas 2.3.3)
+> are recorded in `ground_truth.ids.meta.json` and `corpora.json`, which the
+> tooling reads — deliberately not copied here, so the two cannot diverge.
+>
+> **Round-trip confirmed on the real data.** `scripts/rehydrate_dataset.py` was
+> run against the published `ground_truth.ids.csv` and the acquired corpora, and
+> every field of all 900 pairs matched the originally sampled dataset exactly.
+> This is the property the whole identifiers-only release model rests on (§6),
+> and it is now verified on the artifact being shipped, not only on fixtures.
+>
+> **Known consequence for the offline test suite.** Pinning the real checksums
+> into `corpora.json` made 20 tests in `tests/test_corpus_acquisition.py` fail:
+> they drive validation over the synthetic fixtures in `tests/fixtures/corpora/`
+> while reading the *real* registry, so every fixture file now reports a checksum
+> mismatch against the pinned production value. The failure is correct behaviour
+> from the validator; the tests need their own fixture registry (unpinned, or
+> pinned to the fixture checksums) rather than the production one. Tracked as
+> pending work on LEV-11 — the D1 coverage gate cannot be green until it is fixed.
+
 ## 4. Preprocessing / labeling — blind re-annotation
 
 **Label definitions:**
@@ -205,6 +270,75 @@ completed the blind re-annotation of all 900 pairs. Run:`
 ```bash
 python scripts/compute_kappa.py --dataset data/ground_truth.json --strict
 ```
+
+> **Update 2026-08-04 — answered. The criterion is NOT met.**
+>
+> The command above is superseded: ~~`--dataset data/ground_truth.json`~~ points
+> at the 15 synthetic fixture pairs. The real dataset is the rehydrated working
+> file, which is gitignored and never committed (§6):
+>
+> ```bash
+> python scripts/compute_kappa.py --dataset data/ground_truth.full.json --strict
+> ```
+>
+> Result over the full 900, `original_label` vs `author_label`:
+>
+> | Scope | n | κ | Observed agreement | Expected agreement |
+> |---|---:|---:|---:|---:|
+> | **overall** | 900 | **0.3267** | 0.6633 | 0.5 |
+> | faq (quora-qqp) | 300 | 0.5267 | 0.7633 | 0.5 |
+> | code (sodd) | 300 | 0.2267 | 0.6133 | 0.5 |
+> | chat (twitter-pit2015) | 300 | 0.2267 | 0.6133 | 0.5 |
+>
+> Overall confusion (`original` × `author`): TP 206, FP 59, FN 244, TN 391.
+> `--strict` exits non-zero, as designed: **0.3267 < 0.7**.
+>
+> **The disagreement is systematic and one-directional, not noise.** The author
+> judged *fewer* pairs same-intent than the corpora did, in every workload:
+>
+> | Workload | corpus says duplicate, author says not | corpus says not, author says duplicate |
+> |---|---:|---:|
+> | faq | 29 | 42 |
+> | code | **116 of 150** | **0** |
+> | chat | 99 | 17 |
+>
+> The `code` column is the finding. SODD's positive class is *"this question was
+> closed as a duplicate on Stack Overflow"*, which is a moderation judgment about
+> whether one thread's answers resolve another's. The annotation protocol asks a
+> strictly narrower question — would the *same cached answer* satisfy the second
+> query — and under that reading 116 of 150 duplicate-closures are not
+> interchangeable. `faq` is the only workload where the two notions are close,
+> and it is the only workload approaching the threshold.
+>
+> **Interpretation.** This measures *construct alignment* between each corpus's
+> native label and the study's cache-substitutability label, not annotator
+> reliability. It is a genuine research finding: it says the frozen design's
+> assumption — that public duplicate-question labels are usable as semantic-cache
+> ground truth — holds much better for FAQ than for duplicate-closure or
+> short-paraphrase corpora.
+>
+> **Contingency, not a workaround.** Per the project rule on the frozen
+> documents, this is escalated rather than resolved locally. Explicitly **not**
+> done: lowering the threshold, re-annotating with labels visible, re-sampling
+> until κ clears 0.7, or switching `ground_truth_label()` back to
+> `original_label`. Options for the supervisor, in the order they preserve the
+> frozen design:
+>
+> 1. **Report κ as a finding and proceed** with `author_label` as ground truth
+>    (which is what `QueryPair.ground_truth_label()` already returns). The study's
+>    primary question — does embedding-model choice affect false-positive rates —
+>    is unaffected by which of two defensible label sets is used, as long as one
+>    is used consistently and the choice is declared.
+> 2. **Invoke Proposal Risk 1 corpus substitution** for `code` and/or `chat`
+>    (CodeSearchNet, DailyDialog), re-sample, re-annotate. Costs a second full
+>    900-pair annotation pass and does not obviously raise κ, since the same
+>    construct gap applies to any corpus not labelled for cache substitutability.
+> 3. **Restrict the SODD positive class** to a stricter subset. This changes the
+>    sampling protocol recorded above and would need re-recording here.
+>
+> Option 1 is the author's recommendation, on the grounds that the κ gap is
+> informative about the corpora rather than about the annotation, and that §8's
+> first limitation already bounds how κ may be read.
 
 ## 5. Uses
 
@@ -268,12 +402,30 @@ populated `data/raw/`.
 
 ## 7. Maintenance
 
-Maintained by the author as part of the capstone repository. Once the real
+Maintained by the author as part of the capstone repository. ~~Once the real
 900-pair dataset is committed, `data/ground_truth.csv` /
 `data/ground_truth.json` are treated as a frozen research artifact (like
-`docs/Project_Proposal.md`) — subsequent corrections should be additive
+`docs/Project_Proposal.md`)~~ — subsequent corrections should be additive
 (e.g. a documented erratum) rather than silent edits, to preserve
 reproducibility of any published results.
+
+> **Update 2026-08-04 — the struck sentence is void and must not be acted on.**
+> It predates deviation 3 in §2 and the distribution model in §6. **The real
+> 900-pair dataset is never committed, and `data/ground_truth.{csv,json}` are
+> never replaced by it.** Committing the real dataset to those paths would put
+> Quora QQP and CC BY-NC-SA SODD query text into an Apache-2.0 public repository
+> — the exact outcome the identifiers-only model exists to prevent.
+>
+> The frozen research artifact is instead the pair:
+>
+> | Path | Role |
+> |---|---|
+> | `data/ground_truth.ids.csv` | the 900 pairs as identifiers + labels — frozen; corrections additive only |
+> | `data/ground_truth.ids.meta.json` | the run manifest that makes it reconstructible — frozen with it |
+>
+> `data/ground_truth.csv` / `data/ground_truth.json` keep their existing role
+> unchanged: 15 synthetic fixture pairs, the offline default for the test suite
+> and `scripts/reproduce.sh`. They are **not** research data and are not frozen.
 
 ## 8. Known limitations
 
@@ -303,10 +455,52 @@ reproducibility of any published results.
   on the upstream corpora remaining available in the pinned snapshot. A
   checksum mismatch is reported loudly, but an upstream that disappears cannot
   be recovered from this repository.
-- **Small fixture data ships in its place today.** See `data/README.md` —
+- ~~**Small fixture data ships in its place today.** See `data/README.md` —
   `data/ground_truth.{csv,json}` currently contain only 15 synthetic
-  placeholder pairs, not the real 900.
+  placeholder pairs, not the real 900.~~
+  **Update 2026-08-04:** struck because "in its place" and "placeholder" describe
+  a temporary state that no longer exists. The synthetic fixtures are permanent
+  and intentional — the offline test and reproduction default — and the real 900
+  ship beside them as `ground_truth.ids.csv` + the rehydration script, not
+  instead of them. See §7. The only accurate part of the original bullet is that
+  `data/ground_truth.{csv,json}` hold 15 synthetic pairs, which remains true.
 
 `TODO (post data-production): add any limitations discovered while actually
 sampling/annotating (e.g. corpora language distribution, average query
 length per workload, prevalence of near-duplicate-but-not-duplicate pairs).`
+
+> **Update 2026-08-04 — answered. Limitations observed during the real run:**
+>
+> - **The corpora disagree with the study's own label definition, unevenly.**
+>   The headline limitation, quantified in §4: κ = 0.3267 overall, and in the
+>   `code` workload the author rejected 116 of 150 corpus-labelled duplicates.
+>   Any result broken down by workload must be read with this in view — the three
+>   workloads do not carry equally trustworthy ground truth.
+> - **Query length varies by more than an order of magnitude across workloads.**
+>   Median `query` length is 51 characters (faq), 41 (chat) and 600 (code), with
+>   the longest `code` post at 18,938 characters. Both study embedding models
+>   truncate at their own token limits, so the `code` workload is systematically
+>   more truncated than the other two. Some `code` differences may therefore be
+>   invisible to the encoder — a confound between workload and truncation that
+>   the frozen design does not control for, and that plausibly inflates false
+>   positives for `code` independently of embedding-model choice.
+> - **`chat` is short, informal and topic-clustered.** PIT-2015 pairs are drawn
+>   from trending-topic tweets, so many negatives share heavy lexical overlap
+>   while differing in intent — an adversarially hard negative pool by accident
+>   rather than by design. This is the near-duplicate-but-not-duplicate
+>   prevalence the original marker asked about, and it is concentrated in `chat`.
+> - **Language distribution is not verified.** All three corpora are
+>   predominantly English but none is language-filtered, and no language
+>   detection was run over the sample. Non-English pairs may be present at low
+>   frequency and are not excluded or counted.
+> - **`.gitignore` alone did not protect the licensed text.** During this run a
+>   `git stash --all` placed a hand-made backup of the annotated 900 (full query
+>   text) into `refs/stash`, where the then-current `*.csv` deny-by-default rule
+>   could not reach it, because stashing bypasses ignore rules. It was caught by
+>   `scripts/audit_release.sh` check 4 — which scans `git log --all`, including
+>   `refs/stash` — and cleared before any push; no remote ref ever contained it.
+>   The rules were then extended to `.json`, `.parquet` and `.data` under `data/`
+>   (previously only `.csv`/`.tsv` were covered, leaving the JSON half of the same
+>   dataset protected by filename alone). Recorded here because the mitigation
+>   that worked was the audit, not the ignore file, and the release process should
+>   continue to treat the audit as the gate.

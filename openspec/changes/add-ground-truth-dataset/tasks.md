@@ -108,26 +108,77 @@ as the open work this change unblocks but does not do.
 
 ## 7. Data production (author task — NOT performed by this change)
 
-- [ ] 7.1 Obtain the real Quora Question Pairs, Stack Overflow duplicate
-  questions, and ConvAI2 (or approved fallback: MS MARCO / CodeSearchNet /
+- [x] 7.1 Obtain the real Quora Question Pairs, ~~Stack Overflow duplicate
+  questions, and ConvAI2~~ (or approved fallback: MS MARCO / CodeSearchNet /
   DailyDialog) raw corpus files locally, respecting each corpus's licence
-- [ ] 7.2 If needed, perform the ConvAI2 utterance-pairing derivation step
+  — **superseded corpora, see Update 2026-08-04 below: SODD and Twitter
+  PIT-2015 were used. No fallback corpus was needed.**
+- [x] ~~7.2 If needed, perform the ConvAI2 utterance-pairing derivation step
   (raw ConvAI2 has no native duplicate-intent pair labels) documented in
-  `levy/dataset/sampling.ConvAI2Source`
-- [ ] 7.3 Run `scripts/sample_dataset.py` against the real corpus files with
+  `levy/dataset/sampling.ConvAI2Source`~~
+  — **NOT APPLICABLE.** `ConvAI2Source` no longer exists (removed by LEV-12);
+  ConvAI2 was dropped precisely because deriving these labels would mean the
+  author labelling both sides, which is not the independent comparison the
+  kappa criterion needs.
+- [x] 7.3 Run `scripts/sample_dataset.py` against the real corpus files with
   the seed, `n_per_workload=300`, and `positive_ratio` to be used for the
   released dataset; record those parameters in `data/DATASHEET.md` §3
-- [ ] 7.4 Run `scripts/annotate_dataset.py` to completion: the author's full
+- [x] 7.4 Run `scripts/annotate_dataset.py` to completion: the author's full
   blind re-annotation of all 900 pairs (original labels never shown)
-- [ ] 7.5 Run `scripts/compute_kappa.py --strict` over the completed 900-pair
+- [x] 7.5 Run `scripts/compute_kappa.py --strict` over the completed 900-pair
   set; record the overall and per-workload kappa results in
   `data/DATASHEET.md` §4 (target: overall kappa > 0.7 per the frozen S&D
-  Report)
-- [ ] 7.6 Replace the synthetic fixtures with the real dataset at
+  Report) — **run and recorded; κ = 0.3267, target NOT met.** Contingency,
+  not a code change: see 7.9 below.
+- [ ] ~~7.6 Replace the synthetic fixtures with the real dataset at
   `data/ground_truth.csv` / `data/ground_truth.json` (same filenames, same
-  schema — no downstream code change needed)
-- [ ] 7.7 Fill in the remaining `TODO (post data-production)` markers in
+  schema — no downstream code change needed)~~
+  — **CANCELLED. DO NOT DO THIS.** Doing it would commit Quora QQP and
+  CC BY-NC-SA SODD query text to an Apache-2.0 public repository. Replaced by
+  7.10 below.
+- [x] 7.7 Fill in the remaining `TODO (post data-production)` markers in
   `data/DATASHEET.md` (final counts, any fallback corpus actually used,
-  limitations discovered during real sampling/annotation)
+  limitations discovered during real sampling/annotation) — markers kept in
+  place and each answered by a dated note beside it
 - [ ] 7.8 Update Linear LEV-3: tick data-production acceptance criteria,
   set status once the real dataset is released
+
+### Update 2026-08-04 — corpora, release format, and the kappa outcome
+
+Nothing above is deleted; superseded text is struck through in place.
+
+**Corpora (7.1, 7.2).** Two of the three named corpora were replaced during
+LEV-12, recorded as deviations with rationale in `data/DATASHEET.md` §2 rather
+than resolved silently: code = **SODD** (same Stack Overflow duplicate-closure
+source, published pre-processed release) and chat = **Twitter PIT-2015**
+(ConvAI2 ships dialogues, not pair-level human same-intent labels). Supervisor
+sign-off on both is still outstanding and is tracked on LEV-11.
+
+**Release format (7.6).** The frozen design's "release the pairs as CSV + JSON"
+is not available: QQP grants no redistribution right and SODD is CC BY-NC-SA
+4.0. D2 ships as identifiers + labels + a rehydration script — deviation 3 in
+`data/DATASHEET.md` §2, mechanism in §6, the same approach as PAWS-QQP. The
+±5% replication criterion survives via checksums of the raw inputs, and the
+round-trip is verified byte-identical on the real 900.
+
+**Remaining work:**
+
+- [ ] 7.9 **Escalate the kappa result to the supervisor.** κ = 0.3267 overall
+  (faq 0.5267, code 0.2267, chat 0.2267) against a frozen bar of κ > 0.7. The
+  disagreement is systematic and one-directional — in `code`, 116 of 150
+  corpus-labelled duplicates were judged not cache-substitutable — so it
+  measures construct alignment between each corpus's native label and the
+  study's, not annotator reliability. Three contingency options and a
+  recommendation are written up in `data/DATASHEET.md` §4. Explicitly **not**
+  to be resolved by lowering the threshold, re-annotating non-blind,
+  re-sampling for agreement, or reverting `ground_truth_label()`.
+- [ ] 7.10 **Refresh `data/ground_truth.ids.csv` with the author labels**
+  (replaces the cancelled 7.6). All 900 rows of the published artifact still
+  carry an empty `author_label`, so a replicator's `ground_truth_label()` falls
+  back to `original_label` and reproduces a different study.
+  `docs/DATA_PRODUCTION.md` step 8 has the command; it writes no query text.
+- [ ] 7.11 **Fix the 20 broken tests** in `tests/test_corpus_acquisition.py`
+  (fixture corpora validated against the now-pinned production registry). Same
+  item as `add-corpus-acquisition` task 7.7.
+- [ ] 7.12 **Untrack `data/annotation_progress.json`** after 7.10 lands. Same
+  item as `add-corpus-acquisition` task 7.8.

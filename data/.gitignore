@@ -22,6 +22,31 @@
 *.csv
 *.tsv
 
+# ---------------------------------------------------------------------------
+# Update 2026-08-04 — the rule above covered only .csv/.tsv. That was a gap.
+# ---------------------------------------------------------------------------
+# `levy.dataset.io.save_dataset()` writes the working dataset in BOTH formats:
+# ground_truth.full.csv *and* ground_truth.full.json. Only the .csv side was
+# deny-by-default; the .json side was protected by its exact filename alone,
+# so `data/annotated-900.json`, `data/backup.json` or any other JSON export of
+# the same 900 pairs was NOT ignored and would have been staged by `git add .`.
+# The audit found exactly that shape of file (annotation_progress.backup.json)
+# untracked and unignored, next to an annotated-900.backup.csv that the .csv
+# rule did catch.
+#
+# The same argument applies to the raw corpus formats: a shard copied or
+# sampled OUT of raw/ into data/ (SODD parquet, PIT-2015 .data) was covered
+# only while it stayed under raw/.
+#
+# So the inversion is now extended to every data-bearing extension in this
+# directory. Same admission rule as above: to add an exception you must be
+# able to state that the file carries no third-party corpus text at all, or
+# that its text is synthetic and carries no upstream licence.
+*.json
+*.parquet
+*.parquet.gzip
+*.data
+
 # ------------------------------------------------------------------ allowed
 # 15 synthetic fixture pairs. Fabricated text, source_corpus =
 # "synthetic-fixture". No third-party licence. The offline test suite and the
@@ -33,6 +58,21 @@
 # metadata — and no query text in any column, because DistributionRecord has no
 # text fields. This is what a third party rehydrates from.
 !ground_truth.ids.csv
+
+# Added 2026-08-04 alongside the *.json rule above. Each is admissible for a
+# stated reason, not because it was already tracked:
+#
+#   ground_truth.json         the JSON twin of the 15 synthetic fixture pairs;
+#                             fabricated text, source_corpus =
+#                             "synthetic-fixture", no third-party licence.
+#   corpora.json              provenance registry — URLs, snapshots, licences,
+#                             filenames, checksums, citations. No query text.
+#   ground_truth.ids.meta.json  the sampling run manifest: seed, ratio, adapter
+#                             options, corpus snapshots, input checksums, tool
+#                             versions. No query text, by construction.
+!ground_truth.json
+!corpora.json
+!ground_truth.ids.meta.json
 
 # ------------------------------------------------- deliberately NOT allowed
 # Named here so the reasoning is on the record, not to add a rule — the
@@ -48,3 +88,40 @@
 # Anything under raw/ is already excluded by the root .gitignore
 # (`data/raw/**`), which keeps the per-corpus directories but never their
 # contents. See raw/README.md.
+#
+# Update 2026-08-04 — also deliberately NOT allowed, now covered by *.json:
+#
+#   ground_truth.full.json       the JSON half of the rehydrated working
+#                                dataset. Same corpus text as the .csv half.
+#   annotated-900.backup.json    the JSON shape of a hand-made backup. Until
+#   *.backup.json, *export*.json 2026-08-04 these were not ignored at all.
+#   annotation_progress.json     the annotation working file. It carries pair
+#                                ids and the author's labels only — no corpus
+#                                text, so this is a procedure rule, not a
+#                                licence rule (docs/DATA_PRODUCTION.md step 9:
+#                                "superseded by the labels in the ids file").
+#                                It is deliberately absent from the allow-list
+#                                above. NOTE: it was committed in e4aaa6f
+#                                before this rule existed, and .gitignore does
+#                                not untrack an already-tracked file — clearing
+#                                that needs `git rm --cached`.
+#
+# ---------------------------------------------------------------------------
+# What these rules do NOT protect against
+# ---------------------------------------------------------------------------
+# .gitignore is a staging filter. It is bypassed by:
+#
+#   git add -f <path>       explicit override
+#   git stash --all         stashes IGNORED files too, into refs/stash
+#   git stash -u            stashes untracked files
+#
+# The last two are not hypothetical: a `git stash --all` on 2026-08-04 wrote
+# data/annotated-900.backup.csv — 900 rows of Quora QQP + SODD + PIT-2015 query
+# text — into this repository's object database, where `*.csv` could not reach
+# it. Only refs/stash pointed at it and nothing was pushed, but a
+# `git push --mirror` pushes refs/stash, and a filesystem copy of .git carries
+# it regardless.
+#
+# `scripts/audit_release.sh` check 4 is the backstop that catches this class of
+# mistake, because it scans `git log --all` — which includes refs/stash — not
+# just the working tree. Run it before any release or any push of a new ref.

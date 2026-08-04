@@ -59,12 +59,52 @@
 
 ## 7. Production run
 
-- [ ] 7.1 Acquire all three corpora and pin their checksums in `data/corpora.json`
-- [ ] 7.2 Run pre-flight validation against the real corpora and resolve every finding before sampling
-- [ ] 7.3 Sample 900 pairs with `--require-real`, 300 per workload at a 0.5 positive ratio, seed 42
-- [ ] 7.4 Rehydrate and confirm the round-trip is byte-identical on the real 900-pair dataset, not only on fixtures
-- [ ] 7.5 Commit `data/ground_truth.ids.csv` and `data/ground_truth.ids.meta.json` only; confirm `git status` shows nothing under `data/raw/` and no `.full.` file
-- [ ] 7.6 Run `scripts/audit_release.sh` against the populated tree and confirm it exits zero
+- [x] 7.1 Acquire all three corpora and pin their checksums in `data/corpora.json`
+- [x] 7.2 Run pre-flight validation against the real corpora and resolve every finding before sampling
+- [x] 7.3 Sample 900 pairs with `--require-real`, 300 per workload at a 0.5 positive ratio, seed 42
+- [x] 7.4 Rehydrate and confirm the round-trip is byte-identical on the real 900-pair dataset, not only on fixtures
+- [x] 7.5 Commit `data/ground_truth.ids.csv` and `data/ground_truth.ids.meta.json` only; confirm `git status` shows nothing under `data/raw/` and no `.full.` file
+- [x] 7.6 Run `scripts/audit_release.sh` against the populated tree and confirm it exits zero
+
+### Update 2026-08-04 — 7.1–7.6 verified, with three items 7.x did not cover
+
+Verified independently, not just self-reported: all five raw files present and
+matching their pinned SHA-256; pre-flight clean; 900 pairs at seed 42 / ratio
+0.5 / 150-150 per class per workload; rehydration reproducing every field of all
+900 exactly; `audit_release.sh` 8/8. 7.5 held for the licence-bearing files —
+nothing under `data/raw/` and no `.full.` file is tracked.
+
+Three findings this section had no task for. They belong to LEV-11, not to a
+re-opening of 7.x:
+
+- [ ] 7.7 **Restore the offline test suite.** Pinning the real checksums (7.1)
+  broke 20 tests in `tests/test_corpus_acquisition.py`: they run validation over
+  `tests/fixtures/corpora/` while loading the *production* `data/corpora.json`,
+  so every fixture file now mismatches its pinned production checksum. The
+  validator is behaving correctly — the tests need their own fixture registry
+  (unpinned, or pinned to the fixture checksums) instead of `REGISTRY = REPO_ROOT
+  / "data" / "corpora.json"` (`tests/test_corpus_acquisition.py:64`). Blocks the
+  LEV-5 D1 coverage gate.
+- [ ] 7.8 **Untrack `data/annotation_progress.json`.** 7.5 said "commit these two
+  only"; a third file went in with them (`e4aaa6f`). It carries pair ids and
+  labels only — **no query text, so no licence breach** — but
+  `docs/DATA_PRODUCTION.md` step 9 lists it as never-commit. Sequence:
+  refresh the ids file with the labels first, then `git rm --cached`.
+- [x] 7.9 **Extend the deny-by-default ignore rules beyond `.csv`/`.tsv`.**
+  `save_dataset()` writes CSV *and* JSON, but only `.csv`/`.tsv` were
+  deny-by-default; `ground_truth.full.json` was protected by its exact filename
+  alone, so any other JSON export of the same 900 pairs was fully unignored.
+  Extended to `.json`, `.parquet`, `.parquet.gzip` and `.data` under `data/`, in
+  both `.gitignore` and `data/.gitignore` (kept deliberately duplicated), with
+  the three text-free JSON files named as stated exceptions.
+- [x] 7.10 **Clear licensed corpus text from `refs/stash`.** A `git stash --all`
+  during the production run wrote `data/annotated-900.backup.csv` (the annotated
+  900 *with* query text) into the object database — stashing consults no ignore
+  rule, so `*.csv` never applied. Caught by `audit_release.sh` check 4, which
+  scans `git log --all` and therefore sees `refs/stash`. No remote ref contained
+  it; cleared, and the audit now passes. `git push --mirror` would have published
+  it — recorded in `docs/DATA_PRODUCTION.md` step 9 along with the `gc` command
+  that expires the dangling objects.
 
 ## 8. Tests and documentation
 
