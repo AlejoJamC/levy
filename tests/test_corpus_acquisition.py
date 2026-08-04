@@ -16,7 +16,9 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
@@ -79,11 +81,40 @@ def _real_sources(hard_negatives: bool = False):
 
 
 def _write_registry(path: Path, mutate=None) -> Path:
+    """
+    A copy of the committed registry with **every checksum unpinned**, for use
+    against `tests/fixtures/corpora/`.
+
+    Unpinning is not incidental. The committed registry describes the real
+    corpora, and once the author has run `fetch_corpora.py --pin` it carries
+    their checksums — which the fixtures, being synthetic, will never match.
+    A test that reused those pins would be asserting that a fixture is the real
+    corpus, and would flip from passing to failing the day the author pins.
+    So the fixture registry starts unpinned, and the tests that care about
+    pinning establish it explicitly.
+    """
     raw = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    for entry in raw["corpora"].values():
+        for corpus_file in entry["files"]:
+            corpus_file["sha256"] = None
     if mutate is not None:
         mutate(raw)
     path.write_text(json.dumps(raw, indent=2) + "\n", encoding="utf-8")
     return path
+
+
+def _unpinned_registry():
+    """The committed registry as an in-memory object, with no checksums pinned."""
+    registry = load_registry(REGISTRY)
+    return replace(
+        registry,
+        entries={
+            key: replace(
+                entry, files=tuple(replace(f, sha256=None) for f in entry.files)
+            )
+            for key, entry in registry.entries.items()
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -108,9 +139,12 @@ class TestCorpusRegistry(unittest.TestCase):
                 self.assertTrue(entry.citation)
                 self.assertTrue(entry.snapshot)
                 self.assertTrue(entry.files)
-                # Nothing is pinned until the author runs a real acquisition.
+                # Whether a checksum is pinned depends on whether the author
+                # has run a real acquisition, so it is not asserted either way.
+                # What must hold is that a pin, when present, is a SHA-256.
                 for corpus_file in entry.files:
-                    self.assertIsNone(corpus_file.sha256)
+                    if corpus_file.sha256 is not None:
+                        self.assertRegex(corpus_file.sha256, r"^[0-9a-f]{64}$")
 
     def test_unknown_corpus_is_named_not_guessed(self):
         registry = load_registry(REGISTRY)
@@ -278,14 +312,14 @@ class TestChecksums(unittest.TestCase):
 class TestValidation(unittest.TestCase):
 
     def test_clean_inputs_pass_and_report_pool_sizes(self):
-        report = validate_sources(_real_sources(), n_per_workload=6, registry=load_registry(REGISTRY))
+        report = validate_sources(_real_sources(), n_per_workload=6, registry=_unpinned_registry())
         self.assertTrue(report.ok, msg=report.render())
         self.assertEqual(set(report.pools), {"faq", "code", "chat"})
         self.assertEqual(report.pools["faq"].positive_available, 10)
         self.assertTrue(report.pools["faq"].sufficient)
 
     def test_unpinned_checksums_are_notes_not_findings(self):
-        report = validate_sources(_real_sources(), n_per_workload=6, registry=load_registry(REGISTRY))
+        report = validate_sources(_real_sources(), n_per_workload=6, registry=_unpinned_registry())
         self.assertTrue(report.ok)
         self.assertTrue(any("no pinned checksum" in note for note in report.notes))
 
@@ -293,7 +327,7 @@ class TestValidation(unittest.TestCase):
         """One pass, every problem — not 'fix one, rerun, find the next'."""
         sources = _real_sources()
         sources[WORKLOAD_FAQ] = QuoraQQPSource(Path("/nonexistent/train.tsv"))
-        report = validate_sources(sources, n_per_workload=1000, registry=load_registry(REGISTRY))
+        report = validate_sources(sources, n_per_workload=1000, registry=_unpinned_registry())
 
         checks = {f.check for f in report.findings}
         workloads = {f.workload for f in report.findings}
@@ -303,7 +337,7 @@ class TestValidation(unittest.TestCase):
         self.assertEqual(workloads, {"faq", "code", "chat"})
 
     def test_pool_shortfall_reported_for_all_workloads_at_once(self):
-        report = validate_sources(_real_sources(), n_per_workload=1000, registry=load_registry(REGISTRY))
+        report = validate_sources(_real_sources(), n_per_workload=1000, registry=_unpinned_registry())
         self.assertFalse(report.ok)
         short = {f.workload for f in report.findings if f.check == CHECK_POOL}
         self.assertEqual(short, {"faq", "code", "chat"})
@@ -312,7 +346,7 @@ class TestValidation(unittest.TestCase):
     def test_cross_workload_corpus_overlap_rejected(self):
         sources = _real_sources()
         sources[WORKLOAD_CHAT] = QuoraQQPSource(QQP_TSV)  # faq's corpus, reused
-        report = validate_sources(sources, n_per_workload=4, registry=load_registry(REGISTRY))
+        report = validate_sources(sources, n_per_workload=4, registry=_unpinned_registry())
 
         overlap = [f for f in report.findings if f.check == CHECK_OVERLAP]
         self.assertEqual(len(overlap), 1)
@@ -322,7 +356,7 @@ class TestValidation(unittest.TestCase):
     def test_independent_mock_sources_are_not_an_overlap(self):
         """Three synthetic pools share a display name but not a corpus."""
         sources = {w: MockCorpusSource(w, n_candidates=20) for w in ("faq", "code", "chat")}
-        report = validate_sources(sources, n_per_workload=4, registry=load_registry(REGISTRY))
+        report = validate_sources(sources, n_per_workload=4, registry=_unpinned_registry())
         self.assertTrue(report.ok, msg=report.render())
 
     def test_unexpected_label_value_reported_not_coerced(self):
@@ -335,7 +369,7 @@ class TestValidation(unittest.TestCase):
             )
             sources = _real_sources()
             sources[WORKLOAD_FAQ] = QuoraQQPSource(bad)
-            report = validate_sources(sources, n_per_workload=4, registry=load_registry(REGISTRY))
+            report = validate_sources(sources, n_per_workload=4, registry=_unpinned_registry())
 
         labels = [f for f in report.findings if f.check == CHECK_LABELS]
         self.assertEqual(len(labels), 1)
@@ -377,12 +411,12 @@ class TestValidation(unittest.TestCase):
             thin.write_text("id\tquestion1\n1\tfixture\n", encoding="utf-8")
             sources = _real_sources()
             sources[WORKLOAD_FAQ] = QuoraQQPSource(thin)
-            report = validate_sources(sources, n_per_workload=4, registry=load_registry(REGISTRY))
+            report = validate_sources(sources, n_per_workload=4, registry=_unpinned_registry())
         self.assertTrue(any("missing columns" in f.message for f in report.findings))
 
     def test_count_pools_false_skips_the_corpus_scan(self):
         report = validate_sources(
-            _real_sources(), n_per_workload=1000, registry=load_registry(REGISTRY), count_pools=False
+            _real_sources(), n_per_workload=1000, registry=_unpinned_registry(), count_pools=False
         )
         self.assertTrue(report.ok)
         self.assertEqual(report.pools, {})
@@ -397,7 +431,7 @@ class TestValidation(unittest.TestCase):
         report = validate_sources(
             {**_real_sources(), WORKLOAD_FAQ: QuoraQQPSource(Path("/nonexistent/x.tsv"))},
             n_per_workload=4,
-            registry=load_registry(REGISTRY),
+            registry=_unpinned_registry(),
         )
         rendered = [f.render() for f in report.findings]
         self.assertTrue(any("faq/quora-qqp" in line for line in rendered))
@@ -536,9 +570,33 @@ class TestDistributionFormat(unittest.TestCase):
 # CLI: sample -> distribute -> rehydrate
 # ---------------------------------------------------------------------------
 
+_FIXTURE_REGISTRY: Path = None
+
+
+def _fixture_registry_path() -> Path:
+    """
+    An unpinned registry file on disk, for CLI subprocesses.
+
+    The CLIs default `--registry` to the committed `data/corpora.json`, whose
+    checksums describe the real corpora once the author has pinned them. Every
+    CLI test here runs against `tests/fixtures/corpora/`, so it must be handed
+    a registry that makes no claim about those checksums — see `_write_registry`.
+    """
+    global _FIXTURE_REGISTRY
+    if _FIXTURE_REGISTRY is None:
+        directory = Path(tempfile.mkdtemp(prefix="levy-fixture-registry-"))
+        _FIXTURE_REGISTRY = _write_registry(directory / "corpora.json")
+    return _FIXTURE_REGISTRY
+
+
 def _run(script: str, args, timeout: int = 120):
+    args = [str(a) for a in args]
+    # Injected rather than repeated at ~12 call sites, so a new CLI test cannot
+    # accidentally validate fixtures against the real corpora's checksums.
+    if script in {"sample_dataset.py", "rehydrate_dataset.py"} and "--registry" not in args:
+        args += ["--registry", str(_fixture_registry_path())]
     return subprocess.run(
-        [sys.executable, str(REPO_ROOT / "scripts" / script), *[str(a) for a in args]],
+        [sys.executable, str(REPO_ROOT / "scripts" / script), *args],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -763,7 +821,7 @@ class TestValidationErrorPaths(unittest.TestCase):
                 sources = _real_sources()
                 sources[WORKLOAD_FAQ] = QuoraQQPSource(unreadable)
                 report = validate_sources(
-                    sources, n_per_workload=4, registry=load_registry(REGISTRY)
+                    sources, n_per_workload=4, registry=_unpinned_registry()
                 )
             finally:
                 unreadable.chmod(0o600)

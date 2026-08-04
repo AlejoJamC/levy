@@ -59,12 +59,13 @@
 
 ## 7. Production run
 
-- [ ] 7.1 Acquire all three corpora and pin their checksums in `data/corpora.json`
-- [ ] 7.2 Run pre-flight validation against the real corpora and resolve every finding before sampling
-- [ ] 7.3 Sample 900 pairs with `--require-real`, 300 per workload at a 0.5 positive ratio, seed 42
-- [ ] 7.4 Rehydrate and confirm the round-trip is byte-identical on the real 900-pair dataset, not only on fixtures
-- [ ] 7.5 Commit `data/ground_truth.ids.csv` and `data/ground_truth.ids.meta.json` only; confirm `git status` shows nothing under `data/raw/` and no `.full.` file
-- [ ] 7.6 Run `scripts/audit_release.sh` against the populated tree and confirm it exits zero
+- [x] 7.1 Acquire all three corpora and pin their checksums in `data/corpora.json`
+- [x] 7.2 Run pre-flight validation against the real corpora and resolve every finding before sampling
+- [x] 7.3 Sample 900 pairs with `--require-real`, 300 per workload at a 0.5 positive ratio, seed 42
+- [x] 7.4 Rehydrate and confirm the round-trip is byte-identical on the real 900-pair dataset, not only on fixtures
+- [x] 7.5 Commit `data/ground_truth.ids.csv` and `data/ground_truth.ids.meta.json` only; confirm `git status` shows nothing under `data/raw/` and no `.full.` file
+  - Update 2026-08-04: `data/annotation_progress.json` is committed as well, deliberately. The word "only" was written before the annotation pass existed and aimed at the licence risk — corpus text reaching the remote. That intent holds: nothing under `data/raw/` is tracked, no `.full.` file is tracked, and the deny-by-default rules in `.gitignore` / `data/.gitignore` enforce it. The progress file carries pair ids and 0/1 labels with no query text, so tracking it is a second version-controlled copy of the 900 annotations rather than an exposure.
+- [x] 7.6 Run `scripts/audit_release.sh` against the populated tree and confirm it exits zero
 
 ## 8. Tests and documentation
 
