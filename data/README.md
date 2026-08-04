@@ -3,7 +3,25 @@
 This directory holds the ground-truth dataset for the Levy capstone study
 (Deliverable D2 — 900 annotated query pairs across 3 workloads).
 
-## Current contents are placeholders
+## ~~Current contents are placeholders~~ The fixtures are permanent, not placeholders
+
+> **Update 2026-08-04.** The heading above is struck through, not removed: it
+> was written before the real dataset existed, and "placeholder" implied the
+> fixtures would eventually be replaced. They will not be. The real 900 pairs
+> ship **beside** them as `ground_truth.ids.csv` plus the rehydration script —
+> never in place of them — because committing the query text would breach the
+> Quora and SODD licences (see `DATASHEET.md` §2 deviation 3, §6, §7).
+> `ground_truth.{csv,json}` keep their permanent role as the offline default for
+> the test suite and `scripts/reproduce.sh`. Everything the section below says
+> about *what those files contain* remains accurate.
+>
+> Status of the real dataset as of 2026-08-04: sampled (seed 42), fully
+> re-annotated (900/900), and the `author_label` column of
+> `ground_truth.ids.csv` is populated for all 900 rows — so the published
+> artifact carries the blind re-annotation, and a replicator's
+> `ground_truth_label()` uses it rather than falling back to `original_label`.
+> Cohen's κ = 0.3267, **below the frozen κ > 0.7 criterion**; that is escalated
+> as a research finding, not worked around — see `DATASHEET.md` §4.
 
 `ground_truth.csv` and `ground_truth.json` in this directory contain **15
 synthetic fixture pairs (5 per workload)**, not real data. Every row carries

@@ -297,3 +297,25 @@ data/ground_truth.full.json
 # Corpus adapter fixtures: real column structure, entirely synthetic content
 # ("fixture-" prefixed). Required by the offline test suite.
 !tests/fixtures/corpora/**/*.tsv
+
+# Update 2026-08-04 — extended beyond .csv/.tsv. `save_dataset()` writes the
+# working dataset as CSV *and* JSON, so the .json half was covered by its exact
+# filename (line 267) and nothing else; a raw shard copied out of data/raw/ was
+# covered only while it stayed there. Scoped to data/ because .json is a normal
+# source extension elsewhere. Mirrored in data/.gitignore, deliberately.
+data/**/*.json
+data/**/*.parquet
+data/**/*.parquet.gzip
+data/**/*.data
+
+# JSON twin of the fixtures, the provenance registry, the sampling manifest,
+# and the annotation progress file. None carries query text.
+!data/ground_truth.json
+!data/corpora.json
+!data/ground_truth.ids.meta.json
+!data/annotation_progress.json
+
+# These rules are a staging filter only. `git add -f`, `git stash -u` and
+# `git stash --all` bypass them — on 2026-08-04 a `git stash --all` put 900 rows
+# of corpus text into refs/stash. `scripts/audit_release.sh` check 4 is the
+# backstop: it scans `git log --all`, which includes refs/stash.

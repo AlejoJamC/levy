@@ -16,9 +16,37 @@ procedure. It covers exactly one subject — producing D2 — and nothing else:
   the frozen documents, and the dataset's known limitations are in
   [`../data/DATASHEET.md`](../data/DATASHEET.md). This file is procedure only.
 
-Work through the steps in order. Steps 1–5 can be re-run freely; they are
-idempotent and deterministic. Step 6 is the long one — 900 judgments — and is
+Work through the steps in order. ~~Steps 1–5 can be re-run freely; they are
+idempotent and deterministic.~~ Step 6 is the long one — 900 judgments — and is
 resumable.
+
+> **Update 2026-08-04 — the struck claim is only true before step 6.**
+> Steps 1–4 are re-runnable at any time. **Step 5 is not, once step 6 has
+> started:** `scripts/rehydrate_dataset.py` writes
+> `data/ground_truth.full.{csv,json}` from `ground_truth.ids.csv`, whose
+> `author_label` column is empty until step 8 — so re-running step 5 after
+> annotating overwrites the working dataset with an unlabelled copy. The labels
+> are recoverable (`data/annotation_progress.json` holds all 900 and step 6
+> re-applies them on the next run), but the working file is clobbered in the
+> meantime. To verify the round-trip after step 6, write somewhere else:
+>
+> ```bash
+> python scripts/rehydrate_dataset.py --out-csv /tmp/rt.csv --out-json /tmp/rt.json
+> ```
+
+---
+
+## Run status — Update 2026-08-04
+
+| Step | State |
+|---|---|
+| 1–3 acquire, verify, pin | done — all three corpora present, checksums pinned |
+| 4 sample 900 | done — seed 42, ratio 0.5, 300/workload |
+| 5 round-trip on real data | done — every field of all 900 matched exactly |
+| 6 blind re-annotation | done — 900 / 900 |
+| 7 Cohen's kappa | done — **κ = 0.3267, below the frozen κ > 0.7 bar**; see [`../data/DATASHEET.md`](../data/DATASHEET.md) §4 for the breakdown and the contingency options. Escalate to the supervisor; do not adjust the threshold or re-annotate non-blind. |
+| 8 refresh the ids file with your labels | done — verified 900 / 900 rows of `data/ground_truth.ids.csv` carry `author_label`, so the published D2 artifact ships the re-annotation |
+| 9 audit, then commit | done — audit passes 8/8 |
 
 ---
 
@@ -256,6 +284,22 @@ print(sum(p.author_label is not None for p in pairs), 'of', len(pairs), 'annotat
 It should print `900 of 900 annotated`. Anything less means step 6 is
 unfinished.
 
+> **Update 2026-08-04 — done.** Verified against the tracked file: 900 / 900 rows
+> of `data/ground_truth.ids.csv` carry `author_label`, so the published artifact
+> ships the blind re-annotation and a replicator's `ground_truth_label()` uses it
+> rather than falling back to `original_label`.
+>
+> Two properties of this step worth keeping on the record, because they are what
+> make it safe to re-run:
+>
+> - It is licence-safe. `save_distribution_csv` writes only the
+>   `DistributionRecord` fields, which have no query text by construction.
+> - The sidecar `ground_truth.ids.meta.json` does **not** need regenerating — it
+>   records sampling inputs, not labels.
+>
+> Re-run `scripts/audit_release.sh` afterwards, and commit
+> `data/ground_truth.ids.csv` on its own.
+
 ---
 
 ## Step 9 — Audit, then commit
@@ -286,10 +330,39 @@ git commit
 |---|---|
 | anything under `data/raw/` | Quora grants no redistribution right; SODD is CC BY-NC-SA 4.0 |
 | `data/ground_truth.full.csv` / `.json` | carries that same corpus text |
-| `data/annotation_progress.json` | working file, superseded by the labels in the ids file |
+| ~~`data/annotation_progress.json`~~ | ~~working file, superseded by the labels in the ids file~~ — **Update 2026-08-04: it IS committed, deliberately.** No query text, so no licence risk; it is a second version-controlled copy of the 900 annotations. See the archived `add-corpus-acquisition` task 7.5. |
 
 The first two are gitignored and the audit enforces the outcome, but check
 `git status` anyway — a `git add -f` would defeat both.
+
+> **Update 2026-08-04 — `git add -f` is not the only way past `.gitignore`.
+> `git stash` is.** `git stash -u` stashes untracked files and `git stash --all`
+> stashes **ignored** files too, straight into `refs/stash`, with no ignore rule
+> consulted. In this run a `git stash --all` put
+> `data/annotated-900.backup.csv` — the annotated 900 *with query text* — into
+> the object database. The `*.csv` rule was correct and simply not consulted.
+>
+> **`scripts/audit_release.sh` check 4** caught it, because it scans
+> `git log --all`, which includes `refs/stash`. No remote ref ever contained the
+> blob (`git push` and `git push --all` do not push `refs/stash`; **`git push
+> --mirror` does** — never mirror-push this repository). Cleared; audit passes 8/8.
+>
+> Practical rules that follow:
+>
+> - Treat the audit, not `.gitignore`, as the release gate. Run it before every
+>   push of a new ref, not only before a release.
+> - Prefer `git stash push -- <paths>` over `git stash --all` in this repository.
+>   Note that everything after `--` is a pathspec, so `-m "msg"` must come
+>   *before* it — `git stash push -m "msg" -- <paths>`.
+> - After dropping a stash that held corpus text, expire it for real; until then
+>   it survives as a dangling object that any copy of `.git` carries:
+>
+>   ```bash
+>   git reflog expire --expire-unreachable=now --all && git gc --prune=now
+>   ```
+>
+> - `git stash list` should be empty, or hold only stashes you have checked, before
+>   any release.
 
 ---
 
