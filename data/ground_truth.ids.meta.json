@@ -1,0 +1,166 @@
+{
+  "generated_by": "scripts/sample_dataset.py",
+  "seed": 42,
+  "n_per_workload": 300,
+  "positive_ratio": 0.5,
+  "n_pairs": 900,
+  "normalisation_rule": "stdlib html.parser: tags dropped, text content kept (including inside <code>/<pre>), block-level tags emit one space, entities unescaped, whitespace runs collapsed to a single space, result stripped",
+  "workloads": {
+    "faq": {
+      "corpus": "quora-qqp",
+      "adapter": "QuoraQQPSource",
+      "synthetic": false,
+      "options": {},
+      "label_mapping": {
+        "positive": [
+          1
+        ],
+        "negative": [
+          0
+        ],
+        "domain": [
+          0,
+          1
+        ]
+      },
+      "files": [
+        {
+          "filename": "train.tsv",
+          "sha256": "2073b2c5f824f278ae388398846f0d10b3aedc1ade82ebec5c481be7fd92bf26"
+        }
+      ],
+      "n_pairs": 300
+    },
+    "code": {
+      "corpus": "sodd",
+      "adapter": "SODDSource",
+      "synthetic": false,
+      "options": {
+        "hard_negatives": false,
+        "shards": [
+          "SODD_train.parquet.gzip",
+          "SODD_dev.parquet.gzip"
+        ],
+        "normalisation": "stdlib html.parser: tags dropped, text content kept (including inside <code>/<pre>), block-level tags emit one space, entities unescaped, whitespace runs collapsed to a single space, result stripped"
+      },
+      "label_mapping": {
+        "positive": [
+          0
+        ],
+        "negative": [
+          3
+        ],
+        "domain": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "files": [
+        {
+          "filename": "SODD_train.parquet.gzip",
+          "sha256": "74b68fb846ce4620b5cc2032cbb4c9104c82e50b890ed0227f0acaac4d28d643"
+        },
+        {
+          "filename": "SODD_dev.parquet.gzip",
+          "sha256": "5d9bae32bf817883d0d1e8c409479f90f6aba17dec7ccee9ea211bc8a75b8bda"
+        }
+      ],
+      "n_pairs": 300
+    },
+    "chat": {
+      "corpus": "twitter-pit2015",
+      "adapter": "TwitterPIT2015Source",
+      "synthetic": false,
+      "options": {
+        "splits": [
+          "train",
+          "dev"
+        ]
+      },
+      "label_mapping": {
+        "positive": [
+          3,
+          4,
+          5
+        ],
+        "negative": [
+          0,
+          1
+        ],
+        "domain": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "files": [
+        {
+          "filename": "train.data",
+          "sha256": "c14111f8c864e13c826c3a19dabf449759acb1541ce9914d160b2eb1199cc93b"
+        },
+        {
+          "filename": "dev.data",
+          "sha256": "0169127ac96b8225b183b068e67f47999495ccbf83ad4a4d640694ff780a195d"
+        }
+      ],
+      "n_pairs": 300
+    }
+  },
+  "corpora": {
+    "quora-qqp": {
+      "title": "Quora Question Pairs",
+      "snapshot": "Kaggle competition release, 2017",
+      "canonical_url": "https://www.kaggle.com/competitions/quora-question-pairs/data",
+      "licence": "Quora Terms of Service - non-commercial research use, no redistribution grant",
+      "files": [
+        {
+          "filename": "train.tsv",
+          "sha256": "2073b2c5f824f278ae388398846f0d10b3aedc1ade82ebec5c481be7fd92bf26"
+        }
+      ]
+    },
+    "sodd": {
+      "title": "SODD - Stack Overflow Duplicity Dataset",
+      "snapshot": "MQDD release; derived from the archive.org Stack Overflow dump of June 2020",
+      "canonical_url": "https://github.com/kiv-air/StackOverflowDataset",
+      "licence": "CC BY-NC-SA 4.0",
+      "files": [
+        {
+          "filename": "SODD_train.parquet.gzip",
+          "sha256": "74b68fb846ce4620b5cc2032cbb4c9104c82e50b890ed0227f0acaac4d28d643"
+        },
+        {
+          "filename": "SODD_dev.parquet.gzip",
+          "sha256": "5d9bae32bf817883d0d1e8c409479f90f6aba17dec7ccee9ea211bc8a75b8bda"
+        }
+      ]
+    },
+    "twitter-pit2015": {
+      "title": "Twitter Paraphrase Corpus (SemEval-2015 Task 1, PIT)",
+      "snapshot": "SemEval-2015 shared-task release, cocoxu/SemEval-PIT2015 master branch",
+      "canonical_url": "https://github.com/cocoxu/SemEval-PIT2015",
+      "licence": "SemEval-2015 Task 1 shared-task release, research use; see the repository for the organisers' terms",
+      "files": [
+        {
+          "filename": "train.data",
+          "sha256": "c14111f8c864e13c826c3a19dabf449759acb1541ce9914d160b2eb1199cc93b"
+        },
+        {
+          "filename": "dev.data",
+          "sha256": "0169127ac96b8225b183b068e67f47999495ccbf83ad4a4d640694ff780a195d"
+        }
+      ]
+    }
+  },
+  "tool_versions": {
+    "python": "3.10.19",
+    "pyarrow": "23.0.1",
+    "pandas": "2.3.3"
+  }
+}

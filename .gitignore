@@ -265,3 +265,35 @@ data/raw/**
 # artifact is data/ground_truth.ids.csv plus its sidecar.
 data/ground_truth.full.csv
 data/ground_truth.full.json
+
+# ===========================================================================
+# DENY-BY-DEFAULT FOR TABULAR DATA FILES
+# ===========================================================================
+# Ignoring dangerous files by name has already proved insufficient: a file
+# named anything other than the two above (a backup, an export, a scratch
+# copy) carries the same licensed corpus text and would be staged by
+# `git add .`. So the rule is inverted — EVERY .csv and .tsv in this
+# repository is ignored, and only files proven safe to publish are named as
+# exceptions below.
+#
+# To add an exception you must be able to state why the file is publishable:
+#   - it contains no third-party corpus text at all, or
+#   - its text is synthetic and carries no upstream licence.
+# If you cannot state that, it does not go on the list.
+*.csv
+*.tsv
+
+# The 15 synthetic fixture pairs. Fabricated text ("fixture-account",
+# "fixture-lang"), source_corpus="synthetic-fixture" — no third-party licence.
+# The offline test suite and scripts/reproduce.sh defaults depend on it.
+!data/ground_truth.csv
+
+# The published D2 artifact: pair ids, workload, source corpus, source pair id
+# and labels. No query text in any column, by construction — DistributionRecord
+# has no text fields, and scripts/audit_release.sh fails the build if a tracked
+# file ever carries corpus text.
+!data/ground_truth.ids.csv
+
+# Corpus adapter fixtures: real column structure, entirely synthetic content
+# ("fixture-" prefixed). Required by the offline test suite.
+!tests/fixtures/corpora/**/*.tsv

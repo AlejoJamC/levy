@@ -5,9 +5,7 @@ Capability: the reproducibility surface of the public artefact — a literal rep
 ## Purpose
 
 Package the released system as a reproducible public artefact per the frozen specification's deliverables: a literal, verbatim-executable reproduction guide covering environment setup, dataset build, the 30-configuration harness sweep, the statistical analysis bundle, and the replication check — offline by default against the committed fixture dataset and mock providers, and dataset-agnostic so the real dataset drops in via a single argument change with no other steps or code changes; a one-command containerised path that runs the same pipeline end-to-end with no API key and no network, built from the repository's single dependency specification, alongside the pre-existing Redis service left intact; a single shared definition of the pipeline so the guide and the container entry point cannot silently diverge; user-facing architecture documentation that traces the shipped code back to the frozen specification's named components; release documentation, archived OpenSpec changes, and synced capability specs that describe only what has actually shipped, free of in-flight ticket scaffolding, validated end-to-end; a recorded, re-runnable release audit that checks licensing, tracked and historical secrets, and personal-data exposure and fails loudly on any finding; and honest handling of runnable examples and superseded documents, with the frozen specification documents left untouched.
-
 ## Requirements
-
 ### Requirement: Literal reproduction guide
 The repository SHALL contain a step-by-step reproduction guide covering environment setup, dataset build, the 30-configuration harness run, the analysis bundle, and the replication check, written as commands that can be executed verbatim, defaulting to the committed fixture dataset and mock providers so it requires no API key and no network.
 
@@ -74,7 +72,7 @@ Completed change proposals SHALL be archived and their capability specifications
 - **THEN** it remains in-flight rather than being archived
 
 ### Requirement: Recorded, re-runnable release audit
-The repository SHALL provide an executable audit that verifies the licence is present, no secret file is tracked, no secret was introduced anywhere in git history, and no personal or sensitive data is present in code or data; it SHALL exit non-zero on any finding.
+The repository SHALL provide an executable audit that verifies the licence is present, no secret file is tracked, no secret was introduced anywhere in git history, no personal or sensitive data is present in code or data, and no tracked file contains third-party corpus text; it SHALL exit non-zero on any finding. The corpus-text check SHALL be an enforced gate rather than a documented expectation, and its failure path SHALL be verified.
 
 #### Scenario: Clean repository passes
 - **WHEN** the audit runs against the current repository
@@ -83,6 +81,14 @@ The repository SHALL provide an executable audit that verifies the licence is pr
 #### Scenario: Introduced secret fails the audit
 - **WHEN** a secret-shaped value is present in the working tree or history
 - **THEN** the audit exits non-zero and identifies the finding
+
+#### Scenario: Committed corpus text fails the audit
+- **WHEN** a tracked file contains query text drawn from a third-party corpus
+- **THEN** the audit exits non-zero and identifies the offending file
+
+#### Scenario: Synthetic fixtures pass the corpus-text check
+- **WHEN** the audit runs with the committed synthetic fixture dataset present
+- **THEN** the corpus-text check passes, because synthetic text carries no third-party licence
 
 ### Requirement: Examples and superseded documents handled honestly
 Runnable examples SHALL be verified as part of release review, any example that incurs real API cost SHALL be documented as opt-in and excluded from automated paths, and superseded or historical documents SHALL be flagged in place — frozen documents SHALL NOT be modified.
@@ -94,3 +100,4 @@ Runnable examples SHALL be verified as part of release review, any example that 
 #### Scenario: Historical document flagged, frozen documents untouched
 - **WHEN** superseded documentation is identified
 - **THEN** it carries an in-place status note, and the frozen specification documents remain byte-identical
+
