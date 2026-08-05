@@ -430,12 +430,21 @@ implied by the spec, not bugs:
    compares against); D2 released as **identifiers + labels + a rehydration script**
    rather than as query text, because QQP grants no redistribution right (the
    PAWS-QQP approach; the ±5% criterion is preserved through input checksums).
-   **Still open (author task, tracked in `openspec/changes/add-corpus-acquisition/tasks.md`
-   §7 and `add-ground-truth-dataset/tasks.md` §7):** acquiring the three corpora and
-   pinning their checksums, the real 900-pair sample, the author's blind
-   re-annotation of all 900 pairs, and the final Cohen's kappa result. The synthetic
-   fixtures in `data/ground_truth.{csv,json}` are **not** replaced — they stay as the
-   offline default; the real dataset lives in the gitignored `.full.` files.
+   **Data production complete (2026-08-04).** All three corpora acquired and their
+   checksums pinned; 900 pairs sampled at seed 42 / `positive_ratio` 0.5 (150-150 per
+   class per workload); rehydration verified byte-identical on the real 900; the
+   author's blind re-annotation finished 900/900 and published in
+   `data/ground_truth.ids.csv`'s `author_label` column. **Cohen's kappa = 0.3267
+   (faq 0.5267, code 0.2267, chat 0.2267) — below the frozen κ > 0.7 criterion.**
+   That is a research-scope finding to escalate, not a defect to code around: the
+   corpora's positive classes ("closed as a duplicate", "3+ of 5 crowdworkers called
+   it a paraphrase") are looser than the study's cache-substitutability label. Do
+   **not** lower the threshold, re-annotate non-blind, re-sample for agreement, or
+   revert `ground_truth_label()`. Breakdown and contingency options: `data/DATASHEET.md`
+   §4. The synthetic fixtures in `data/ground_truth.{csv,json}` are **not** replaced —
+   they stay as the permanent offline default; the real dataset lives in the gitignored
+   `.full.` files, rebuilt by `scripts/rehydrate_dataset.py`. **Still open:** the D3
+   production run (LEV-11 steps 9–12) and the supervisor conversation.
 7. ~~**pytest declared but not installed**~~ — **Resolved (LEV-5).** `pytest` and
    `pytest-cov` are installed in the `levy` conda env (`environment.yml`, conda-forge)
    and mirrored in `pyproject.toml` `[dev]` extras. pytest is the canonical runner;
@@ -529,12 +538,11 @@ edits:
 
 - `openspec/specs/` — living capability specs (the working spec layer, built *on
   top of* the frozen university docs; they must never contradict the frozen
-  research scope). Currently **10 capabilities**, one per shipped capability:
+  research scope). Currently **11 capabilities**, one per shipped capability:
   `embedding-management`, `vector-store`, `ground-truth-dataset`,
   `experiment-harness`, `test-infrastructure`, `anthropic-connector`,
   `api-router`, `statistical-analysis`, `release-packaging`,
-  `results-dashboard`. An eleventh, `corpus-acquisition`, is written as a delta
-  under `add-corpus-acquisition` and syncs into `openspec/specs/` on archive.
+  `results-dashboard`, `corpus-acquisition`.
   **Main specs use main-spec structure** — `# <name> Specification`, a
   `Capability:` line, `## Purpose`, `## Requirements` — *never* delta headers
   (`## ADDED Requirements`) and never a `TBD` Purpose. `openspec archive` creates
@@ -545,10 +553,11 @@ edits:
   Archived so far: `add-embedding-manager`, `add-faiss-vector-store`,
   `add-experiment-harness`, `add-test-infrastructure`, `add-anthropic-connector`,
   `add-fastapi-router`, `add-statistical-analysis`, `add-release-packaging`,
-  `add-results-dashboard`. **Still in flight:** `add-ground-truth-dataset` and
-  `add-corpus-acquisition` — both shipped their tooling, but each has an open
-  §7 that is an author data-production task (the real 900-pair sample, the
-  blind re-annotation, the kappa result), so the changes stay in flight.
+  `add-results-dashboard`, `add-corpus-acquisition` (2026-08-04),
+  `add-ground-truth-dataset` (2026-08-05). **No changes are in flight** —
+  `openspec list` reports none. The remaining D2/D3 work (LEV-11 steps 9–12) is a
+  production run of already-shipped tooling, so it produces result artifacts rather
+  than capability changes and correctly has no OpenSpec change of its own.
 - `openspec/config.yaml` — project context injected into artifact generation.
 - Slash commands (in `.claude/commands/opsx/`): `/opsx:propose` (create change +
   artifacts), `/opsx:apply` (implement tasks), `/opsx:archive` (finish + update
@@ -569,7 +578,7 @@ Release (2026-11-02).
 |---|---|---|---|
 | LEV-1 | `add-embedding-manager` | Urgent | archived |
 | LEV-2 | `add-faiss-vector-store` | Urgent | archived |
-| LEV-3 | `add-ground-truth-dataset` | Urgent | **in flight** — tooling shipped, §7 real-data production open |
+| LEV-3 | `add-ground-truth-dataset` | Urgent | archived (2026-08-05) |
 | LEV-4 | `add-experiment-harness` | Urgent | archived |
 | LEV-5 | `add-test-infrastructure` | Urgent | archived |
 | LEV-6 | `add-anthropic-connector` | High | archived |
@@ -577,8 +586,8 @@ Release (2026-11-02).
 | LEV-8 | `add-statistical-analysis` | High | archived |
 | LEV-9 | `add-release-packaging` | Medium | archived |
 | LEV-10 | `add-results-dashboard` | Low (desirable) | archived |
-| LEV-11 | — (production run: real dataset + published D2/D3 outputs) | — | not started |
-| LEV-12 | `add-corpus-acquisition` | High | **in flight** — code shipped, §7 real acquisition + sampling open |
+| LEV-11 | — (production run: real dataset + published D2/D3 outputs) | Urgent | **in progress** — D2 done (κ = 0.3267, below the 0.7 bar); D3 run (steps 9–12) open |
+| LEV-12 | `add-corpus-acquisition` | High | archived (2026-08-04) |
 
 Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 feeding LEV-11.
 When an OpenSpec change is created or archived, reference its Linear issue

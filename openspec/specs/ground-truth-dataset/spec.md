@@ -16,11 +16,14 @@ re-annotation flow that never reveals the original label, and Cohen's kappa with
 documented edge-case behaviour — all exercisable offline through command-line entry
 points.
 
-**Scope note.** These requirements cover the tooling, which has shipped. Producing the
-real 900-pair dataset — obtaining the source corpora, the author's full blind
-re-annotation, and the final kappa result — is an author data-production task tracked in
-`openspec/changes/add-ground-truth-dataset/tasks.md` section 7, which is why that change
-remains in flight while this capability is specified here.
+**Scope note.** These requirements cover the tooling. Producing the real 900-pair
+dataset — obtaining the source corpora, the author's full blind re-annotation, and the
+kappa result — was an author data-production task, completed 2026-08-04 and recorded in
+`data/DATASHEET.md`; the change that specified this capability is archived under
+`openspec/changes/archive/2026-08-05-add-ground-truth-dataset/`. The dataset's content is
+still not a spec requirement: this capability specifies the platform, and the dataset it
+produced is a research artifact described by its datasheet.
+
 ## Requirements
 ### Requirement: Query pair schema and validation
 The system SHALL represent each ground-truth record as a `QueryPair` with
