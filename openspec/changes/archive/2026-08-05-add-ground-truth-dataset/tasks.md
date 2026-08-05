@@ -108,26 +108,38 @@ as the open work this change unblocks but does not do.
 
 ## 7. Data production (author task — NOT performed by this change)
 
-- [ ] 7.1 Obtain the real Quora Question Pairs, Stack Overflow duplicate
-  questions, and ConvAI2 (or approved fallback: MS MARCO / CodeSearchNet /
+- [x] 7.1 Obtain the real Quora Question Pairs, ~~Stack Overflow duplicate
+  questions, and ConvAI2~~ (or approved fallback: MS MARCO / CodeSearchNet /
   DailyDialog) raw corpus files locally, respecting each corpus's licence
-- [ ] 7.2 If needed, perform the ConvAI2 utterance-pairing derivation step
+  — used SODD and Twitter PIT-2015; no fallback needed.
+- [x] ~~7.2 If needed, perform the ConvAI2 utterance-pairing derivation step
   (raw ConvAI2 has no native duplicate-intent pair labels) documented in
-  `levy/dataset/sampling.ConvAI2Source`
-- [ ] 7.3 Run `scripts/sample_dataset.py` against the real corpus files with
+  `levy/dataset/sampling.ConvAI2Source`~~ — N/A, `ConvAI2Source` was removed.
+- [x] 7.3 Run `scripts/sample_dataset.py` against the real corpus files with
   the seed, `n_per_workload=300`, and `positive_ratio` to be used for the
   released dataset; record those parameters in `data/DATASHEET.md` §3
-- [ ] 7.4 Run `scripts/annotate_dataset.py` to completion: the author's full
+- [x] 7.4 Run `scripts/annotate_dataset.py` to completion: the author's full
   blind re-annotation of all 900 pairs (original labels never shown)
-- [ ] 7.5 Run `scripts/compute_kappa.py --strict` over the completed 900-pair
+- [x] 7.5 Run `scripts/compute_kappa.py --strict` over the completed 900-pair
   set; record the overall and per-workload kappa results in
   `data/DATASHEET.md` §4 (target: overall kappa > 0.7 per the frozen S&D
-  Report)
-- [ ] 7.6 Replace the synthetic fixtures with the real dataset at
+  Report) — **κ = 0.3267, target NOT met.** Recorded in `data/DATASHEET.md` §4
+  with the per-workload breakdown and the contingency options.
+- [x] ~~7.6 Replace the synthetic fixtures with the real dataset at
   `data/ground_truth.csv` / `data/ground_truth.json` (same filenames, same
-  schema — no downstream code change needed)
-- [ ] 7.7 Fill in the remaining `TODO (post data-production)` markers in
+  schema — no downstream code change needed)~~
+  — **CANCELLED:** would commit QQP + CC BY-NC-SA SODD text to a public
+  Apache-2.0 repo. D2 ships as identifiers + labels instead.
+- [x] 7.7 Fill in the remaining `TODO (post data-production)` markers in
   `data/DATASHEET.md` (final counts, any fallback corpus actually used,
   limitations discovered during real sampling/annotation)
-- [ ] 7.8 Update Linear LEV-3: tick data-production acceptance criteria,
-  set status once the real dataset is released
+- [x] ~~7.8 Update Linear LEV-3: tick data-production acceptance criteria,
+  set status once the real dataset is released~~ — **N/A (2026-08-04).** Written
+  before LEV-3 was re-scoped to platform-only on 2026-07-10 and closed the same
+  day. LEV-3 has no data-production acceptance criteria left to tick (they moved
+  to LEV-11) and is already Done. The tick-and-close happened on LEV-11.
+
+### Update 2026-08-04
+
+Corpora substituted (code = SODD, chat = Twitter PIT-2015) and D2 released as
+identifiers + labels, not query text. Rationale: `data/DATASHEET.md` §2.

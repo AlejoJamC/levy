@@ -22,6 +22,15 @@
 *.csv
 *.tsv
 
+# Update 2026-08-04 — extended beyond .csv/.tsv. `save_dataset()` writes the
+# working dataset as CSV *and* JSON, so the .json half was protected by its
+# exact filename alone; a raw shard copied out of raw/ was covered only while
+# it stayed there.
+*.json
+*.parquet
+*.parquet.gzip
+*.data
+
 # ------------------------------------------------------------------ allowed
 # 15 synthetic fixture pairs. Fabricated text, source_corpus =
 # "synthetic-fixture". No third-party licence. The offline test suite and the
@@ -33,6 +42,13 @@
 # metadata — and no query text in any column, because DistributionRecord has no
 # text fields. This is what a third party rehydrates from.
 !ground_truth.ids.csv
+
+# Added 2026-08-04: JSON twin of the fixtures, the provenance registry, and the
+# sampling manifest. None carries query text.
+!ground_truth.json
+!corpora.json
+!ground_truth.ids.meta.json
+!annotation_progress.json
 
 # ------------------------------------------------- deliberately NOT allowed
 # Named here so the reasoning is on the record, not to add a rule — the
@@ -48,3 +64,10 @@
 # Anything under raw/ is already excluded by the root .gitignore
 # (`data/raw/**`), which keeps the per-corpus directories but never their
 # contents. See raw/README.md.
+#
+# Update 2026-08-04 — same for ground_truth.full.json, *.backup.json and
+# *export*.json, now covered by *.json.
+#
+# These rules are a staging filter only: `git add -f`, `git stash -u` and
+# `git stash --all` all bypass them. `scripts/audit_release.sh` check 4 is the
+# backstop — it scans `git log --all`, which includes refs/stash.

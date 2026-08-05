@@ -418,7 +418,9 @@ with zero external dependencies against the committed synthetic fixture
 (`data/ground_truth.csv`). Mock embeddings are text-hashed random vectors and
 don't capture semantic similarity — this validates the machinery, not
 research results; a real run needs `sentence-transformers` and the real
-900-pair dataset (not yet delivered).
+900-pair dataset, which is published as `data/ground_truth.ids.csv` and
+reconstructed locally with `scripts/rehydrate_dataset.py` (see
+[`docs/REPRODUCTION.md`](docs/REPRODUCTION.md)).
 
 ## Statistical analysis
 

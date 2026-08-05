@@ -43,8 +43,13 @@ freely as long as they don't rewrite the submitted documents.
 - **Success criteria:** measurable precision differences between models; hit rate
   **> 30%** for economic viability; replication within ±5%.
 - **Dataset:** 900 query pairs (300 per workload) from public human-annotated
-  corpora (Quora Question Pairs, Stack Overflow duplicates, ConvAI2) with the
-  author's blind re-annotation. Not yet present in the repo.
+  corpora with the author's blind re-annotation. **Produced 2026-08-04.** The
+  corpora actually used are Quora Question Pairs, **SODD** and **Twitter
+  PIT-2015** — the frozen docs name Stack Overflow duplicates and ConvAI2; both
+  substitutions are recorded as deviations in `data/DATASHEET.md` §2. Published as
+  `data/ground_truth.ids.csv` (identifiers + labels, no query text — licence
+  constraint); the query text is never committed and is rebuilt locally by
+  `scripts/rehydrate_dataset.py`.
 - **Target stack (per spec):** FastAPI router, sentence-transformers embeddings,
   Faiss HNSW index, Anthropic SDK backend, scipy/numpy/pandas/scikit-learn,
   pytest. Licence: Apache 2.0.
@@ -127,10 +132,10 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   non-retryable propagation, refusal handling (incl. engine end-to-end — nothing
   cached), budget-guard halt + spend visibility, engine wiring end-to-end. Fully
   offline via `httpx.MockTransport` injected as the SDK's `http_client`.
-- `tests/test_embedding_manager.py` — 20 unit tests for `EmbeddingManager`: runtime
+- `tests/test_embedding_manager.py` — 27 unit tests for `EmbeddingManager`: runtime
   model switching, alias resolution, memoization, dimension/identity exposure, prefix
   handling, and default config validation. All offline (injected mock clients).
-- `tests/test_vector_index.py` — 19 unit tests for `VectorIndex` + `SemanticCache`:
+- `tests/test_vector_index.py` — 27 unit tests for `VectorIndex` + `SemanticCache`:
   add/search/reset/size, L2 normalization, zero-vector guard, similarity transform +
   threshold decisions, id→entry resolution, Faiss↔brute-force agreement (skipped
   when Faiss absent), engine end-to-end semantic cache hit/miss.
@@ -215,7 +220,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   factory, sampling determinism/stratification, blind annotation (blindness, resume,
   no-overwrite), Cohen's kappa (perfect/chance/worked/degenerate cases), and CLI smoke
   tests against the `data/` fixtures. All offline.
-- `tests/test_corpus_acquisition.py` (LEV-12) — 74 unit tests: provenance-registry
+- `tests/test_corpus_acquisition.py` (LEV-12) — 79 unit tests: provenance-registry
   reader (every malformed-registry path), checksum pinning, the validation report
   (two simultaneous problems both reported, pool shortfall across all three workloads
   at once, cross-workload overlap, out-of-domain label, checksum mismatch, nothing
@@ -248,9 +253,9 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   path (default `data/ground_truth.csv`), output directory, `--models/--workloads/
   --thresholds` grid-subset flags for smoke runs, `--embedding-provider` (default
   `mock`, fully offline against the synthetic fixture; pass `sentence-transformers` for
-  a real study run once LEV-11 lands). Non-zero exit on a sanity-check failure.
+  the real study run, which is LEV-13). Non-zero exit on a sanity-check failure.
 - `tests/test_experiment_config.py`, `test_experiment_metrics.py`,
-  `test_experiment_replay.py`, `test_experiment_runner.py` — 37 unit tests for
+  `test_experiment_replay.py`, `test_experiment_runner.py` — 32 unit tests for
   `levy/experiment/`: grid enumeration/uniqueness, hand-computed metrics + zero-division
   + sanity-check violations, replay outcomes (TP/FP/TN/FN via a scripted embedding
   manager, exact-duplicate via the exact cache, cross-pair cache accumulation, fresh
@@ -410,8 +415,8 @@ implied by the spec, not bugs:
    `QueryPair.ground_truth_label()`, and precision/recall/F0.5/FPR/hit-rate computation
    with zero-division-safe formulas and sanity checks. `scripts/run_experiments.py`
    drives the full grid (or a subset) fully offline via the mock LLM; results are
-   validated against the committed 15-pair synthetic fixture only — a real run still
-   needs LEV-11's 900-pair dataset and `sentence-transformers` providers.
+   validated against the committed 15-pair synthetic fixture only — the real run over
+   LEV-11's 900-pair dataset with `sentence-transformers` providers is LEV-13.
 5. ~~**Embedding defaults don't match the study**~~ — **Resolved (LEV-1).**
    `LevyConfig` now defaults to `sentence-transformers` / `all-MiniLM-L6-v2`;
    `EmbeddingManager` supports runtime switching to `modernbert`
@@ -430,12 +435,24 @@ implied by the spec, not bugs:
    compares against); D2 released as **identifiers + labels + a rehydration script**
    rather than as query text, because QQP grants no redistribution right (the
    PAWS-QQP approach; the ±5% criterion is preserved through input checksums).
-   **Still open (author task, tracked in `openspec/changes/add-corpus-acquisition/tasks.md`
-   §7 and `add-ground-truth-dataset/tasks.md` §7):** acquiring the three corpora and
-   pinning their checksums, the real 900-pair sample, the author's blind
-   re-annotation of all 900 pairs, and the final Cohen's kappa result. The synthetic
-   fixtures in `data/ground_truth.{csv,json}` are **not** replaced — they stay as the
-   offline default; the real dataset lives in the gitignored `.full.` files.
+   **Data production complete (2026-08-04).** All three corpora acquired and their
+   checksums pinned; 900 pairs sampled at seed 42 / `positive_ratio` 0.5 (150-150 per
+   class per workload); rehydration verified byte-identical on the real 900; the
+   author's blind re-annotation finished 900/900 and published in
+   `data/ground_truth.ids.csv`'s `author_label` column. **Cohen's kappa = 0.3267
+   (faq 0.5267, code 0.2267, chat 0.2267) — below the frozen κ > 0.7 criterion.**
+   That is a research-scope finding to escalate, not a defect to code around: the
+   corpora's positive classes ("closed as a duplicate", "3+ of 5 crowdworkers called
+   it a paraphrase") are looser than the study's cache-substitutability label. Do
+   **not** lower the threshold, re-annotate non-blind, re-sample for agreement, or
+   revert `ground_truth_label()`. Breakdown and contingency options: `data/DATASHEET.md`
+   §4. The synthetic fixtures in `data/ground_truth.{csv,json}` are **not** replaced —
+   they stay as the permanent offline default; the real dataset lives in the gitignored
+   `.full.` files, rebuilt by `scripts/rehydrate_dataset.py`. **Still open, and now
+   tracked in LEV-13, not LEV-11:** the D3 production run (harness → analysis →
+   replication on the real 900) and the supervisor conversation, which batches the κ
+   shortfall, the hit-rate viability result, and sign-off on the two corpus
+   substitutions. LEV-11 closes on D2 alone.
 7. ~~**pytest declared but not installed**~~ — **Resolved (LEV-5).** `pytest` and
    `pytest-cov` are installed in the `levy` conda env (`environment.yml`, conda-forge)
    and mirrored in `pyproject.toml` `[dev]` extras. pytest is the canonical runner;
@@ -529,12 +546,11 @@ edits:
 
 - `openspec/specs/` — living capability specs (the working spec layer, built *on
   top of* the frozen university docs; they must never contradict the frozen
-  research scope). Currently **10 capabilities**, one per shipped capability:
+  research scope). Currently **11 capabilities**, one per shipped capability:
   `embedding-management`, `vector-store`, `ground-truth-dataset`,
   `experiment-harness`, `test-infrastructure`, `anthropic-connector`,
   `api-router`, `statistical-analysis`, `release-packaging`,
-  `results-dashboard`. An eleventh, `corpus-acquisition`, is written as a delta
-  under `add-corpus-acquisition` and syncs into `openspec/specs/` on archive.
+  `results-dashboard`, `corpus-acquisition`.
   **Main specs use main-spec structure** — `# <name> Specification`, a
   `Capability:` line, `## Purpose`, `## Requirements` — *never* delta headers
   (`## ADDED Requirements`) and never a `TBD` Purpose. `openspec archive` creates
@@ -545,10 +561,11 @@ edits:
   Archived so far: `add-embedding-manager`, `add-faiss-vector-store`,
   `add-experiment-harness`, `add-test-infrastructure`, `add-anthropic-connector`,
   `add-fastapi-router`, `add-statistical-analysis`, `add-release-packaging`,
-  `add-results-dashboard`. **Still in flight:** `add-ground-truth-dataset` and
-  `add-corpus-acquisition` — both shipped their tooling, but each has an open
-  §7 that is an author data-production task (the real 900-pair sample, the
-  blind re-annotation, the kappa result), so the changes stay in flight.
+  `add-results-dashboard`, `add-corpus-acquisition` (2026-08-04),
+  `add-ground-truth-dataset` (2026-08-05). **No changes are in flight** —
+  `openspec list` reports none. The remaining D3 work (LEV-13) is a production run of
+  already-shipped tooling, so it produces result artifacts rather than capability
+  changes and correctly has no OpenSpec change of its own.
 - `openspec/config.yaml` — project context injected into artifact generation.
 - Slash commands (in `.claude/commands/opsx/`): `/opsx:propose` (create change +
   artifacts), `/opsx:apply` (implement tasks), `/opsx:archive` (finish + update
@@ -569,7 +586,7 @@ Release (2026-11-02).
 |---|---|---|---|
 | LEV-1 | `add-embedding-manager` | Urgent | archived |
 | LEV-2 | `add-faiss-vector-store` | Urgent | archived |
-| LEV-3 | `add-ground-truth-dataset` | Urgent | **in flight** — tooling shipped, §7 real-data production open |
+| LEV-3 | `add-ground-truth-dataset` | Urgent | archived (2026-08-05) |
 | LEV-4 | `add-experiment-harness` | Urgent | archived |
 | LEV-5 | `add-test-infrastructure` | Urgent | archived |
 | LEV-6 | `add-anthropic-connector` | High | archived |
@@ -577,10 +594,14 @@ Release (2026-11-02).
 | LEV-8 | `add-statistical-analysis` | High | archived |
 | LEV-9 | `add-release-packaging` | Medium | archived |
 | LEV-10 | `add-results-dashboard` | Low (desirable) | archived |
-| LEV-11 | — (production run: real dataset + published D2/D3 outputs) | — | not started |
-| LEV-12 | `add-corpus-acquisition` | High | **in flight** — code shipped, §7 real acquisition + sampling open |
+| LEV-11 | — (D2 data production: real dataset + published D2 artifact) | Urgent | **complete** — 900 pairs published as ids + labels; κ = 0.3267, below the 0.7 bar, recorded as a finding |
+| LEV-12 | `add-corpus-acquisition` | High | archived (2026-08-04) |
+| LEV-13 | — (D3 production run: 30 configurations + analysis + ±5% replication) | Urgent | **open** — split out of LEV-11 on 2026-08-05 so D2 could close |
 
-Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 feeding LEV-11.
+Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 → LEV-11 (D2)
+→ LEV-13 (D3). **LEV-11 and LEV-13 are deliberately separate:** D2 is human-paced
+annotation work, D3 is a machine run over its output, and keeping them in one issue
+is what previously made neither closeable. Do not merge them back.
 When an OpenSpec change is created or archived, reference its Linear issue
 and keep the issue status in sync.
 
