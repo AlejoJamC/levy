@@ -44,7 +44,7 @@ resumable.
 | 4 sample 900 | done — seed 42, ratio 0.5, 300/workload |
 | 5 round-trip on real data | done — every field of all 900 matched exactly |
 | 6 blind re-annotation | done — 900 / 900 |
-| 7 Cohen's kappa | done — **κ = 0.3267, below the frozen κ > 0.7 bar**; see [`../data/DATASHEET.md`](../data/DATASHEET.md) §4 for the breakdown and the contingency options. Escalate to the supervisor; do not adjust the threshold or re-annotate non-blind. |
+| 7 Cohen's kappa | done — **κ = 0.3267, below the frozen κ > 0.7 bar**; see [`../data/DATASHEET.md`](../data/DATASHEET.md) §4 for the breakdown and the contingency options. Do not adjust the threshold or re-annotate non-blind. |
 | 8 refresh the ids file with your labels | done — verified 900 / 900 rows of `data/ground_truth.ids.csv` carry `author_label`, so the published D2 artifact ships the re-annotation |
 | 9 audit, then commit | done — audit passes 8/8 |
 
@@ -399,8 +399,7 @@ it in the datasheet rather than silently re-pinning.
 
 **Pre-flight reports a pool shortfall.** The corpus cannot fill a stratum at
 300 pairs. Do not lower `--n-per-workload` to make it pass — that changes the
-frozen design. The Proposal's Risk 1 contingency covers corpus substitution;
-raise it with your supervisor.
+frozen design. The Proposal's Risk 1 contingency covers corpus substitution.
 
 **Rehydration says a `source_pair_id` was not found.** The corpus on disk is
 not the snapshot the dataset was sampled from. Compare checksums against

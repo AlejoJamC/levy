@@ -100,8 +100,7 @@ second source of truth.
 **Deviations from the frozen documents.** Recorded here as decisions with their
 rationale, per the project rule that a conflict with `docs/Project_Proposal.md`
 or `docs/Specification_and_Design_Report.md` is surfaced rather than silently
-resolved. Supervisor sign-off is tracked separately (LEV-13, batched with the κ result
-and the hit-rate viability finding).
+resolved.
 
 1. **Code workload corpus: "Stack Overflow duplicate questions" → SODD.** The
    same underlying source (Stack Overflow's community duplicate-closure

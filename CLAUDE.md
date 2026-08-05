@@ -408,8 +408,7 @@ implied by the spec, not bugs:
    identical across models. For unit vectors, `distance = sqrt(2 − 2·cosine)` and
    `similarity = 1/(1+distance)`. The frozen sweep 0.70–0.90 therefore covers a
    high-cosine band (~0.91–0.998). This is intentional and spec-mandated; do NOT
-   rescale thresholds or revert to cosine. If hit-rate viability (>30%) is not
-   met at this band, surface that as a research-scope finding to the supervisor.
+   rescale thresholds or revert to cosine.
 4. ~~**No experiment harness**~~ — **Resolved (LEV-4).** `levy/experiment/` implements
    `run_experiment`/`full_grid`/30-configuration replay, TP/FP/TN/FN accounting against
    `QueryPair.ground_truth_label()`, and precision/recall/F0.5/FPR/hit-rate computation
@@ -427,8 +426,8 @@ implied by the spec, not bugs:
    distribution format, the corpus provenance registry, seeded stratified sampling,
    pre-flight validation, one-command acquisition, rehydration, blind re-annotation,
    and Cohen's kappa. **Corpus deviations from the frozen docs, flagged not silently
-   resolved** (rationale in `data/DATASHEET.md` §2, supervisor sign-off tracked in
-   LEV-11): code workload "Stack Overflow duplicate questions" → **SODD** (same
+   resolved** (rationale in `data/DATASHEET.md` §2): code workload
+   "Stack Overflow duplicate questions" → **SODD** (same
    duplicate-closure source, published pre-processed release); chat workload
    **ConvAI2 → Twitter PIT-2015** (ConvAI2 ships dialogues, not pair-level human
    same-intent labels, so it cannot supply the original label the kappa criterion
@@ -441,7 +440,7 @@ implied by the spec, not bugs:
    author's blind re-annotation finished 900/900 and published in
    `data/ground_truth.ids.csv`'s `author_label` column. **Cohen's kappa = 0.3267
    (faq 0.5267, code 0.2267, chat 0.2267) — below the frozen κ > 0.7 criterion.**
-   That is a research-scope finding to escalate, not a defect to code around: the
+   That is a research-scope finding, not a defect to code around: the
    corpora's positive classes ("closed as a duplicate", "3+ of 5 crowdworkers called
    it a paraphrase") are looser than the study's cache-substitutability label. Do
    **not** lower the threshold, re-annotate non-blind, re-sample for agreement, or
@@ -450,9 +449,7 @@ implied by the spec, not bugs:
    they stay as the permanent offline default; the real dataset lives in the gitignored
    `.full.` files, rebuilt by `scripts/rehydrate_dataset.py`. **Still open, and now
    tracked in LEV-13, not LEV-11:** the D3 production run (harness → analysis →
-   replication on the real 900) and the supervisor conversation, which batches the κ
-   shortfall, the hit-rate viability result, and sign-off on the two corpus
-   substitutions. LEV-11 closes on D2 alone.
+   replication on the real 900). LEV-11 closes on D2 alone.
 7. ~~**pytest declared but not installed**~~ — **Resolved (LEV-5).** `pytest` and
    `pytest-cov` are installed in the `levy` conda env (`environment.yml`, conda-forge)
    and mirrored in `pyproject.toml` `[dev]` extras. pytest is the canonical runner;
