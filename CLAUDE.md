@@ -43,8 +43,13 @@ freely as long as they don't rewrite the submitted documents.
 - **Success criteria:** measurable precision differences between models; hit rate
   **> 30%** for economic viability; replication within ±5%.
 - **Dataset:** 900 query pairs (300 per workload) from public human-annotated
-  corpora (Quora Question Pairs, Stack Overflow duplicates, ConvAI2) with the
-  author's blind re-annotation. Not yet present in the repo.
+  corpora with the author's blind re-annotation. **Produced 2026-08-04.** The
+  corpora actually used are Quora Question Pairs, **SODD** and **Twitter
+  PIT-2015** — the frozen docs name Stack Overflow duplicates and ConvAI2; both
+  substitutions are recorded as deviations in `data/DATASHEET.md` §2. Published as
+  `data/ground_truth.ids.csv` (identifiers + labels, no query text — licence
+  constraint); the query text is never committed and is rebuilt locally by
+  `scripts/rehydrate_dataset.py`.
 - **Target stack (per spec):** FastAPI router, sentence-transformers embeddings,
   Faiss HNSW index, Anthropic SDK backend, scipy/numpy/pandas/scikit-learn,
   pytest. Licence: Apache 2.0.
@@ -127,10 +132,10 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   non-retryable propagation, refusal handling (incl. engine end-to-end — nothing
   cached), budget-guard halt + spend visibility, engine wiring end-to-end. Fully
   offline via `httpx.MockTransport` injected as the SDK's `http_client`.
-- `tests/test_embedding_manager.py` — 20 unit tests for `EmbeddingManager`: runtime
+- `tests/test_embedding_manager.py` — 27 unit tests for `EmbeddingManager`: runtime
   model switching, alias resolution, memoization, dimension/identity exposure, prefix
   handling, and default config validation. All offline (injected mock clients).
-- `tests/test_vector_index.py` — 19 unit tests for `VectorIndex` + `SemanticCache`:
+- `tests/test_vector_index.py` — 27 unit tests for `VectorIndex` + `SemanticCache`:
   add/search/reset/size, L2 normalization, zero-vector guard, similarity transform +
   threshold decisions, id→entry resolution, Faiss↔brute-force agreement (skipped
   when Faiss absent), engine end-to-end semantic cache hit/miss.
@@ -215,7 +220,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   factory, sampling determinism/stratification, blind annotation (blindness, resume,
   no-overwrite), Cohen's kappa (perfect/chance/worked/degenerate cases), and CLI smoke
   tests against the `data/` fixtures. All offline.
-- `tests/test_corpus_acquisition.py` (LEV-12) — 74 unit tests: provenance-registry
+- `tests/test_corpus_acquisition.py` (LEV-12) — 79 unit tests: provenance-registry
   reader (every malformed-registry path), checksum pinning, the validation report
   (two simultaneous problems both reported, pool shortfall across all three workloads
   at once, cross-workload overlap, out-of-domain label, checksum mismatch, nothing
@@ -250,7 +255,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   `mock`, fully offline against the synthetic fixture; pass `sentence-transformers` for
   the real study run, which is LEV-13). Non-zero exit on a sanity-check failure.
 - `tests/test_experiment_config.py`, `test_experiment_metrics.py`,
-  `test_experiment_replay.py`, `test_experiment_runner.py` — 37 unit tests for
+  `test_experiment_replay.py`, `test_experiment_runner.py` — 32 unit tests for
   `levy/experiment/`: grid enumeration/uniqueness, hand-computed metrics + zero-division
   + sanity-check violations, replay outcomes (TP/FP/TN/FN via a scripted embedding
   manager, exact-duplicate via the exact cache, cross-pair cache accumulation, fresh

@@ -349,6 +349,37 @@ embeddings the false positive rate varies across configurations, so the ANOVA
 F-tests become defined and H0₁–H0₃ get real `reject`/`retain` decisions, with
 Tukey HSD following up any significant effect.
 
+### Expected κ on the real dataset — 0.3267, below the 0.7 bar
+
+Worth stating plainly, so a result that looks like a mistake is not mistaken for
+one. Running the kappa tool on the real dataset gives:
+
+```bash
+python scripts/compute_kappa.py --dataset data/ground_truth.full.json --strict
+```
+
+```text
+overall: kappa=0.3267  (faq 0.5267, code 0.2267, chat 0.2267)
+```
+
+`--strict` **exits non-zero**, because the frozen success criterion is κ > 0.7.
+That is the real, recorded outcome, not a setup error on your side — the earlier
+`0.722 (FIXTURE ONLY)` figure in [Expected output](#expected-output) comes from
+the 15 synthetic fixture pairs and is not comparable.
+
+The shortfall is a property of the corpora rather than of the annotation: their
+positive classes ("closed as a duplicate on Stack Overflow", "3 or more of 5
+crowdworkers called it a paraphrase") are looser than the study's question of
+whether one cached answer would serve both queries. The full breakdown,
+confusion matrix and the contingency options are in
+[`data/DATASHEET.md`](../data/DATASHEET.md) §4.
+
+Consequence for reading D3: every precision, false-positive rate and ANOVA
+p-value is computed against `author_label`, since that is what
+`QueryPair.ground_truth_label()` returns. Those numbers are valid, but they are
+relative to the author's labels — a replicator who preferred `original_label`
+would get materially different figures on the 303 pairs where the two disagree.
+
 ---
 
 ## Exploring results interactively (D6, desirable)
@@ -401,7 +432,21 @@ scripts/audit_release.sh
 | 3 | No secret-shaped string in any tracked file (9 credential patterns) | PASS |
 | 4 | No commit on any branch ever introduced a secret-shaped string (`git log --all -S`, pickaxe regex) | PASS |
 | 5 | No email or phone-number markers in tracked `data/` files | PASS |
-| 6 | `.env` is gitignored | PASS |
+| 6 | No tracked file carries query text attributed to a third-party corpus | PASS |
+| 7 | No tracked file contains a string sampled from a populated `data/raw/` | PASS |
+| 8 | `.env` is gitignored | PASS |
+
+Checks 6 and 7 are the licence gate. Quora Question Pairs grants no
+redistribution right and SODD is CC BY-NC-SA 4.0, so the query text must never
+reach the remote — check 6 verifies that by attribution (`source_corpus`), and
+check 7 does not trust that column at all: it samples real strings out of your
+populated `data/raw/` and looks for them in tracked files. Check 7 skips cleanly
+when `data/raw/` is empty, which is the state of a clean clone.
+
+Note also what check 4 covers, because it is easy to under-read: it scans
+`git log --all`, which includes `refs/stash`. Ignore rules do not apply to
+`git stash -u` or `git stash --all`, so the audit is the only thing that sees
+corpus text hidden in a stash.
 
 `scripts/audit_release.sh` prints a pass/fail line per check and exits non-zero
 on any finding. The table above records the result at release time; re-run the
