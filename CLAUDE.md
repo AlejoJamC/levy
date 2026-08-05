@@ -248,7 +248,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   path (default `data/ground_truth.csv`), output directory, `--models/--workloads/
   --thresholds` grid-subset flags for smoke runs, `--embedding-provider` (default
   `mock`, fully offline against the synthetic fixture; pass `sentence-transformers` for
-  a real study run once LEV-11 lands). Non-zero exit on a sanity-check failure.
+  the real study run, which is LEV-13). Non-zero exit on a sanity-check failure.
 - `tests/test_experiment_config.py`, `test_experiment_metrics.py`,
   `test_experiment_replay.py`, `test_experiment_runner.py` — 37 unit tests for
   `levy/experiment/`: grid enumeration/uniqueness, hand-computed metrics + zero-division
@@ -410,8 +410,8 @@ implied by the spec, not bugs:
    `QueryPair.ground_truth_label()`, and precision/recall/F0.5/FPR/hit-rate computation
    with zero-division-safe formulas and sanity checks. `scripts/run_experiments.py`
    drives the full grid (or a subset) fully offline via the mock LLM; results are
-   validated against the committed 15-pair synthetic fixture only — a real run still
-   needs LEV-11's 900-pair dataset and `sentence-transformers` providers.
+   validated against the committed 15-pair synthetic fixture only — the real run over
+   LEV-11's 900-pair dataset with `sentence-transformers` providers is LEV-13.
 5. ~~**Embedding defaults don't match the study**~~ — **Resolved (LEV-1).**
    `LevyConfig` now defaults to `sentence-transformers` / `all-MiniLM-L6-v2`;
    `EmbeddingManager` supports runtime switching to `modernbert`
@@ -443,8 +443,11 @@ implied by the spec, not bugs:
    revert `ground_truth_label()`. Breakdown and contingency options: `data/DATASHEET.md`
    §4. The synthetic fixtures in `data/ground_truth.{csv,json}` are **not** replaced —
    they stay as the permanent offline default; the real dataset lives in the gitignored
-   `.full.` files, rebuilt by `scripts/rehydrate_dataset.py`. **Still open:** the D3
-   production run (LEV-11 steps 9–12) and the supervisor conversation.
+   `.full.` files, rebuilt by `scripts/rehydrate_dataset.py`. **Still open, and now
+   tracked in LEV-13, not LEV-11:** the D3 production run (harness → analysis →
+   replication on the real 900) and the supervisor conversation, which batches the κ
+   shortfall, the hit-rate viability result, and sign-off on the two corpus
+   substitutions. LEV-11 closes on D2 alone.
 7. ~~**pytest declared but not installed**~~ — **Resolved (LEV-5).** `pytest` and
    `pytest-cov` are installed in the `levy` conda env (`environment.yml`, conda-forge)
    and mirrored in `pyproject.toml` `[dev]` extras. pytest is the canonical runner;
@@ -555,9 +558,9 @@ edits:
   `add-fastapi-router`, `add-statistical-analysis`, `add-release-packaging`,
   `add-results-dashboard`, `add-corpus-acquisition` (2026-08-04),
   `add-ground-truth-dataset` (2026-08-05). **No changes are in flight** —
-  `openspec list` reports none. The remaining D2/D3 work (LEV-11 steps 9–12) is a
-  production run of already-shipped tooling, so it produces result artifacts rather
-  than capability changes and correctly has no OpenSpec change of its own.
+  `openspec list` reports none. The remaining D3 work (LEV-13) is a production run of
+  already-shipped tooling, so it produces result artifacts rather than capability
+  changes and correctly has no OpenSpec change of its own.
 - `openspec/config.yaml` — project context injected into artifact generation.
 - Slash commands (in `.claude/commands/opsx/`): `/opsx:propose` (create change +
   artifacts), `/opsx:apply` (implement tasks), `/opsx:archive` (finish + update
@@ -586,10 +589,14 @@ Release (2026-11-02).
 | LEV-8 | `add-statistical-analysis` | High | archived |
 | LEV-9 | `add-release-packaging` | Medium | archived |
 | LEV-10 | `add-results-dashboard` | Low (desirable) | archived |
-| LEV-11 | — (production run: real dataset + published D2/D3 outputs) | Urgent | **in progress** — D2 done (κ = 0.3267, below the 0.7 bar); D3 run (steps 9–12) open |
+| LEV-11 | — (D2 data production: real dataset + published D2 artifact) | Urgent | **complete** — 900 pairs published as ids + labels; κ = 0.3267, below the 0.7 bar, recorded as a finding |
 | LEV-12 | `add-corpus-acquisition` | High | archived (2026-08-04) |
+| LEV-13 | — (D3 production run: 30 configurations + analysis + ±5% replication) | Urgent | **open** — split out of LEV-11 on 2026-08-05 so D2 could close |
 
-Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 feeding LEV-11.
+Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 → LEV-11 (D2)
+→ LEV-13 (D3). **LEV-11 and LEV-13 are deliberately separate:** D2 is human-paced
+annotation work, D3 is a machine run over its output, and keeping them in one issue
+is what previously made neither closeable. Do not merge them back.
 When an OpenSpec change is created or archived, reference its Linear issue
 and keep the issue status in sync.
 
