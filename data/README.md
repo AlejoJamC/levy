@@ -55,6 +55,8 @@ pairs is meaningful for the dissertation; it only exercises code paths.
 | `ground_truth.ids.meta.json` | sampling sidecar: seed, positive ratio, adapter options, corpus snapshots, input checksums, tool versions | yes |
 | `raw/` | acquired third-party corpora — directories tracked, contents never committed (see `raw/README.md`) | dirs only |
 | `ground_truth.full.csv` / `.json` | the rehydrated working dataset, query text included | no — gitignored |
+| `annotation_progress.json` | the blind re-annotation's per-answer progress: the 900 labels, each fingerprinted with its pair's `source_pair_id`, plus the session's resolved presentation order and seed. No query text | yes |
+| `backups/` | timestamped copies made before any overwrite of the files above (`levy/dataset/backup.py`). Never deleted by the tooling, never publishable — snapshots of `ground_truth.full.*` carry corpus text | no — gitignored |
 
 The real query text is **not in this repository and never will be**: Quora
 Question Pairs grants no redistribution right and SODD is CC BY-NC-SA 4.0. What
@@ -78,6 +80,24 @@ three workloads at once and writes nothing if any of them fails; and
 **A reader reproducing the study runs only the fetch and the rehydrate** —
 rehydration alone reconstructs a byte-identical copy of the dataset the author
 sampled. See [`docs/REPRODUCTION.md`](../docs/REPRODUCTION.md).
+
+### One workload at a time
+
+Added 2026-08-06. `scripts/sample_dataset.py --workload chat` re-draws a single
+workload **in place**: it reads only that workload's corpus, replaces that
+workload's rows inside the existing dataset, clears their `author_label` so the
+annotation step presents exactly them, and leaves the other workloads' rows and
+labels untouched. New pairs exclude every `source_pair_id` already in the
+dataset, so a re-sample is disjoint from what it replaced. It also drops those
+pairs' entries from `annotation_progress.json` — they keep their `pair_id`s, so
+otherwise the next session would re-apply the old answers to the new pairs.
+`scripts/annotate_dataset.py --workload chat` then annotates just those.
+
+There is exactly **one** ground truth, at the canonical paths in the table
+above — a re-sample rewrites them rather than creating a second, versioned copy,
+after backing up what it is about to overwrite. The procedure and the guarantees
+are in [`docs/DATA_PRODUCTION.md`](../docs/DATA_PRODUCTION.md)
+§"Re-sampling one workload after the fact".
 
 See `data/DATASHEET.md` for corpus licences, the sampling protocol, the three
 recorded deviations from the frozen documents, and known limitations. The

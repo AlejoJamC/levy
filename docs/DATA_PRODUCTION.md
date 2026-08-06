@@ -33,6 +33,15 @@ resumable.
 > ```bash
 > python scripts/rehydrate_dataset.py --out-csv /tmp/rt.csv --out-json /tmp/rt.json
 > ```
+>
+> **Update 2026-08-06 — the clobber is now recoverable, but still avoid it.**
+> `scripts/rehydrate_dataset.py` copies an existing
+> `data/ground_truth.full.{csv,json}` to `data/backups/ground_truth.full.<UTC>.csv`
+> before overwriting it, and aborts without writing if that copy cannot be made.
+> Every script that touches a ground-truth artifact does the same
+> (`levy/dataset/backup.py`); backups are never deleted and never overwritten.
+> That is a safety net, not a reason to re-run step 5 on top of annotated work —
+> write somewhere else as above.
 
 ---
 
@@ -247,6 +256,44 @@ can stop at any point with `Ctrl-C` and resume by re-running the identical
 command. Already-annotated pairs are never re-asked, and an existing
 `author_label` is never overwritten unless you pass `--overwrite`.
 
+> **Update 2026-08-06 — presentation order and session control.**
+> ~~Pairs are presented in dataset order.~~ Pairs are now presented **workload
+> block by workload block in `faq,chat,code` order, shuffled within each block**
+> under `--order-seed` (default `0`). Code goes last because its pairs are Stack
+> Overflow posts, by far the longest to read. The shuffle matters for the same
+> reason blindness does: in file order a long run of near-duplicates lets
+> position stand in for content, and the pair after forty of them is judged
+> against the run rather than on its own.
+>
+> The resolved order is written into the progress file, so an interrupted session
+> resumes in the order it started in rather than re-deriving one — including if
+> you pass a different `--order-seed` on the way back, which the session tells you
+> it is ignoring.
+>
+> Four flags, all optional:
+>
+> | Flag | Use |
+> |---|---|
+> | `--workload chat` | restrict the session to one workload (repeatable) — this is what makes a single-workload re-annotation ask only about that workload |
+> | `--workload-order code,faq,chat` | override the block order; an unknown or repeated workload is rejected |
+> | `--order-seed 7` | change the within-block shuffle; recorded in the progress file, never left to vary silently |
+> | `--session-limit 50` | end the sitting cleanly after 50 labeled pairs, so a long run splits into short sessions without `Ctrl-C`. Skips do not consume the limit |
+>
+> Add `--out-ids data/ground_truth.ids.csv` to refresh the published artifact in
+> the same command — that is step 8, which no longer needs doing by hand.
+>
+> A 50-pair sitting over a freshly re-sampled chat workload:
+>
+> ```bash
+> python scripts/annotate_dataset.py \
+>     --dataset data/ground_truth.full.json \
+>     --progress data/annotation_progress.json \
+>     --workload chat --session-limit 50 \
+>     --out-csv data/ground_truth.full.csv \
+>     --out-json data/ground_truth.full.json \
+>     --out-ids data/ground_truth.ids.csv
+> ```
+
 ---
 
 ## Step 7 — Cohen's kappa
@@ -270,7 +317,17 @@ Record the result in [`../data/DATASHEET.md`](../data/DATASHEET.md) §4, where a
 
 `data/ground_truth.ids.csv` was written at step 4, **before** annotation, so
 its `author_label` column is empty. Regenerate it from the annotated dataset,
-or the published artifact ships without your labels:
+or the published artifact ships without your labels.
+
+> **Update 2026-08-06 — this is now a flag on step 6, not a separate step.**
+> Pass `--out-ids data/ground_truth.ids.csv` to `scripts/annotate_dataset.py` and
+> the identifiers file is refreshed from the annotated dataset every time the
+> session ends, backed up first like every other ground-truth write. The
+> hand-rolled one-liner below still works and still prints the same count, but a
+> step whose whole purpose is "do not forget to do this" is better as a flag than
+> as a paragraph. If you run a session without `--out-ids`, the script says so.
+>
+> ~~Regenerate it with the snippet below.~~
 
 ```bash
 python -c "
@@ -379,6 +436,65 @@ LEVY_EMBEDDING_PROVIDER=sentence-transformers \
 Then fill in the remaining `TODO (post data-production)` markers in
 `data/DATASHEET.md`: actual positive ratio and per-workload counts, any
 fallback corpus used, the sampling date, and the kappa breakdown from step 7.
+
+---
+
+## Re-sampling one workload after the fact
+
+Added 2026-08-06. Use this when one workload's sample turns out to be the
+problem — a corpus whose positive class does not carry the study's notion of
+cache-substitutability, say — and the other two are fine. It replaces that
+workload's 300 rows inside the live dataset and leaves the other 600 rows, with
+their `author_label`s, exactly as they are.
+
+**There is one ground truth, at its canonical paths, always.** This procedure
+rewrites those paths. It does not produce `ground_truth_v2.csv`, a dated working
+copy, or a candidate file living beside the real one; if you find yourself
+wanting one, back up (the tooling already did) and keep working in place.
+
+```bash
+# 1. Re-draw the workload. Reads only that workload's corpus, so the other
+#    two need not even be on disk.
+python scripts/sample_dataset.py --require-real --workload chat \
+    --n-per-workload 300 --seed 4242 \
+    --out-csv data/ground_truth.full.csv \
+    --out-json data/ground_truth.full.json \
+    --out-ids data/ground_truth.ids.csv
+
+# 2. Annotate the 300 new pairs — and nothing else.
+python scripts/annotate_dataset.py \
+    --dataset data/ground_truth.full.json \
+    --progress data/annotation_progress.json \
+    --workload chat --session-limit 50 \
+    --out-csv data/ground_truth.full.csv \
+    --out-json data/ground_truth.full.json \
+    --out-ids data/ground_truth.ids.csv
+
+# 3. Re-check kappa over the whole 900, and re-run the audit before committing.
+python scripts/compute_kappa.py --dataset data/ground_truth.full.json
+scripts/audit_release.sh
+```
+
+What step 1 guarantees, and refuses to do without:
+
+| | |
+|---|---|
+| Disjointness | new pairs are drawn from the candidate pool **minus every `source_pair_id` already in the dataset**, so a re-sample cannot re-draw what it replaces — at the same seed or any other |
+| Shortfall | if the pool cannot cover `--n-per-workload` after that exclusion, the run fails naming the workload and the shortfall, and writes nothing. Do not lower `--n-per-workload`: that changes the frozen design |
+| Other workloads | passed through untouched, `author_label` included — the test suite asserts the untouched rows are byte-for-byte identical |
+| Labels | cleared for the re-sampled workload **only**, which is what makes step 2 present exactly those 300 pairs |
+| Stale answers | a re-sample reuses that workload's `pair_id`s, so step 1 **removes those pairs' entries from `data/annotation_progress.json`** (backed up first, other workloads' answers untouched) and reports the count. Without that, step 2 would re-apply the old answers to the new pairs — the file predates per-label fingerprints, so it carries nothing for the session itself to check against. Override the path with `--progress`; the default is derived from `--out-csv`'s directory, never a fixed repo path |
+| Backups | `data/ground_truth.full.{csv,json}`, the ids file and the sidecar are copied to `data/backups/<name>.<UTC>.<ext>` before anything is written; a backup that cannot be made aborts the run |
+| Provenance | the sidecar records **per workload** the seed and UTC timestamp of the run that produced *its* rows, so a dataset whose workloads were sampled at different times is still reproducible. The top-level `seed` describes the latest invocation only. Entries from a sidecar written before this existed are backfilled from its top level and flagged `provenance_backfilled`, so a filled-in seed is never mistaken for a first-hand per-workload record |
+| Drift | if the ids file and the working dataset disagree about the workloads *not* being re-sampled, the run refuses and tells you to rehydrate — rather than publishing whichever file it happened to read |
+
+Then the D3 run. If you re-run only the affected workload's 10 configurations,
+merge them back with `scripts/merge_results.py` — see
+[`D3_PRODUCTION_RUN.md`](D3_PRODUCTION_RUN.md) §"Step 4b".
+
+Record the re-sample in `data/DATASHEET.md`: which workload, the new seed, the
+date, and **why**. A dataset whose workloads were drawn on different days is a
+fact about the study, not an implementation detail.
 
 ---
 

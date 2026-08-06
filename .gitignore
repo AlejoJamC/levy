@@ -315,7 +315,15 @@ data/**/*.data
 !data/ground_truth.ids.meta.json
 !data/annotation_progress.json
 
+# Timestamped backups of ground-truth artifacts (levy/dataset/backup.py writes
+# one before any overwrite). Snapshots of data/ground_truth.full.* carry full
+# corpus text; results backups are already under the ignored results/ tree.
+# Mirrored in data/.gitignore, deliberately.
+data/backups/
+
 # These rules are a staging filter only. `git add -f`, `git stash -u` and
 # `git stash --all` bypass them — on 2026-08-04 a `git stash --all` put 900 rows
 # of corpus text into refs/stash. `scripts/audit_release.sh` check 4 is the
 # backstop: it scans `git log --all`, which includes refs/stash.
+
+docs/poster

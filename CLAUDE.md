@@ -176,7 +176,31 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   independent `MockCorpusSource`s are not a false positive); `annotation.py`
   (`BlindAnnotationSession` — shows only `query_1`/`query_2`, never the original
   label; per-answer progress persistence for resumable 900-pair sessions; never
-  overwrites an existing `author_label` unless `overwrite=True`); `kappa.py`
+  overwrites an existing `author_label` unless `overwrite=True`; **presentation
+  order** is workload blocks in `DEFAULT_WORKLOAD_ORDER` = `faq,chat,code` — code
+  last, longest posts — shuffled within each block under `order_seed` via
+  `Random(f"{seed}:{workload}")` so a workload's order is independent of which
+  others are in scope; the resolved order and seed are persisted in the progress
+  file and **reused on resume**, never re-derived mid-session; `session_limit`
+  ends a sitting cleanly after N labeled pairs (skips don't count); every recorded
+  label is fingerprinted with its pair's `source_pair_id`, so labels for a pair
+  that has since been re-sampled away are dropped and counted, not re-applied —
+  progress-file v2, with the flat v1 `{pair_id: label}` map still read;
+  `prune_progress()` is the **primary** defence, called by `sample_dataset.py`
+  when it re-samples — the fingerprint is only the second line and cannot help a
+  v1 file, which has no fingerprints to compare, and v1 is exactly what
+  `data/annotation_progress.json` currently is);
+  `backup.py` (`backup_file`/`backup_files` — copy to `<dir>/backups/<stem>.<UTC
+  basic ISO 8601><suffix>` before any overwrite, shared timestamp across a
+  multi-file write, never delete, never clobber a same-second backup, `BackupError`
+  = caller writes nothing); `workload_update.py` (per-workload re-sampling of the
+  live dataset: `ExcludingCorpusSource` wraps an adapter to hide already-sampled
+  `source_pair_id`s **before** pre-flight so a shortfall is caught rather than
+  discovered; `splice_workload` replaces one workload's rows in place, passing every
+  other row through *by identity* so their `author_label`s are untouched by
+  construction; `check_ids_alignment` refuses to proceed when the ids file and the
+  working dataset disagree about the untouched workloads — identity only, since
+  annotation legitimately updates the working dataset first); `kappa.py`
   (`cohen_kappa`/`kappa_report`, stdlib-only 2×2 contingency, documented
   zero-annotated and `pe==1` edge cases). `scripts/*.py` (`sample_dataset.py`,
   `rehydrate_dataset.py`, `annotate_dataset.py`, `compute_kappa.py`,
@@ -184,6 +208,35 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   offline. **`scripts/fetch_corpora.py` is the sole exception** — the only
   network-touching entry point in the repository, excluded from pytest by design
   and guarded by `TestAcquisitionIsOutOfBand`.
+- **The single ground truth (2026-08-06).** There is exactly one ground-truth
+  dataset, at `data/ground_truth.ids.csv` + `.ids.meta.json` (published) and
+  `data/ground_truth.full.{csv,json}` (working, gitignored). Never create a
+  parallel, versioned or suffixed dataset — no `_v2`, `_new`, `_final`, `.bak`,
+  no date in a working filename, no "candidate" beside the real one. Every
+  re-sample and re-annotation writes back to those paths, and every script that
+  overwrites a ground-truth or results artifact backs it up to
+  `data/backups/` (or `<out-dir>/backups/`) first via `levy/dataset/backup.py`,
+  aborting without writing if the backup fails. Backups are never deleted.
+  `data/backups/` is gitignored in both `.gitignore` files.
+- **Per-workload re-sampling (2026-08-06).** `scripts/sample_dataset.py
+  --workload chat` (repeatable) resolves and reads **only** that workload's
+  corpus — the others need not be on disk — and operates in place: it replaces
+  that workload's rows inside the existing dataset, clears `author_label` for the
+  new pairs only, carries the other workloads' rows and labels through untouched,
+  and excludes every `source_pair_id` already in the dataset so the new sample is
+  disjoint from what it replaced (a pool that can't cover `--n-per-workload`
+  after exclusion fails naming the workload and the shortfall, writing nothing).
+  It also **invalidates the annotation progress for the replaced pairs**
+  (`--progress`, default `annotation_progress.json` beside `--out-csv` — derived
+  from the dataset's directory so a temp-dir run cannot reach into `data/`);
+  without that, the next session would re-apply the old answers to the new pairs,
+  since a re-sample reuses that workload's `pair_id`s. The sidecar records, **per
+  workload**, the seed and UTC timestamp of the run that produced that workload's
+  rows (backfilled from the previous sidecar's top level, and flagged
+  `provenance_backfilled`, for entries written before this existed); the top-level
+  `seed` describes only the latest invocation. `scripts/annotate_dataset.py --workload chat` restricts the
+  session to it. Procedure and guarantees: `docs/DATA_PRODUCTION.md`
+  §"Re-sampling one workload after the fact".
 - **Corpus acquisition + licence-safe distribution (LEV-12)** — the study's query
   text is **never committed**: Quora QQP grants no redistribution right and SODD is
   CC BY-NC-SA 4.0. `scripts/fetch_corpora.py` acquires into `data/raw/<corpus>/`
@@ -232,6 +285,29 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   All offline, driven by `tests/fixtures/corpora/` — real column structure, synthetic
   content, laid out as a valid `--raw-dir` (regenerate the parquet shards with
   `python tests/fixtures/corpora/make_sodd_fixture.py`).
+- `tests/test_workload_resample.py` (2026-08-06) — 55 unit tests for backups +
+  per-workload re-sampling: backup naming/UTC/same-second collision/unusable
+  directory, splice identity preservation and length changes, exclusion and
+  post-exclusion pool counting, ids-alignment drift, and the `--workload` CLI
+  end-to-end against the corpus fixtures — the untouched workloads' CSV rows
+  asserted **byte-for-byte identical** (labels included), `author_label` cleared
+  for the re-sampled workload only, the new sample disjoint from the old, every
+  overwritten file backed up first, **nothing written when the backup fails**, no
+  versioned/suffixed filename ever created, per-workload sidecar provenance, and
+  rehydration still byte-identical afterwards.
+- `tests/test_annotation_order.py` (2026-08-06) — 38 unit tests for presentation
+  order and session control: `--workload-order` parsing (unknown/repeated rejected),
+  block order, within-block shuffle determinism under `--order-seed`, workload
+  scope independence, resume-in-the-recorded-order after an interrupt (including
+  when a different seed is passed), `--session-limit` stopping and resuming, the
+  fingerprint that stops a re-sampled workload from inheriting the old labels, v1
+  progress-file compatibility, and blindness under the new ordering.
+- `tests/test_results_merge.py` (2026-08-06) — 29 unit tests for the partial-run
+  merge: duplicates across and within runs, incomplete grid, cell outside the grid,
+  decisions merged (and a mixed-presence run rejected), dataset/provider
+  disagreement, grid-order sorting, backup-before-write, **the merged 30-row set
+  byte-identical to a single full sweep's `results.csv`/`decisions.csv`**, and the
+  merged bundle feeding `scripts/run_analysis.py` end-to-end.
 - `levy/experiment/` (LEV-4) — offline replay harness per S&D Report Algorithm 2:
   `config.py` (`ExperimentConfig` + `full_grid()`, the frozen 2 models × 3 workloads ×
   5 thresholds = 30 configurations, thresholds carried verbatim on the `1/(1+L2)` scale);
@@ -249,11 +325,25 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   sidecar (dataset path, providers, resolved model checkpoints, grid, latency labeled
   synthetic under the mock LLM's fixed 0.5s sleep). `LevyEngine` accepts an optional
   `embedding_manager` constructor param for this sharing; default behavior unchanged.
+  `merge.py` (2026-08-06) — merges partial harness runs into one 30-row result set,
+  at the level of **raw CSV rows** so a merged file is byte-identical to a single
+  full run's (the harness writes pre-formatted strings; parsing to floats and
+  reformatting would break that). A `config_id` present in two runs and a merged
+  set that is not exactly `full_grid()` are both hard errors — the first because
+  one run is stale and the merge does not get to pick a winner, the second because
+  the ANOVA assumes a balanced design. Runs disagreeing on `dataset_path` /
+  `embedding_provider` / `llm_provider` are refused; the merged `run_meta.json`
+  records every source run under `merged_from`.
 - `scripts/run_experiments.py` — argparse CLI over `levy/experiment/runner.py`: dataset
   path (default `data/ground_truth.csv`), output directory, `--models/--workloads/
   --thresholds` grid-subset flags for smoke runs, `--embedding-provider` (default
   `mock`, fully offline against the synthetic fixture; pass `sentence-transformers` for
   the real study run, which is LEV-13). Non-zero exit on a sanity-check failure.
+- `scripts/merge_results.py` (2026-08-06) — argparse CLI over `levy/experiment/merge.py`:
+  positional harness directories + `--out-dir` (which may be one of them, an in-place
+  merge, backed up first). `--allow-partial` writes an incomplete set for diagnostics
+  only. Use it when the grid ran in pieces (`--workloads chat` = 10 of 30 rows, a
+  re-sampled workload re-run on its own) instead of re-running cells that were fine.
 - `tests/test_experiment_config.py`, `test_experiment_metrics.py`,
   `test_experiment_replay.py`, `test_experiment_runner.py` — 32 unit tests for
   `levy/experiment/`: grid enumeration/uniqueness, hand-computed metrics + zero-division
@@ -496,6 +586,25 @@ python scripts/sample_dataset.py --require-real --n-per-workload 300 --seed 42 \
     --out-csv data/ground_truth.full.csv --out-json data/ground_truth.full.json \
     --out-ids data/ground_truth.ids.csv
 
+# Re-draw ONE workload in place (2026-08-06). Reads only that corpus; replaces
+# only that workload's rows; other workloads keep their author_label. Backs up
+# every file it overwrites to data/backups/ first. New pairs exclude everything
+# already in the dataset. Never creates a second/versioned dataset.
+python scripts/sample_dataset.py --require-real --workload chat \
+    --n-per-workload 300 --seed 4242 \
+    --out-csv data/ground_truth.full.csv --out-json data/ground_truth.full.json \
+    --out-ids data/ground_truth.ids.csv
+
+# Annotate just that workload, 50 pairs per sitting, refreshing the published ids
+# file in the same command. Blocks are presented faq,chat,code (code last) and
+# shuffled within each block under --order-seed; the order is persisted so a
+# resumed session keeps it.
+python scripts/annotate_dataset.py \
+    --dataset data/ground_truth.full.json --progress data/annotation_progress.json \
+    --workload chat --session-limit 50 \
+    --out-csv data/ground_truth.full.csv --out-json data/ground_truth.full.json \
+    --out-ids data/ground_truth.ids.csv
+
 # Demos
 python examples/simple_replay.py     # mock LLM; uses sentence-transformers if installed
 python examples/ollama_demo.py       # requires `ollama serve` + qwen3 + nomic-embed-text
@@ -517,6 +626,12 @@ docker compose run --rm pipeline
 python scripts/run_experiments.py --out-dir results/run-001
 python scripts/run_analysis.py --results-dir results/run-001 --out-dir results/run-001/analysis
 python scripts/check_replication.py --reference results/run-001/results.csv  # ±5% criterion
+
+# Grid ran in pieces (e.g. `--workloads chat` = 10 of 30 rows)? Merge instead of
+# re-running the cells that were fine. Fails loudly on a duplicate config_id or a
+# set that isn't exactly the 30-cell grid; backs up the target first.
+python scripts/merge_results.py --out-dir results/run-001 \
+    results/run-faq results/run-code results/run-chat
 
 # Release audit (LICENSE, secrets in tree + all git history, personal data,
 # third-party corpus text in tracked files, data/raw/ spot-check)

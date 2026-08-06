@@ -682,10 +682,16 @@ class TestBlindAnnotation(unittest.TestCase):
                 input_fn=lambda prompt: next(answers_1),
                 output_fn=lambda msg: None,
             )
+            # The first pair *presented*, not the first in file order: within a
+            # workload block the order is shuffled.
+            answered = session_1.order[0]
             summary_1 = session_1.run()
             self.assertTrue(summary_1.quit_early)
-            self.assertEqual(pairs[0].author_label, 1)
-            self.assertIsNone(pairs[1].author_label)
+            by_id = {p.pair_id: p for p in pairs}
+            self.assertEqual(by_id[answered].author_label, 1)
+            self.assertEqual(
+                [p.author_label for p in pairs if p.pair_id != answered], [None, None]
+            )
 
             # New session (e.g. after a restart) reloads the same pairs +
             # progress file; already-answered pair must not be re-asked.
@@ -701,10 +707,11 @@ class TestBlindAnnotation(unittest.TestCase):
                 input_fn=_tracking_input,
                 output_fn=lambda msg: asked_pair_ids.append(msg) if msg.startswith("\n---") else None,
             )
-            self.assertEqual(fresh_pairs[0].author_label, 1)  # merged from progress
+            fresh_by_id = {p.pair_id: p for p in fresh_pairs}
+            self.assertEqual(fresh_by_id[answered].author_label, 1)  # merged from progress
             summary_2 = session_2.run()
-            self.assertEqual(summary_2.newly_labeled, 2)  # only pairs 2 and 3
-            self.assertFalse(any("faq-0001" in line for line in asked_pair_ids))
+            self.assertEqual(summary_2.newly_labeled, 2)  # only the two unanswered pairs
+            self.assertFalse(any(answered in line for line in asked_pair_ids))
 
     def test_no_overwrite_by_default(self):
         pairs = self._pairs()
@@ -748,12 +755,19 @@ class TestBlindAnnotation(unittest.TestCase):
                 input_fn=lambda prompt: next(answers),
                 output_fn=lambda msg: None,
             )
+            first_presented = session.order[0]
             summary = session.run()
             self.assertTrue(summary.quit_early)
             self.assertTrue(progress_path.exists())
             with progress_path.open() as fh:
                 saved = json.load(fh)
-            self.assertEqual(saved, {"faq-0001": 1})
+            # v2 progress: the answer, its fingerprint, and the resolved order.
+            # Keyed on the first pair in *presentation* order, which is shuffled.
+            self.assertEqual(saved["version"], 2)
+            self.assertEqual(
+                saved["labels"], {first_presented: {"label": 1, "source_pair_id": "src-1"}}
+            )
+            self.assertEqual(sorted(saved["order"]), ["faq-0001", "faq-0002", "faq-0003"])
 
     def test_skip_leaves_pair_unlabeled(self):
         pairs = self._pairs()

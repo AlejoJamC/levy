@@ -167,6 +167,40 @@ The script is `set -euo pipefail`, so any stage failing aborts the rest. A non-z
 exit on stage `[3/3]` means the replication criterion failed — that is a **result**,
 not a crash; keep the outputs and record it.
 
+### Step 4b — If the grid ran in pieces (added 2026-08-06)
+
+The analysis needs all 30 configurations in one `results.csv`. A run does not
+always arrive that way: `--workloads chat` produces 10 rows, a re-sampled
+workload has to be re-run on its own, a five-hour sweep gets interrupted. Merge
+the pieces instead of re-running the cells that were already fine:
+
+```bash
+python scripts/merge_results.py --out-dir results/run-001 \
+    results/run-faq results/run-code results/run-chat
+```
+
+List every input directory, including the one you are merging into if it already
+holds rows. `--out-dir` may be one of the inputs (an in-place merge); whatever is
+there is copied to `results/run-001/backups/` first, and a backup that cannot be
+made aborts the write.
+
+Two conditions fail the merge loudly, because both would otherwise hand the
+analysis a file that looks complete:
+
+- **A `config_id` in more than one run.** One of them is stale, and the merge does
+  not get to pick a winner. Drop the stale directory or re-run that cell once.
+- **A merged set that is not exactly the frozen grid.** Missing cells break the
+  balanced design the two-way ANOVA assumes; a cell outside the grid would change
+  what the analysis is a statement about. The error lists what is missing.
+
+The merged `results.csv` and `decisions.csv` are written in canonical grid order,
+row-for-row byte-identical to what a single full run would have produced (the
+test suite asserts exactly that), and `run_meta.json` records every source run
+under `merged_from` so each cell's provenance survives. Runs that disagree on
+`dataset_path` or `embedding_provider` are refused rather than merged.
+
+Then continue at step 5 as normal.
+
 ### Step 5 — Verify the bundle
 
 ```bash

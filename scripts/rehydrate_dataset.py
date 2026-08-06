@@ -17,7 +17,10 @@ order. Nothing is re-derived, so there is nothing to drift.
 
 Fully offline: it reads local files only. It writes nothing on failure — a
 missing corpus or an identifier that cannot be resolved is an error naming what
-is wrong, never a quietly shorter dataset.
+is wrong, never a quietly shorter dataset. An existing working dataset is backed
+up to `data/backups/` before it is overwritten (a rehydration whose `author_label`
+column comes from a stale ids file would otherwise discard annotation work
+irrecoverably), and a backup that cannot be created aborts the write.
 """
 
 import argparse
@@ -28,6 +31,7 @@ from typing import Dict, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from levy.dataset.backup import BackupError, backup_files, describe_backups
 from levy.dataset.corpora import (
     DEFAULT_RAW_ROOT,
     DEFAULT_REGISTRY_PATH,
@@ -63,6 +67,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY_PATH, help="Corpus provenance registry (default: data/corpora.json)")
     parser.add_argument("--out-csv", type=Path, default=DEFAULT_OUT_CSV, help="Output CSV path (default: data/ground_truth.full.csv)")
     parser.add_argument("--out-json", type=Path, default=DEFAULT_OUT_JSON, help="Output JSON path (default: data/ground_truth.full.json)")
+    parser.add_argument("--backup-dir", type=Path, default=None, help="Directory for timestamped backups of the files this run overwrites (default: <file>/../backups)")
     return parser
 
 
@@ -200,6 +205,17 @@ def main(argv=None) -> int:
         print(f"[rehydrate_dataset] {exc}", file=sys.stderr)
         print("[rehydrate_dataset] nothing written.", file=sys.stderr)
         return 1
+
+    try:
+        made = backup_files(
+            [args.out_csv, args.out_json], backup_dir=args.backup_dir
+        )
+    except BackupError as exc:
+        print(f"[rehydrate_dataset] {exc}", file=sys.stderr)
+        print("[rehydrate_dataset] nothing written.", file=sys.stderr)
+        return 1
+    if made:
+        print(describe_backups(made), file=sys.stderr)
 
     save_dataset(pairs, args.out_csv, args.out_json)
     print(

@@ -207,6 +207,40 @@ released 900-pair dataset.`
 > `ground_truth.ids.csv` reproduced every field of all 900 pairs exactly. That is
 > the property the identifiers-only release model rests on (§6).
 
+> **Update 2026-08-06 — one workload can be re-sampled without re-drawing the
+> other two, and the manifest now says so per workload.**
+>
+> `scripts/sample_dataset.py --workload <faq|code|chat>` replaces that workload's
+> 300 rows inside the existing dataset and leaves the other 600 rows, with their
+> `author_label`s, byte-for-byte unchanged. It exists because the corpora are not
+> equally suited to the study's label (§4): if one workload's positive class turns
+> out to be the problem, re-drawing all 900 pairs would discard 600 sound blind
+> annotations to fix 300.
+>
+> What this changes about the dataset's provenance:
+>
+> - A re-sampled workload's new pairs are drawn from the candidate pool **minus
+>   every `source_pair_id` already in the dataset**, so a re-sample is disjoint
+>   from the sample it replaces. Exclusion, not the seed, is what guarantees that.
+> - `ground_truth.ids.meta.json` records **per workload** the seed, the
+>   `n_per_workload`/`positive_ratio`, and the UTC timestamp of the run that
+>   produced *that workload's* rows. The top-level `seed` describes the most
+>   recent invocation only. For a dataset sampled in one run — which is the case
+>   for the released 900 above — all three agree.
+> - The re-sampled pairs' entries are removed from `annotation_progress.json`,
+>   because the new pairs reuse the old `pair_id`s and the recorded answers would
+>   otherwise be re-applied to them — which would make the blind re-annotation of
+>   that workload a copy of the previous one rather than an independent judgment.
+>   The other workloads' answers are untouched.
+> - `data/backups/` holds a timestamped copy of every ground-truth file made
+>   before each overwrite. It is gitignored (snapshots of the working dataset
+>   carry corpus text) and the tooling never deletes from it.
+>
+> **As of this update the released 900 pairs are still the single 2026-08-04
+> sample; no workload has been re-drawn.** If one is, the workload, the new seed,
+> the date and the reason belong here — a dataset whose workloads were drawn on
+> different days is a fact about the study, not an implementation detail.
+
 ## 4. Preprocessing / labeling — blind re-annotation
 
 **Label definitions:**
