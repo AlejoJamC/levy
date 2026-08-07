@@ -18,6 +18,12 @@ the reference's configurations, so there is no separate grid flag to keep in
 sync. The dataset defaults to the one recorded in the reference run's
 `run_meta.json`.
 
+The verdict is written to `replication.json` beside the reference (override with
+`--out-json`, disable with `--no-json`), so a consumer can read it rather than
+assert it. It records **which configurations it covers**: a re-run over one
+re-sampled workload legitimately covers 10 of 30 cells, and a bare "PASSED" read
+out of that context would overclaim. Any existing file is backed up first.
+
 Examples:
     python scripts/check_replication.py --reference results/run-001/results.csv
 
@@ -27,6 +33,7 @@ Examples:
 """
 
 import argparse
+import json
 import sys
 import tempfile
 from pathlib import Path
@@ -40,7 +47,9 @@ from levy.analysis.replication import (
     RELATIVE_TOLERANCE,
     compare_results,
     format_report,
+    report_to_dict,
 )
+from levy.dataset.backup import BackupError, backup_file, backup_timestamp
 from levy.dataset.io import load_dataset
 from levy.experiment.config import ExperimentConfig
 from levy.experiment.metrics import ExperimentSanityError
@@ -57,6 +66,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--absolute-floor", type=float, default=ABSOLUTE_FLOOR, help=f"Absolute floor for near-zero reference values (default: {ABSOLUTE_FLOOR})")
     parser.add_argument("--llm-latency-seconds", type=float, default=0.5, help="Mock LLM latency for the re-run; does not affect results (default: 0.5, matching a real run)")
     parser.add_argument("--show-all", action="store_true", help="Print every comparison, not just the out-of-tolerance ones")
+    parser.add_argument("--out-json", type=Path, default=None, help="Where to write the machine-readable verdict (default: replication.json beside --reference)")
+    parser.add_argument("--no-json", action="store_true", help="Do not write the verdict file (the exit code is then the only record)")
+    parser.add_argument("--backup-dir", type=Path, default=None, help="Directory for a timestamped backup of an existing verdict file (default: <file>/../backups)")
     return parser
 
 
@@ -127,6 +139,35 @@ def main(argv=None, output_fn=print) -> int:
         absolute_floor=args.absolute_floor,
     )
     output_fn(format_report(report, show_all=args.show_all))
+
+    if not args.no_json:
+        out_json = args.out_json or args.reference.parent / "replication.json"
+        timestamp = backup_timestamp()
+        try:
+            backup_file(out_json, timestamp=timestamp, backup_dir=args.backup_dir)
+        except BackupError as exc:
+            # The comparison already ran and its verdict is on stdout; refusing to
+            # clobber an unreadable-to-back-up file loses nothing but the JSON.
+            print(f"[check_replication] {exc}", file=sys.stderr)
+            print(f"[check_replication] {out_json} not written.", file=sys.stderr)
+            return 0 if report.passed else 1
+        payload = report_to_dict(
+            report,
+            reference_path=args.reference,
+            dataset_path=dataset_path,
+            embedding_provider=embedding_provider,
+            relative=args.relative_tolerance,
+            absolute_floor=args.absolute_floor,
+            generated_at_utc=timestamp,
+        )
+        out_json.parent.mkdir(parents=True, exist_ok=True)
+        out_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        output_fn(
+            f"[check_replication] wrote {out_json} "
+            f"({payload['n_comparisons']} comparison(s) over "
+            f"{len(payload['config_ids'])} configuration(s))"
+        )
+
     return 0 if report.passed else 1
 
 
