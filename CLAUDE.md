@@ -780,6 +780,7 @@ Release (2026-11-02).
 | LEV-11 | — (D2 data production: real dataset + published D2 artifact) | Urgent | **complete** — 900 pairs published as ids + labels; κ = 0.5000 after the chat (2026-08-06) and code (2026-08-07) re-samples, 0.3267 at first publication; below the 0.7 bar, recorded as a finding |
 | LEV-12 | `add-corpus-acquisition` | High | archived (2026-08-04) |
 | LEV-13 | — (D3 production run: 30 configurations + analysis + ±5% replication) | Urgent | **run complete 2026-08-07**, result of record `results/run-003/` — see the results note below |
+| LEV-14 | `add-latency-measurement` | Urgent | **implemented + run 2026-08-07**, result of record `results/latency-faq/` — see the latency note below |
 
 Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 → LEV-11 (D2)
 → LEV-13 (D3). **LEV-11 and LEV-13 are deliberately separate:** D2 is human-paced
@@ -816,6 +817,37 @@ including which directories are scratch, is `docs/DATA_PRODUCTION.md`
 
 Both null results are findings, not defects — do not rescale the thresholds to
 chase hit rate (known-gap note #3), and do not re-run to hunt for a model effect.
+
+### Latency measurement — results (2026-08-07, LEV-14)
+
+**Result of record: `results/latency-faq/`** (gitignored, like every result
+directory). FAQ workload, ten configurations, real 900-pair dataset with
+`sentence-transformers`; provider half on **`claude-haiku-4-5-20251001`**, 600
+real calls, 0 refusals, no budget halt.
+
+- **Median lookup overhead 10.16 ms vs median provider latency 3407 ms →
+  ~3397 ms avoided per cache hit; the overhead is 0.30 % of the call it
+  avoids.** The cache's own cost is not what makes it uneconomic here — the
+  hit rate is (24.0 % best cell, below the frozen 30 % bar). Those two findings
+  belong together: a hit is worth ~340× what consulting the cache costs, and
+  the D3 grid produces one less than a quarter of the time.
+- **Embedding dominates the lookup**, and it is the only segment where the two
+  models differ: MiniLM 6.6–8.3 ms cold, ModernBERT 11.5–12.3 ms (p50). Index
+  search is 0.10–0.21 ms and the exact-cache lookup 0.002–0.010 ms. Warm
+  (memoized) embedding is 0.0014–0.005 ms — three orders of magnitude under
+  cold, which is why the two are reported separately and never averaged.
+- **Observed cost $0.713 for 600 Haiku calls** ($0.00119/call); the same token
+  totals priced at Sonnet-class rates project to $2.14. Recorded, with the
+  model identifier, in `results/latency-faq/llm_calls.json`.
+- **Provider latency does not replicate** and every figure above carries its
+  model. Lookup overhead does replicate, subject to the host recorded in
+  `latency_meta.json` (Apple arm64, 16 cores, Python 3.10.19).
+- `results/run-003/` was hashed into `results/latency-faq/run-003.manifest.sha256`
+  and copied out of the tree before any of this ran, and re-verified with zero
+  differences afterwards. Re-run the replication check with **`--no-json`**:
+  its default writes `replication.json` back into the reference directory.
+  Also pass **`--llm-latency-seconds 0`** — the default 0.5 s makes ~16,000
+  mock calls sleep for ~2.2 hours and looks exactly like a hang (0 % CPU).
 
 ## Conventions
 

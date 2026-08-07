@@ -43,14 +43,14 @@
 
 ## 7. Pilot run
 
-- [ ] 7.1 Set `anthropic_model` to `claude-haiku-4-5-20251001` and the two per-MTok price fields to that model's published prices
-- [ ] 7.2 Run `scripts/populate_responses.py` over the FAQ workload and confirm `results/latency-faq/llm_calls.json` records the full call set with a non-zero observed cost
-- [ ] 7.3 Run `scripts/run_latency.py --out-dir results/latency-faq` and confirm `latency.csv` contains all ten FAQ configurations
-- [ ] 7.4 Compute the Sonnet-class cost of an equivalent run from the pilot's recorded token totals and record it in `llm_calls.json`
+- [x] 7.1 Set `anthropic_model` to `claude-haiku-4-5-20251001` and the two per-MTok price fields to that model's published prices
+- [x] 7.2 Run `scripts/populate_responses.py` over the FAQ workload and confirm `results/latency-faq/llm_calls.json` records the full call set with a non-zero observed cost
+- [x] 7.3 Run `scripts/run_latency.py --out-dir results/latency-faq` and confirm `latency.csv` contains all ten FAQ configurations
+- [x] 7.4 Compute the Sonnet-class cost of an equivalent run from the pilot's recorded token totals and record it in `llm_calls.json`
 
 ## 8. Headline figure
 
-- [ ] 8.1 Derive median lookup overhead added versus median provider latency avoided on FAQ, and write it into `latency_meta.json` with the resolved model identifier attached
+- [x] 8.1 Derive median lookup overhead added versus median provider latency avoided on FAQ, and write it into `latency_meta.json` with the resolved model identifier attached
 - [x] 8.2 Assert in a test that any savings figure written to an artefact is accompanied by a model identifier in the same artefact
 
 ## 9. Documentation
@@ -61,8 +61,8 @@
 
 ## 10. Verification
 
-- [ ] 10.1 Re-verify every hash in `results/latency-faq/run-003.manifest.sha256` and confirm zero differences
-- [ ] 10.2 Confirm `results/` contains no file written by this change outside `results/latency-faq/`
-- [ ] 10.3 Run `scripts/check_replication.py --reference results/run-003/results.csv` and confirm 60/60 still passes
-- [ ] 10.4 Run `python -m pytest tests/ -q --cov=levy --cov-branch --cov-fail-under=90` and confirm it passes
-- [ ] 10.5 Run `openspec validate --all` and confirm it passes
+- [x] 10.1 Re-verify every hash in `results/latency-faq/run-003.manifest.sha256` and confirm zero differences
+- [x] 10.2 Confirm `results/` contains no file written by this change outside `results/latency-faq/`
+- [x] 10.3 Run `scripts/check_replication.py --reference results/run-003/results.csv` and confirm 60/60 still passes
+- [x] 10.4 Run `python -m pytest tests/ -q --cov=levy --cov-branch --cov-fail-under=90` and confirm it passes
+- [x] 10.5 Run `openspec validate --all` and confirm it passes
