@@ -528,8 +528,11 @@ implied by the spec, not bugs:
    checksums pinned; 900 pairs sampled at seed 42 / `positive_ratio` 0.5 (150-150 per
    class per workload); rehydration verified byte-identical on the real 900; the
    author's blind re-annotation finished 900/900 and published in
-   `data/ground_truth.ids.csv`'s `author_label` column. **Cohen's kappa = 0.3267
-   (faq 0.5267, code 0.2267, chat 0.2267) — below the frozen κ > 0.7 criterion.**
+   `data/ground_truth.ids.csv`'s `author_label` column. **Cohen's kappa = 0.4356
+   (faq 0.5267, code 0.2267, chat 0.5533) — below the frozen κ > 0.7 criterion.**
+   (Was 0.3267 with chat at 0.2267, until the 2026-08-06 chat re-sample at seed
+   4242 — `data/DATASHEET.md` §3–§4. `code` is now the sole workload below the bar,
+   and chat's 300 pairs are a different draw from the ones first published.)
    That is a research-scope finding, not a defect to code around: the
    corpora's positive classes ("closed as a duplicate", "3+ of 5 crowdworkers called
    it a paraphrase") are looser than the study's cache-substitutability label. Do
@@ -706,9 +709,9 @@ Release (2026-11-02).
 | LEV-8 | `add-statistical-analysis` | High | archived |
 | LEV-9 | `add-release-packaging` | Medium | archived |
 | LEV-10 | `add-results-dashboard` | Low (desirable) | archived |
-| LEV-11 | — (D2 data production: real dataset + published D2 artifact) | Urgent | **complete** — 900 pairs published as ids + labels; κ = 0.3267, below the 0.7 bar, recorded as a finding |
+| LEV-11 | — (D2 data production: real dataset + published D2 artifact) | Urgent | **complete** — 900 pairs published as ids + labels; κ = 0.4356 after the 2026-08-06 chat re-sample (0.3267 before), below the 0.7 bar, recorded as a finding |
 | LEV-12 | `add-corpus-acquisition` | High | archived (2026-08-04) |
-| LEV-13 | — (D3 production run: 30 configurations + analysis + ±5% replication) | Urgent | **open** — split out of LEV-11 on 2026-08-05 so D2 could close |
+| LEV-13 | — (D3 production run: 30 configurations + analysis + ±5% replication) | Urgent | **run complete 2026-08-07** — see the results note below |
 
 Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 → LEV-11 (D2)
 → LEV-13 (D3). **LEV-11 and LEV-13 are deliberately separate:** D2 is human-paced
@@ -716,6 +719,27 @@ annotation work, D3 is a machine run over its output, and keeping them in one is
 is what previously made neither closeable. Do not merge them back.
 When an OpenSpec change is created or archived, reference its Linear issue
 and keep the issue status in sync.
+
+### D3 production run — results (2026-08-07)
+
+Full grid over the real 900-pair dataset with `sentence-transformers` embeddings.
+The `chat` cells come from a separate run over the re-sampled workload, merged in
+with `scripts/merge_results.py`; faq and code are the 2026-08-06 run, unchanged.
+Bundle: `results/run-002/` (gitignored — results ship with a release, not the tree).
+
+- **H0₁ (model) retained**, p = 0.639. **H0₂ (workload) rejected**, p = 0.0085,
+  Tukey ran on it. **H0₃ (interaction) retained**, p = 0.763. So: no measurable
+  embedding-model effect on FPR; workload dominates.
+- **Hit rate never reaches the frozen 30% viability bar.** Best cell is
+  faq / all-MiniLM-L6-v2 at threshold 0.70 = 24.0%; chat and code sit at ~2% at
+  every threshold. All 30 configurations fail the criterion.
+- **±5% replication passed**, 20/20 (configuration, metric) comparisons.
+- Precision is high wherever anything is cached at all (0.87–1.00 on faq), which
+  is the flip side of the same effect: the `1/(1+L2)` band 0.70–0.90 corresponds
+  to ~0.91–0.998 cosine, so the cache almost never fires.
+
+Both null results are findings, not defects — do not rescale the thresholds to
+chase hit rate (known-gap note #3), and do not re-run to hunt for a model effect.
 
 ## Conventions
 

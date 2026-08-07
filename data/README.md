@@ -22,6 +22,12 @@ This directory holds the ground-truth dataset for the Levy capstone study
 > `ground_truth_label()` uses it rather than falling back to `original_label`.
 > Cohen's κ = 0.3267, **below the frozen κ > 0.7 criterion**; that is escalated
 > as a research finding, not worked around — see `DATASHEET.md` §4.
+>
+> **Update 2026-08-07.** The `chat` workload was re-drawn (seed 4242) and
+> re-annotated blind; its 300 pairs are a different sample from the ones first
+> published. κ is now **0.4356** overall (faq 0.5267, code 0.2267, chat 0.5533) —
+> still below 0.7, with `code` the sole workload under the bar. `DATASHEET.md` §3
+> records the re-sample and §4 the updated breakdown.
 
 `ground_truth.csv` and `ground_truth.json` in this directory contain **15
 synthetic fixture pairs (5 per workload)**, not real data. Every row carries

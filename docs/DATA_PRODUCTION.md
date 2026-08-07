@@ -53,7 +53,7 @@ resumable.
 | 4 sample 900 | done — seed 42, ratio 0.5, 300/workload |
 | 5 round-trip on real data | done — every field of all 900 matched exactly |
 | 6 blind re-annotation | done — 900 / 900 |
-| 7 Cohen's kappa | done — **κ = 0.3267, below the frozen κ > 0.7 bar**; see [`../data/DATASHEET.md`](../data/DATASHEET.md) §4 for the breakdown and the contingency options. Do not adjust the threshold or re-annotate non-blind. |
+| 7 Cohen's kappa | done — ~~**κ = 0.3267**~~ **κ = 0.4356 after the 2026-08-06 chat re-sample (faq 0.5267, code 0.2267, chat 0.5533), still below the frozen κ > 0.7 bar**; see [`../data/DATASHEET.md`](../data/DATASHEET.md) §4 for the breakdown and the contingency options. Do not adjust the threshold or re-annotate non-blind. |
 | 8 refresh the ids file with your labels | done — verified 900 / 900 rows of `data/ground_truth.ids.csv` carry `author_label`, so the published D2 artifact ships the re-annotation |
 | 9 audit, then commit | done — audit passes 8/8 |
 

@@ -22,6 +22,27 @@ analysis, LEV-9 packaging), the real dataset is on disk, and the model registry
 resolves both study checkpoints with the correct prefixes and flags. The run is
 an execution task, not a development task.
 
+> **Update 2026-08-07 — the run is done. Bundle: `results/run-002/`.**
+>
+> Not a single sweep: faq and code come from the 2026-08-06 run, `chat` from a
+> separate 10-configuration run over the re-sampled workload (§"Step 4b"), merged
+> with `scripts/merge_results.py`. All 30 cells present, no duplicates.
+>
+> | | |
+> |---|---|
+> | H0₁ model | **retained**, p = 0.639 |
+> | H0₂ workload | **rejected**, p = 0.0085 (Tukey ran on it) |
+> | H0₃ interaction | **retained**, p = 0.763 |
+> | Hit rate | **never reaches 30%.** Best cell faq / all-MiniLM-L6-v2 @ 0.70 = 24.0%; chat and code ~2% at every threshold. All 30 configurations fail the viability criterion |
+> | Precision | 0.87–1.00 wherever anything is cached; 1.00 at thresholds ≥ 0.85, where the cache almost never fires |
+> | ±5% replication | **passed**, 20/20 (configuration, metric) comparisons |
+> | Cohen's κ | 0.4356 (faq 0.5267, code 0.2267, chat 0.5533) — below the frozen 0.7 |
+>
+> Two null results and one rejected null. Both nulls are findings, not defects:
+> **do not rescale the thresholds to chase hit rate** (§6, and `CLAUDE.md`
+> known-gap #3 — the 0.70–0.90 band on the `1/(1+L2)` scale is ~0.91–0.998 cosine
+> by design), and do not re-run hunting for a model effect.
+
 ---
 
 ## 1. Embedding provider and models
@@ -59,9 +80,21 @@ code   34 pos / 266 neg      <-- recall on code rests on 34 positives
 chat   68 pos / 232 neg
 ```
 
-This is the κ = 0.3267 asymmetry propagating into D3. It is **a finding, not a defect
-to correct** — it bounds what the code workload can support, and is not something to
-code around.
+This is the ~~κ = 0.3267~~ κ asymmetry propagating into D3. It is **a finding, not a
+defect to correct** — it bounds what the code workload can support, and is not
+something to code around.
+
+> **Update 2026-08-07 — chat re-sampled, so its line above is superseded.** After
+> the 2026-08-06 chat re-draw (seed 4242) and blind re-annotation, the balance is:
+>
+> ```
+> faq   163 pos / 137 neg
+> code   34 pos / 266 neg      <-- unchanged; recall on code still rests on 34 positives
+> chat  143 pos / 157 neg      <-- was 68 / 232
+> ```
+>
+> Overall κ is now 0.4356 (faq 0.5267, code 0.2267, chat 0.5533). The asymmetry is
+> now a `code`-only phenomenon, and the caveat above applies to that workload alone.
 
 ---
 

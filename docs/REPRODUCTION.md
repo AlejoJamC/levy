@@ -349,7 +349,7 @@ embeddings the false positive rate varies across configurations, so the ANOVA
 F-tests become defined and H0₁–H0₃ get real `reject`/`retain` decisions, with
 Tukey HSD following up any significant effect.
 
-### Expected κ on the real dataset — 0.3267, below the 0.7 bar
+### Expected κ on the real dataset — 0.4356, below the 0.7 bar
 
 Worth stating plainly, so a result that looks like a mistake is not mistaken for
 one. Running the kappa tool on the real dataset gives:
@@ -359,8 +359,15 @@ python scripts/compute_kappa.py --dataset data/ground_truth.full.json --strict
 ```
 
 ```text
-overall: kappa=0.3267  (faq 0.5267, code 0.2267, chat 0.2267)
+overall: kappa=0.4356  (faq 0.5267, code 0.2267, chat 0.5533)
 ```
+
+> **Update 2026-08-07.** ~~`overall: kappa=0.3267 (faq 0.5267, code 0.2267, chat
+> 0.2267)`~~ — the `chat` workload was re-sampled at seed 4242 and re-annotated
+> blind, which moved chat from 0.2267 to 0.5533 and the overall figure from 0.3267
+> to 0.4356. If you rehydrate from the published `ground_truth.ids.csv` you get the
+> current sample and therefore the current numbers. `code` is now the only
+> workload below the bar; see [`data/DATASHEET.md`](../data/DATASHEET.md) §3.
 
 `--strict` **exits non-zero**, because the frozen success criterion is κ > 0.7.
 That is the real, recorded outcome, not a setup error on your side — the earlier

@@ -24,10 +24,15 @@ fixture pairs, not real data).
 > | Sample | 900 pairs, seed 42, `positive_ratio` 0.5, 150/150 per class per workload |
 > | Rehydration round-trip | verified byte-identical on the real 900 |
 > | Blind re-annotation | 900 / 900 |
-> | **Cohen's kappa (overall)** | **κ = 0.3267 — below the frozen κ > 0.7 threshold** |
+> | **Cohen's kappa (overall)** | ~~**κ = 0.3267**~~ → **κ = 0.4356 after the 2026-08-06 chat re-sample — still below the frozen κ > 0.7 threshold** |
 >
 > A research-scope finding, escalated per `docs/Project_Proposal.md` Risk 1, not
 > coded around. Breakdown and contingency options: §4.
+>
+> **Update 2026-08-07.** The `chat` workload was re-drawn (§3) and re-annotated;
+> its κ went 0.2267 → 0.5533, lifting the overall figure to 0.4356. `code`
+> (0.2267) is now the sole workload below the bar. The threshold is still not
+> met, and the finding stands.
 >
 > Superseded by this run and struck through in place: §7's expectation that the
 > real dataset replaces `data/ground_truth.{csv,json}`, and §8's last bullet.
@@ -236,10 +241,24 @@ released 900-pair dataset.`
 >   before each overwrite. It is gitignored (snapshots of the working dataset
 >   carry corpus text) and the tooling never deletes from it.
 >
-> **As of this update the released 900 pairs are still the single 2026-08-04
-> sample; no workload has been re-drawn.** If one is, the workload, the new seed,
-> the date and the reason belong here — a dataset whose workloads were drawn on
-> different days is a fact about the study, not an implementation detail.
+> ~~**As of this update the released 900 pairs are still the single 2026-08-04
+> sample; no workload has been re-drawn.**~~
+>
+> **Update 2026-08-07 — the `chat` workload has been re-drawn.** The released 900
+> pairs are no longer a single sample:
+>
+> | | |
+> |---|---|
+> | Workload | `chat` (twitter-pit2015) |
+> | New seed | 4242 (faq and code remain seed 42, 2026-08-04) |
+> | Drawn | 2026-08-06 21:19 UTC, recorded per workload in `ground_truth.ids.meta.json` |
+> | Disjointness | none of the 300 new pairs appears in the sample it replaced |
+> | Re-annotated | 300 / 300, blind, in a session restricted to `chat` |
+> | Reason | chat's κ was 0.2267 (§4), tied with `code` for the lowest. Re-drawing it separates two explanations: an unlucky sample, or a corpus whose positive class does not carry the study's notion of cache-substitutability |
+> | Outcome | chat κ 0.2267 → **0.5533**, so for chat it was substantially the sample. `code` did not move (it was untouched) and is now the sole workload below the bar, which is consistent with §4's construct-alignment reading of SODD |
+>
+> faq's and code's rows, and their `author_label`s, were carried through
+> untouched; the tooling asserts this byte-for-byte.
 
 ## 4. Preprocessing / labeling — blind re-annotation
 
@@ -338,6 +357,38 @@ python scripts/compute_kappa.py --dataset data/ground_truth.json --strict
 > Option 1 is the author's recommendation, on the grounds that the κ gap is
 > informative about the corpora rather than about the annotation, and that §8's
 > first limitation already bounds how κ may be read.
+
+> **Update 2026-08-07 — `chat` re-sampled. The table above describes the first
+> chat sample and is superseded for that workload only.**
+>
+> `chat` was re-drawn at seed 4242 and re-annotated blind (§3). faq and code were
+> untouched, so their figures are unchanged. Current values over the full 900:
+>
+> | Scope | n | κ | Observed agreement | Expected agreement |
+> |---|---:|---:|---:|---:|
+> | **overall** | 900 | ~~0.3267~~ **0.4356** | 0.7178 | 0.5 |
+> | faq (quora-qqp) | 300 | 0.5267 | 0.7633 | 0.5 |
+> | code (sodd) | 300 | 0.2267 | 0.6133 | 0.5 |
+> | chat (twitter-pit2015) | 300 | ~~0.2267~~ **0.5533** | 0.7767 | 0.5 |
+>
+> Overall confusion (`original` × `author`): TP 268, FP 72, FN 182, TN 378.
+> One-directional disagreement, updated:
+>
+> | Workload | corpus dup / author not | corpus not / author dup |
+> |---|---:|---:|
+> | faq | 29 | 42 |
+> | code | **116 of 150** | **0** |
+> | chat | ~~99~~ 37 | ~~17~~ 30 |
+>
+> **This is not "re-sampling until κ clears"**, which the bullet above rules out.
+> It is a single re-draw of one workload, annotated once, with the outcome
+> recorded whatever it turned out to be — and κ = 0.4356 still does not clear 0.7,
+> so nothing about the finding or the contingency options changes. What it buys is
+> a discrimination the first run could not make: chat's low κ was substantially
+> its sample, while **`code` did not move and is now the sole workload below the
+> bar**. That strengthens the construct-alignment reading rather than weakening it
+> — SODD's 116-of-150 one-directional disagreement is a property of "closed as a
+> duplicate", not of an unlucky draw. Option 1 remains the recommendation.
 
 ## 5. Uses
 
@@ -461,10 +512,13 @@ length per workload, prevalence of near-duplicate-but-not-duplicate pairs).`
 > **Update 2026-08-04 — answered. Limitations observed during the real run:**
 >
 > - **The corpora disagree with the study's own label definition, unevenly.**
->   The headline limitation, quantified in §4: κ = 0.3267 overall, and in the
+>   The headline limitation, quantified in §4: ~~κ = 0.3267 overall~~ κ = 0.4356
+>   overall (2026-08-07, after the chat re-sample), and in the
 >   `code` workload the author rejected 116 of 150 corpus-labelled duplicates.
 >   Any result broken down by workload must be read with this in view — the three
->   workloads do not carry equally trustworthy ground truth.
+>   workloads do not carry equally trustworthy ground truth. **After the chat
+>   re-sample this is concentrated in `code`** (κ 0.2267, versus faq 0.5267 and
+>   chat 0.5533), so it is that workload's results that need the caveat most.
 > - **Query length varies by more than an order of magnitude across workloads.**
 >   Median `query` length is 51 characters (faq), 41 (chat) and 600 (code), with
 >   the longest `code` post at 18,938 characters. Both study embedding models

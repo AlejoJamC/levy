@@ -695,16 +695,23 @@ class TestSingleWorkloadSamplingCli(unittest.TestCase):
             annotated = self._annotate_everything(paths)
             beside = self._write_progress(tmp, annotated)
             elsewhere = self._write_progress(tmp, annotated, name="other_progress.json")
+            repo_progress_before = (
+                REPO_ROOT / "data" / "annotation_progress.json"
+            ).read_bytes()
 
             self.assertEqual(self._resample(tmp, "chat").returncode, 0)
 
             self.assertEqual(json.loads(beside.read_text())["version"], 2)  # pruned
-            # An unrelated file, and the repo's own, are untouched.
+            # An unrelated file, and the repo's own, are untouched. The repo's is
+            # compared byte-for-byte rather than by format: it is a live file that
+            # a real production run legitimately rewrites, so asserting anything
+            # about its *contents* would make this test depend on the state of the
+            # author's work.
             self.assertNotIn("version", json.loads(elsewhere.read_text()))
-            repo_progress = json.loads(
-                (REPO_ROOT / "data" / "annotation_progress.json").read_text(encoding="utf-8")
+            self.assertEqual(
+                (REPO_ROOT / "data" / "annotation_progress.json").read_bytes(),
+                repo_progress_before,
             )
-            self.assertNotIn("version", repo_progress)
 
     def test_explicit_progress_path_is_honoured(self):
         with TemporaryDirectory() as tmp:
