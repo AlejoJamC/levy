@@ -176,7 +176,31 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   independent `MockCorpusSource`s are not a false positive); `annotation.py`
   (`BlindAnnotationSession` — shows only `query_1`/`query_2`, never the original
   label; per-answer progress persistence for resumable 900-pair sessions; never
-  overwrites an existing `author_label` unless `overwrite=True`); `kappa.py`
+  overwrites an existing `author_label` unless `overwrite=True`; **presentation
+  order** is workload blocks in `DEFAULT_WORKLOAD_ORDER` = `faq,chat,code` — code
+  last, longest posts — shuffled within each block under `order_seed` via
+  `Random(f"{seed}:{workload}")` so a workload's order is independent of which
+  others are in scope; the resolved order and seed are persisted in the progress
+  file and **reused on resume**, never re-derived mid-session; `session_limit`
+  ends a sitting cleanly after N labeled pairs (skips don't count); every recorded
+  label is fingerprinted with its pair's `source_pair_id`, so labels for a pair
+  that has since been re-sampled away are dropped and counted, not re-applied —
+  progress-file v2, with the flat v1 `{pair_id: label}` map still read;
+  `prune_progress()` is the **primary** defence, called by `sample_dataset.py`
+  when it re-samples — the fingerprint is only the second line and cannot help a
+  v1 file, which has no fingerprints to compare, and v1 is exactly what
+  `data/annotation_progress.json` currently is);
+  `backup.py` (`backup_file`/`backup_files` — copy to `<dir>/backups/<stem>.<UTC
+  basic ISO 8601><suffix>` before any overwrite, shared timestamp across a
+  multi-file write, never delete, never clobber a same-second backup, `BackupError`
+  = caller writes nothing); `workload_update.py` (per-workload re-sampling of the
+  live dataset: `ExcludingCorpusSource` wraps an adapter to hide already-sampled
+  `source_pair_id`s **before** pre-flight so a shortfall is caught rather than
+  discovered; `splice_workload` replaces one workload's rows in place, passing every
+  other row through *by identity* so their `author_label`s are untouched by
+  construction; `check_ids_alignment` refuses to proceed when the ids file and the
+  working dataset disagree about the untouched workloads — identity only, since
+  annotation legitimately updates the working dataset first); `kappa.py`
   (`cohen_kappa`/`kappa_report`, stdlib-only 2×2 contingency, documented
   zero-annotated and `pe==1` edge cases). `scripts/*.py` (`sample_dataset.py`,
   `rehydrate_dataset.py`, `annotate_dataset.py`, `compute_kappa.py`,
@@ -184,6 +208,35 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   offline. **`scripts/fetch_corpora.py` is the sole exception** — the only
   network-touching entry point in the repository, excluded from pytest by design
   and guarded by `TestAcquisitionIsOutOfBand`.
+- **The single ground truth (2026-08-06).** There is exactly one ground-truth
+  dataset, at `data/ground_truth.ids.csv` + `.ids.meta.json` (published) and
+  `data/ground_truth.full.{csv,json}` (working, gitignored). Never create a
+  parallel, versioned or suffixed dataset — no `_v2`, `_new`, `_final`, `.bak`,
+  no date in a working filename, no "candidate" beside the real one. Every
+  re-sample and re-annotation writes back to those paths, and every script that
+  overwrites a ground-truth or results artifact backs it up to
+  `data/backups/` (or `<out-dir>/backups/`) first via `levy/dataset/backup.py`,
+  aborting without writing if the backup fails. Backups are never deleted.
+  `data/backups/` is gitignored in both `.gitignore` files.
+- **Per-workload re-sampling (2026-08-06).** `scripts/sample_dataset.py
+  --workload chat` (repeatable) resolves and reads **only** that workload's
+  corpus — the others need not be on disk — and operates in place: it replaces
+  that workload's rows inside the existing dataset, clears `author_label` for the
+  new pairs only, carries the other workloads' rows and labels through untouched,
+  and excludes every `source_pair_id` already in the dataset so the new sample is
+  disjoint from what it replaced (a pool that can't cover `--n-per-workload`
+  after exclusion fails naming the workload and the shortfall, writing nothing).
+  It also **invalidates the annotation progress for the replaced pairs**
+  (`--progress`, default `annotation_progress.json` beside `--out-csv` — derived
+  from the dataset's directory so a temp-dir run cannot reach into `data/`);
+  without that, the next session would re-apply the old answers to the new pairs,
+  since a re-sample reuses that workload's `pair_id`s. The sidecar records, **per
+  workload**, the seed and UTC timestamp of the run that produced that workload's
+  rows (backfilled from the previous sidecar's top level, and flagged
+  `provenance_backfilled`, for entries written before this existed); the top-level
+  `seed` describes only the latest invocation. `scripts/annotate_dataset.py --workload chat` restricts the
+  session to it. Procedure and guarantees: `docs/DATA_PRODUCTION.md`
+  §"Re-sampling one workload after the fact".
 - **Corpus acquisition + licence-safe distribution (LEV-12)** — the study's query
   text is **never committed**: Quora QQP grants no redistribution right and SODD is
   CC BY-NC-SA 4.0. `scripts/fetch_corpora.py` acquires into `data/raw/<corpus>/`
@@ -232,6 +285,29 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   All offline, driven by `tests/fixtures/corpora/` — real column structure, synthetic
   content, laid out as a valid `--raw-dir` (regenerate the parquet shards with
   `python tests/fixtures/corpora/make_sodd_fixture.py`).
+- `tests/test_workload_resample.py` (2026-08-06) — 55 unit tests for backups +
+  per-workload re-sampling: backup naming/UTC/same-second collision/unusable
+  directory, splice identity preservation and length changes, exclusion and
+  post-exclusion pool counting, ids-alignment drift, and the `--workload` CLI
+  end-to-end against the corpus fixtures — the untouched workloads' CSV rows
+  asserted **byte-for-byte identical** (labels included), `author_label` cleared
+  for the re-sampled workload only, the new sample disjoint from the old, every
+  overwritten file backed up first, **nothing written when the backup fails**, no
+  versioned/suffixed filename ever created, per-workload sidecar provenance, and
+  rehydration still byte-identical afterwards.
+- `tests/test_annotation_order.py` (2026-08-06) — 38 unit tests for presentation
+  order and session control: `--workload-order` parsing (unknown/repeated rejected),
+  block order, within-block shuffle determinism under `--order-seed`, workload
+  scope independence, resume-in-the-recorded-order after an interrupt (including
+  when a different seed is passed), `--session-limit` stopping and resuming, the
+  fingerprint that stops a re-sampled workload from inheriting the old labels, v1
+  progress-file compatibility, and blindness under the new ordering.
+- `tests/test_results_merge.py` (2026-08-06) — 29 unit tests for the partial-run
+  merge: duplicates across and within runs, incomplete grid, cell outside the grid,
+  decisions merged (and a mixed-presence run rejected), dataset/provider
+  disagreement, grid-order sorting, backup-before-write, **the merged 30-row set
+  byte-identical to a single full sweep's `results.csv`/`decisions.csv`**, and the
+  merged bundle feeding `scripts/run_analysis.py` end-to-end.
 - `levy/experiment/` (LEV-4) — offline replay harness per S&D Report Algorithm 2:
   `config.py` (`ExperimentConfig` + `full_grid()`, the frozen 2 models × 3 workloads ×
   5 thresholds = 30 configurations, thresholds carried verbatim on the `1/(1+L2)` scale);
@@ -249,11 +325,25 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   sidecar (dataset path, providers, resolved model checkpoints, grid, latency labeled
   synthetic under the mock LLM's fixed 0.5s sleep). `LevyEngine` accepts an optional
   `embedding_manager` constructor param for this sharing; default behavior unchanged.
+  `merge.py` (2026-08-06) — merges partial harness runs into one 30-row result set,
+  at the level of **raw CSV rows** so a merged file is byte-identical to a single
+  full run's (the harness writes pre-formatted strings; parsing to floats and
+  reformatting would break that). A `config_id` present in two runs and a merged
+  set that is not exactly `full_grid()` are both hard errors — the first because
+  one run is stale and the merge does not get to pick a winner, the second because
+  the ANOVA assumes a balanced design. Runs disagreeing on `dataset_path` /
+  `embedding_provider` / `llm_provider` are refused; the merged `run_meta.json`
+  records every source run under `merged_from`.
 - `scripts/run_experiments.py` — argparse CLI over `levy/experiment/runner.py`: dataset
   path (default `data/ground_truth.csv`), output directory, `--models/--workloads/
   --thresholds` grid-subset flags for smoke runs, `--embedding-provider` (default
   `mock`, fully offline against the synthetic fixture; pass `sentence-transformers` for
   the real study run, which is LEV-13). Non-zero exit on a sanity-check failure.
+- `scripts/merge_results.py` (2026-08-06) — argparse CLI over `levy/experiment/merge.py`:
+  positional harness directories + `--out-dir` (which may be one of them, an in-place
+  merge, backed up first). `--allow-partial` writes an incomplete set for diagnostics
+  only. Use it when the grid ran in pieces (`--workloads chat` = 10 of 30 rows, a
+  re-sampled workload re-run on its own) instead of re-running cells that were fine.
 - `tests/test_experiment_config.py`, `test_experiment_metrics.py`,
   `test_experiment_replay.py`, `test_experiment_runner.py` — 32 unit tests for
   `levy/experiment/`: grid enumeration/uniqueness, hand-computed metrics + zero-division
@@ -408,8 +498,7 @@ implied by the spec, not bugs:
    identical across models. For unit vectors, `distance = sqrt(2 − 2·cosine)` and
    `similarity = 1/(1+distance)`. The frozen sweep 0.70–0.90 therefore covers a
    high-cosine band (~0.91–0.998). This is intentional and spec-mandated; do NOT
-   rescale thresholds or revert to cosine. If hit-rate viability (>30%) is not
-   met at this band, surface that as a research-scope finding to the supervisor.
+   rescale thresholds or revert to cosine.
 4. ~~**No experiment harness**~~ — **Resolved (LEV-4).** `levy/experiment/` implements
    `run_experiment`/`full_grid`/30-configuration replay, TP/FP/TN/FN accounting against
    `QueryPair.ground_truth_label()`, and precision/recall/F0.5/FPR/hit-rate computation
@@ -427,8 +516,8 @@ implied by the spec, not bugs:
    distribution format, the corpus provenance registry, seeded stratified sampling,
    pre-flight validation, one-command acquisition, rehydration, blind re-annotation,
    and Cohen's kappa. **Corpus deviations from the frozen docs, flagged not silently
-   resolved** (rationale in `data/DATASHEET.md` §2, supervisor sign-off tracked in
-   LEV-11): code workload "Stack Overflow duplicate questions" → **SODD** (same
+   resolved** (rationale in `data/DATASHEET.md` §2): code workload
+   "Stack Overflow duplicate questions" → **SODD** (same
    duplicate-closure source, published pre-processed release); chat workload
    **ConvAI2 → Twitter PIT-2015** (ConvAI2 ships dialogues, not pair-level human
    same-intent labels, so it cannot supply the original label the kappa criterion
@@ -439,9 +528,13 @@ implied by the spec, not bugs:
    checksums pinned; 900 pairs sampled at seed 42 / `positive_ratio` 0.5 (150-150 per
    class per workload); rehydration verified byte-identical on the real 900; the
    author's blind re-annotation finished 900/900 and published in
-   `data/ground_truth.ids.csv`'s `author_label` column. **Cohen's kappa = 0.3267
-   (faq 0.5267, code 0.2267, chat 0.2267) — below the frozen κ > 0.7 criterion.**
-   That is a research-scope finding to escalate, not a defect to code around: the
+   `data/ground_truth.ids.csv`'s `author_label` column. **Cohen's kappa = 0.5000
+   (faq 0.5267, code 0.4200, chat 0.5533) — below the frozen κ > 0.7 criterion.**
+   (0.3267 at first publication; `chat` was re-drawn 2026-08-06 at seed 4242 and
+   `code` 2026-08-07 at seed 8484, each re-annotated blind — `data/DATASHEET.md`
+   §3–§4. Those two workloads' 300 pairs are different draws from the ones first
+   published; faq is unchanged at seed 42.)
+   That is a research-scope finding, not a defect to code around: the
    corpora's positive classes ("closed as a duplicate", "3+ of 5 crowdworkers called
    it a paraphrase") are looser than the study's cache-substitutability label. Do
    **not** lower the threshold, re-annotate non-blind, re-sample for agreement, or
@@ -450,9 +543,7 @@ implied by the spec, not bugs:
    they stay as the permanent offline default; the real dataset lives in the gitignored
    `.full.` files, rebuilt by `scripts/rehydrate_dataset.py`. **Still open, and now
    tracked in LEV-13, not LEV-11:** the D3 production run (harness → analysis →
-   replication on the real 900) and the supervisor conversation, which batches the κ
-   shortfall, the hit-rate viability result, and sign-off on the two corpus
-   substitutions. LEV-11 closes on D2 alone.
+   replication on the real 900). LEV-11 closes on D2 alone.
 7. ~~**pytest declared but not installed**~~ — **Resolved (LEV-5).** `pytest` and
    `pytest-cov` are installed in the `levy` conda env (`environment.yml`, conda-forge)
    and mirrored in `pyproject.toml` `[dev]` extras. pytest is the canonical runner;
@@ -499,6 +590,25 @@ python scripts/sample_dataset.py --require-real --n-per-workload 300 --seed 42 \
     --out-csv data/ground_truth.full.csv --out-json data/ground_truth.full.json \
     --out-ids data/ground_truth.ids.csv
 
+# Re-draw ONE workload in place (2026-08-06). Reads only that corpus; replaces
+# only that workload's rows; other workloads keep their author_label. Backs up
+# every file it overwrites to data/backups/ first. New pairs exclude everything
+# already in the dataset. Never creates a second/versioned dataset.
+python scripts/sample_dataset.py --require-real --workload chat \
+    --n-per-workload 300 --seed 4242 \
+    --out-csv data/ground_truth.full.csv --out-json data/ground_truth.full.json \
+    --out-ids data/ground_truth.ids.csv
+
+# Annotate just that workload, 50 pairs per sitting, refreshing the published ids
+# file in the same command. Blocks are presented faq,chat,code (code last) and
+# shuffled within each block under --order-seed; the order is persisted so a
+# resumed session keeps it.
+python scripts/annotate_dataset.py \
+    --dataset data/ground_truth.full.json --progress data/annotation_progress.json \
+    --workload chat --session-limit 50 \
+    --out-csv data/ground_truth.full.csv --out-json data/ground_truth.full.json \
+    --out-ids data/ground_truth.ids.csv
+
 # Demos
 python examples/simple_replay.py     # mock LLM; uses sentence-transformers if installed
 python examples/ollama_demo.py       # requires `ollama serve` + qwen3 + nomic-embed-text
@@ -520,6 +630,12 @@ docker compose run --rm pipeline
 python scripts/run_experiments.py --out-dir results/run-001
 python scripts/run_analysis.py --results-dir results/run-001 --out-dir results/run-001/analysis
 python scripts/check_replication.py --reference results/run-001/results.csv  # ±5% criterion
+
+# Grid ran in pieces (e.g. `--workloads chat` = 10 of 30 rows)? Merge instead of
+# re-running the cells that were fine. Fails loudly on a duplicate config_id or a
+# set that isn't exactly the 30-cell grid; backs up the target first.
+python scripts/merge_results.py --out-dir results/run-001 \
+    results/run-faq results/run-code results/run-chat
 
 # Release audit (LICENSE, secrets in tree + all git history, personal data,
 # third-party corpus text in tracked files, data/raw/ spot-check)
@@ -594,9 +710,9 @@ Release (2026-11-02).
 | LEV-8 | `add-statistical-analysis` | High | archived |
 | LEV-9 | `add-release-packaging` | Medium | archived |
 | LEV-10 | `add-results-dashboard` | Low (desirable) | archived |
-| LEV-11 | — (D2 data production: real dataset + published D2 artifact) | Urgent | **complete** — 900 pairs published as ids + labels; κ = 0.3267, below the 0.7 bar, recorded as a finding |
+| LEV-11 | — (D2 data production: real dataset + published D2 artifact) | Urgent | **complete** — 900 pairs published as ids + labels; κ = 0.5000 after the chat (2026-08-06) and code (2026-08-07) re-samples, 0.3267 at first publication; below the 0.7 bar, recorded as a finding |
 | LEV-12 | `add-corpus-acquisition` | High | archived (2026-08-04) |
-| LEV-13 | — (D3 production run: 30 configurations + analysis + ±5% replication) | Urgent | **open** — split out of LEV-11 on 2026-08-05 so D2 could close |
+| LEV-13 | — (D3 production run: 30 configurations + analysis + ±5% replication) | Urgent | **run complete 2026-08-07**, result of record `results/run-003/` — see the results note below |
 
 Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 → LEV-11 (D2)
 → LEV-13 (D3). **LEV-11 and LEV-13 are deliberately separate:** D2 is human-paced
@@ -604,6 +720,35 @@ annotation work, D3 is a machine run over its output, and keeping them in one is
 is what previously made neither closeable. Do not merge them back.
 When an OpenSpec change is created or archived, reference its Linear issue
 and keep the issue status in sync.
+
+### D3 production run — results (2026-08-07)
+
+Full grid over the real 900-pair dataset with `sentence-transformers` embeddings.
+The `chat` cells come from a separate run over the re-sampled workload, merged in
+with `scripts/merge_results.py`; faq and code are the 2026-08-06 run, unchanged.
+**Result of record: `results/run-003/`** (gitignored — results ship with a release,
+not the tree). Staging directories from the merges (`run-001-nochat`,
+`run-002-chat`, `staging-code`, `staging-prev-minus-code`) were merge inputs, not
+results: pointing the analysis, `check_replication.py` or the poster at one of them
+returns a valid-looking answer covering part of the grid. Replicate and build only
+against the consolidated directory. The full re-run-one-workload procedure,
+including which directories are scratch, is `docs/DATA_PRODUCTION.md`
+§"Re-drawing one workload".
+
+- **H0₁ (model) retained**, p = 0.465. **H0₂ (workload) rejected**, p = 0.0188,
+  Tukey ran on it. **H0₃ (interaction) retained**, p = 0.875. So: no measurable
+  embedding-model effect on FPR; workload dominates.
+- **Hit rate never reaches the frozen 30% viability bar.** Best cell is
+  faq / all-MiniLM-L6-v2 at threshold 0.70 = 24.0%. All 30 configurations fail
+  the criterion.
+- **±5% replication passed**, 60/60 (configuration, metric) comparisons over all
+  30 configurations, recorded in `results/run-003/replication.json`.
+- Precision is high wherever anything is cached at all (0.87–1.00 on faq), which
+  is the flip side of the same effect: the `1/(1+L2)` band 0.70–0.90 corresponds
+  to ~0.91–0.998 cosine, so the cache almost never fires.
+
+Both null results are findings, not defects — do not rescale the thresholds to
+chase hit rate (known-gap note #3), and do not re-run to hunt for a model effect.
 
 ## Conventions
 

@@ -55,17 +55,15 @@ docker build -t levy:latest .
 docker run --rm -v "$PWD/results:/opt/levy/results" levy:latest
 ```
 
-**Measured build cost** (author's machine, Apple Silicon, warm network):
-**5 min 34 s** for a cold build, producing a **16.4 GB** image. The size comes
-from `environment.yml` pulling `sentence-transformers`, hence torch — this is a
-research artefact optimised for environment fidelity, not for distribution size.
-Rebuilds after a source-only change are fast: the conda solve is cached until
-`environment.yml` itself changes.
+**Expect a cold build of roughly 5–6 minutes and a ~16 GB image** (measured on
+Apple Silicon with a warm network). The size comes from `environment.yml` pulling
+`sentence-transformers`, hence torch — this is a research artefact optimised for
+environment fidelity, not for distribution size. Rebuilds after a source-only
+change are fast: the conda solve is cached until `environment.yml` itself changes.
 
-**Verified offline.** The author ran the image with `--network none` and no
-`ANTHROPIC_API_KEY` in the environment; the pipeline completed with exit code 0
-and produced `results.csv` / `decisions.csv` **byte-identical** to the local
-conda run:
+**The default path needs no network and no API key.** Confirm it yourself — this
+completes with exit code 0 and produces `results.csv` / `decisions.csv`
+byte-identical to the conda route:
 
 ```bash
 docker run --rm --network none -v "$PWD/results:/opt/levy/results" levy:latest
@@ -95,8 +93,8 @@ docker compose run --rm -e LEVY_DATASET=data/ground_truth.json pipeline
 pipeline never calls a real LLM** — the harness replays through the mock LLM by
 design. The key matters only if you use the image to serve the HTTP API.
 
-> Docker is verified by the author locally; it is outside the offline pytest
-> suite, which covers the Python the container invokes.
+> The Docker route is outside the pytest suite, which covers the Python the
+> container invokes rather than the image build itself.
 
 ---
 
@@ -288,6 +286,19 @@ diff table naming the configuration, the metric, both values, and the deviation.
 Under mock providers the harness is byte-deterministic, so a self-comparison
 matches exactly — the tolerance is there for real-provider runs.
 
+The verdict is also written to `replication.json` beside the reference
+`results.csv`, so it can be read rather than inferred from an exit code:
+
+| Field | Contents |
+|---|---|
+| `passed` | whether every comparison was within tolerance |
+| `rule`, `relative_tolerance`, `absolute_floor` | the tolerance actually applied |
+| `n_comparisons`, `n_out_of_tolerance` | how many values were compared, and how many failed |
+| `config_ids` | **which configurations this verdict covers** — a run over a subset of the grid produces a valid verdict for that subset only |
+| `comparisons` | per (configuration, metric): reference, candidate, deviation, tolerance, within/outside |
+
+Use `--out-json` to write it elsewhere, or `--no-json` to skip it.
+
 ### Expected output
 
 The pipeline prints three stage banners and ends with:
@@ -349,7 +360,7 @@ embeddings the false positive rate varies across configurations, so the ANOVA
 F-tests become defined and H0₁–H0₃ get real `reject`/`retain` decisions, with
 Tukey HSD following up any significant effect.
 
-### Expected κ on the real dataset — 0.3267, below the 0.7 bar
+### Expected κ on the real dataset — 0.5000, below the 0.7 bar
 
 Worth stating plainly, so a result that looks like a mistake is not mistaken for
 one. Running the kappa tool on the real dataset gives:
@@ -359,7 +370,7 @@ python scripts/compute_kappa.py --dataset data/ground_truth.full.json --strict
 ```
 
 ```text
-overall: kappa=0.3267  (faq 0.5267, code 0.2267, chat 0.2267)
+overall: kappa=0.5000  (faq 0.5267, code 0.4200, chat 0.5533)
 ```
 
 `--strict` **exits non-zero**, because the frozen success criterion is κ > 0.7.
@@ -377,8 +388,8 @@ confusion matrix and the contingency options are in
 Consequence for reading D3: every precision, false-positive rate and ANOVA
 p-value is computed against `author_label`, since that is what
 `QueryPair.ground_truth_label()` returns. Those numbers are valid, but they are
-relative to the author's labels — a replicator who preferred `original_label`
-would get materially different figures on the 303 pairs where the two disagree.
+relative to that label set — evaluating against `original_label` instead would
+give materially different figures on the 225 pairs where the two disagree.
 
 ---
 
@@ -425,16 +436,16 @@ a one-time assertion.
 scripts/audit_release.sh
 ```
 
-| # | Check | Result |
-|---|---|---|
-| 1 | `LICENSE` present, non-empty, and the declared Apache 2.0 licence | PASS |
-| 2 | No `.env`, key, or credential file tracked by git (only `.env.example`) | PASS |
-| 3 | No secret-shaped string in any tracked file (9 credential patterns) | PASS |
-| 4 | No commit on any branch ever introduced a secret-shaped string (`git log --all -S`, pickaxe regex) | PASS |
-| 5 | No email or phone-number markers in tracked `data/` files | PASS |
-| 6 | No tracked file carries query text attributed to a third-party corpus | PASS |
-| 7 | No tracked file contains a string sampled from a populated `data/raw/` | PASS |
-| 8 | `.env` is gitignored | PASS |
+| # | Check |
+|---|---|
+|1|`LICENSE` present, non-empty, and the declared Apache 2.0 licence |
+|2|No `.env`, key, or credential file tracked by git (only `.env.example`) |
+|3|No secret-shaped string in any tracked file (9 credential patterns) |
+|4|No commit on any branch ever introduced a secret-shaped string (`git log --all -S`, pickaxe regex) |
+|5|No email or phone-number markers in tracked `data/` files |
+|6|No tracked file carries query text attributed to a third-party corpus |
+|7|No tracked file contains a string sampled from a populated `data/raw/` |
+|8|`.env` is gitignored |
 
 Checks 6 and 7 are the licence gate. Quora Question Pairs grants no
 redistribution right and SODD is CC BY-NC-SA 4.0, so the query text must never
@@ -449,8 +460,7 @@ Note also what check 4 covers, because it is easy to under-read: it scans
 corpus text hidden in a stash.
 
 `scripts/audit_release.sh` prints a pass/fail line per check and exits non-zero
-on any finding. The table above records the result at release time; re-run the
-script to confirm it for yourself. The failure path is also verified: planting a
+on any finding. All eight must pass. The failure path works too: planting a
 credential-shaped string in a tracked file makes check 3 fail and the script
 exit 1.
 

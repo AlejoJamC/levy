@@ -14,6 +14,15 @@ from levy.experiment.metrics import (
     check_sanity,
     evaluate_confusion,
 )
+from levy.experiment.merge import (
+    MergeInput,
+    ResultsMergeError,
+    check_grid_coverage,
+    load_input,
+    merge_decisions,
+    merge_results,
+    merge_run_meta,
+)
 from levy.experiment.replay import run_experiment
 from levy.experiment.runner import (
     run_sweep,
@@ -32,6 +41,13 @@ __all__ = [
     "ExperimentSanityError",
     "check_sanity",
     "evaluate_confusion",
+    "MergeInput",
+    "ResultsMergeError",
+    "check_grid_coverage",
+    "load_input",
+    "merge_decisions",
+    "merge_results",
+    "merge_run_meta",
     "run_experiment",
     "run_sweep",
     "write_decisions_csv",

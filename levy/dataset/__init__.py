@@ -57,8 +57,25 @@ from levy.dataset.sampling import (
     sample_dataset,
     sample_workload,
 )
-from levy.dataset.annotation import AnnotationSummary, BlindAnnotationSession
+from levy.dataset.annotation import (
+    DEFAULT_WORKLOAD_ORDER,
+    AnnotationOrderError,
+    AnnotationSummary,
+    BlindAnnotationSession,
+    parse_workload_order,
+    resolve_presentation_order,
+)
+from levy.dataset.backup import BackupError, backup_file, backup_files, backup_timestamp
 from levy.dataset.kappa import KappaReport, KappaResult, cohen_kappa, kappa_report
+from levy.dataset.workload_update import (
+    ExcludingCorpusSource,
+    WorkloadUpdateError,
+    check_ids_alignment,
+    clear_author_labels,
+    source_pair_ids,
+    splice_workload,
+    verify_disjoint,
+)
 
 __all__ = [
     "DistributionRecord",
@@ -96,8 +113,23 @@ __all__ = [
     "TwitterPIT2015Source",
     "sample_dataset",
     "sample_workload",
+    "DEFAULT_WORKLOAD_ORDER",
+    "AnnotationOrderError",
     "AnnotationSummary",
     "BlindAnnotationSession",
+    "parse_workload_order",
+    "resolve_presentation_order",
+    "BackupError",
+    "backup_file",
+    "backup_files",
+    "backup_timestamp",
+    "ExcludingCorpusSource",
+    "WorkloadUpdateError",
+    "check_ids_alignment",
+    "clear_author_labels",
+    "source_pair_ids",
+    "splice_workload",
+    "verify_disjoint",
     "KappaReport",
     "KappaResult",
     "cohen_kappa",

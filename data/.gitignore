@@ -68,6 +68,16 @@
 # Update 2026-08-04 — same for ground_truth.full.json, *.backup.json and
 # *export*.json, now covered by *.json.
 #
+# Update 2026-08-06 — timestamped backups. Every write that would overwrite a
+# ground-truth artifact copies the current file to backups/ first (see
+# levy/dataset/backup.py), so this directory accumulates snapshots of
+# ground_truth.full.{csv,json} — full corpus text — and of the ids file. The
+# blanket *.csv / *.json rules above already cover them by extension; the
+# directory is named explicitly because it is the one place in the project whose
+# *contents* are unbounded and licence-bearing by design. Nothing in it is ever
+# publishable, and nothing in it is ever deleted by the tooling.
+backups/
+
 # These rules are a staging filter only: `git add -f`, `git stash -u` and
 # `git stash --all` all bypass them. `scripts/audit_release.sh` check 4 is the
 # backstop — it scans `git log --all`, which includes refs/stash.

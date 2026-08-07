@@ -128,6 +128,67 @@ def compare_results(
     )
 
 
+def report_to_dict(
+    report: ReplicationReport,
+    reference_path: str,
+    dataset_path: str,
+    embedding_provider: str,
+    relative: float = RELATIVE_TOLERANCE,
+    absolute_floor: float = ABSOLUTE_FLOOR,
+    generated_at_utc: str = "",
+) -> dict:
+    """
+    The verdict as a JSON-serialisable object, so a consumer can *read* it
+    instead of asserting it.
+
+    Success Criterion 3 is the one criterion about verifiability, and until this
+    existed it was the only result the pipeline reported solely through stdout
+    and an exit code — unreadable by the poster, the dashboard, or any other
+    consumer, which left them hardcoding "PASSED". `kappa.json` has always been
+    machine-readable; this closes the same gap for replication.
+
+    `config_ids` is load-bearing, not decoration. A partial re-run (one
+    re-sampled workload's 10 cells) produces a perfectly valid verdict that
+    covers a third of the grid, and a bare `passed: true` read out of context
+    would overclaim. Consumers are expected to check coverage against the grid
+    they are describing.
+    """
+    table = report.table
+    return {
+        "generated_by": "scripts/check_replication.py",
+        "generated_at_utc": generated_at_utc,
+        "criterion": (
+            "S&D Report Success Criterion 3 / Proposal Criterion 3: released code and "
+            "data replicate headline precision and recall within +/-5%"
+        ),
+        "passed": bool(report.passed),
+        "rule": report.rule,
+        "relative_tolerance": relative,
+        "absolute_floor": absolute_floor,
+        "reference": str(reference_path),
+        "dataset_path": str(dataset_path),
+        "embedding_provider": embedding_provider,
+        "metrics": list(HEADLINE_METRICS),
+        "n_comparisons": int(len(table)),
+        "n_out_of_tolerance": int((~table["within_tolerance"]).sum()) if len(table) else 0,
+        "config_ids": sorted({str(c) for c in table["config_id"]}) if len(table) else [],
+        "missing_configs": list(report.missing_configs),
+        "extra_configs": list(report.extra_configs),
+        "comparisons": [
+            {
+                "config_id": str(row["config_id"]),
+                "metric": str(row["metric"]),
+                "reference": float(row["reference"]),
+                "candidate": float(row["candidate"]),
+                "abs_diff": float(row["abs_diff"]),
+                "tolerance": float(row["tolerance"]),
+                "within_tolerance": bool(row["within_tolerance"]),
+            }
+            for _, row in table.iterrows()
+        ],
+    }
+
+
 def format_report(report: ReplicationReport, show_all: bool = False) -> str:
     """
     Render the report for a terminal. On failure the per-configuration diff

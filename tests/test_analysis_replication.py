@@ -5,8 +5,14 @@ Frozen Success Criterion 3: headline precision and recall must replicate
 within +/-5%. Under mock providers the harness is byte-deterministic, so a
 self-comparison must match exactly; a perturbed reference must fail with an
 itemized, auditable diff.
+
+The verdict is also written as `replication.json` (2026-08-07): the criterion is
+the one about verifiability, so its outcome has to be machine-readable rather
+than only printed, and a partial re-run's verdict has to say which
+configurations it covers.
 """
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +27,7 @@ from levy.analysis.replication import (
     RELATIVE_TOLERANCE,
     compare_results,
     format_report,
+    report_to_dict,
     tolerance_rule,
 )
 from levy.dataset.io import load_dataset
@@ -220,6 +227,124 @@ class TestReplicationScript(unittest.TestCase):
             )
 
         self.assertEqual(code, 1)
+
+
+class TestVerdictFile(unittest.TestCase):
+    """
+    Success Criterion 3 is the criterion about verifiability, so its outcome has
+    to be readable, not merely printed. Before this the verdict existed only on
+    stdout and in an exit code, which is what left the poster hardcoding "PASSED".
+    """
+
+    def _verdict(self, tmp: Path, extra=()):
+        check_replication = load_script("check_replication")
+        reference = _write_reference_run(tmp / "reference")
+        code = check_replication.main(
+            ["--reference", str(reference), "--llm-latency-seconds", "0", *extra],
+            output_fn=lambda _message: None,
+        )
+        return code, tmp / "reference" / "replication.json"
+
+    def test_passing_run_writes_a_readable_verdict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, path = self._verdict(Path(tmp))
+            self.assertEqual(code, 0)
+            verdict = json.loads(path.read_text(encoding="utf-8"))
+
+        self.assertTrue(verdict["passed"])
+        self.assertEqual(verdict["n_comparisons"], 4)
+        self.assertEqual(verdict["n_out_of_tolerance"], 0)
+        self.assertEqual(verdict["relative_tolerance"], RELATIVE_TOLERANCE)
+        self.assertEqual(verdict["absolute_floor"], ABSOLUTE_FLOOR)
+        self.assertEqual(verdict["metrics"], ["precision", "recall"])
+        self.assertIn("Criterion 3", verdict["criterion"])
+        self.assertRegex(verdict["generated_at_utc"], r"\d{8}T\d{6}Z")
+        self.assertEqual(len(verdict["comparisons"]), 4)
+
+    def test_verdict_records_which_configurations_it_covers(self):
+        """A partial re-run's verdict must not read as covering the whole grid."""
+        with tempfile.TemporaryDirectory() as tmp:
+            _, path = self._verdict(Path(tmp))
+            verdict = json.loads(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            verdict["config_ids"],
+            sorted(config.config_id for config in _small_grid()),
+        )
+        self.assertEqual(len(verdict["config_ids"]), 2)  # not the frozen 30
+
+    def test_failing_run_is_recorded_as_failed_not_omitted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            check_replication = load_script("check_replication")
+            reference_path = _write_reference_run(tmp / "reference")
+            perturbed = load_results(reference_path)
+            target = str(perturbed.loc[0, "config_id"])
+            perturbed.loc[0, "precision"] = float(perturbed.loc[0, "precision"]) + 0.5
+            perturbed.to_csv(reference_path, index=False, lineterminator="\n")
+
+            code = check_replication.main(
+                ["--reference", str(reference_path), "--llm-latency-seconds", "0"],
+                output_fn=lambda _message: None,
+            )
+            verdict = json.loads((tmp / "reference" / "replication.json").read_text())
+
+        self.assertEqual(code, 1)
+        self.assertFalse(verdict["passed"])
+        self.assertEqual(verdict["n_out_of_tolerance"], 1)
+        offending = [c for c in verdict["comparisons"] if not c["within_tolerance"]]
+        self.assertEqual(len(offending), 1)
+        self.assertEqual(offending[0]["config_id"], target)
+        self.assertEqual(offending[0]["metric"], "precision")
+
+    def test_existing_verdict_is_backed_up_before_being_replaced(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            _, path = self._verdict(tmp)
+            first = path.read_bytes()
+            self._verdict(tmp)  # second run over the same reference
+
+            backups = list((tmp / "reference" / "backups").iterdir())
+            self.assertEqual(len(backups), 1)
+            self.assertEqual(backups[0].read_bytes(), first)
+
+    def test_out_json_overrides_the_location(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            chosen = tmp / "elsewhere" / "verdict.json"
+            code, default_path = self._verdict(tmp, extra=["--out-json", str(chosen)])
+
+            self.assertEqual(code, 0)
+            self.assertTrue(chosen.is_file())
+            self.assertFalse(default_path.exists())
+
+    def test_no_json_suppresses_the_file_but_not_the_exit_code(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            code, path = self._verdict(tmp, extra=["--no-json"])
+
+            self.assertEqual(code, 0)
+            self.assertFalse(path.exists())
+
+    def test_report_to_dict_is_json_serialisable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            reference_path = _write_reference_run(Path(tmp) / "reference")
+            frame = load_results(reference_path)
+            report = compare_results(frame, frame)
+            payload = report_to_dict(
+                report,
+                reference_path=reference_path,
+                dataset_path=FIXTURE_DATASET,
+                embedding_provider="mock",
+                generated_at_utc="20260807T000000Z",
+            )
+            # No numpy scalars: json.dumps would raise on them.
+            json.dumps(payload)
+
+        self.assertTrue(payload["passed"])
+        self.assertIsInstance(payload["n_comparisons"], int)
+        self.assertIsInstance(payload["comparisons"][0]["reference"], float)
+        self.assertIsInstance(payload["comparisons"][0]["within_tolerance"], bool)
 
 
 if __name__ == "__main__":
