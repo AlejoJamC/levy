@@ -463,6 +463,58 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   column), curve selection, query decision (near-duplicate hit, unrelated
   miss, threshold-flip-without-re-embedding via a counting embedding-manager
   double), and semantics parity against a direct `SemanticCache` query.
+- `levy/latency/` (LEV-14, D1's second half — the Proposal's "latency
+  measurements (cache lookup overhead vs LLM call savings)", which nothing
+  measured before): `timing.py` (`TimingCollector` — named segments on
+  `time.perf_counter`, plus `segment()`/`mark()`/`since_ms()` helpers used at
+  the instrumented call sites; knows nothing about the engine). `LevyEngine.
+  generate(prompt, timing=None)` and `SemanticCache.get(request, timing=None)`
+  are **opt-in and additive**: with no collector no extra clock is read, and
+  `LevyResult`, `LevyMetrics` and every cache are byte-for-byte what they were.
+  The total-lookup segment ends where the lookup does — a miss's LLM call and
+  store are excluded, which is what keeps the segment sum under the total.
+  `benchmark.py` — four-phase protocol per configuration (populate → discard
+  warm-up → **warm** phase, memo seeded → **cold** phase, memo evicted
+  immediately before the measured call via the new `EmbeddingManager.forget()`),
+  nearest-rank p50/p95 (never interpolated — an interpolated percentile names a
+  latency nobody observed). **Cold and warm embedding cost are separate reported
+  figures and are never averaged**; `total_lookup` is the cold figure, the warm
+  total being recoverable as `total_lookup_p50 - (embed_cold_p50 -
+  embed_warm_p50)`. Probe texts are workload queries with a unique suffix, so
+  every measured lookup traverses exact-miss → embed → search instead of
+  short-circuiting on the exact cache. `corpus.py` — `responses.jsonl` keyed by
+  `sha256(prompt)` (the same key `ExactCache` uses, so one population serves all
+  ten FAQ configurations); **the prompt text is never stored**, only its hash and
+  the model's own output; `CorpusLLMClient` serves it back to the replay.
+  `population.py` — the billed call loop, a library function taking an injected
+  client *because* the spec demands both that it be tested offline and that no
+  test invoke the billed script; resume-skip, refusal-skip and a clean
+  budget-guard stop that leaves valid JSONL. `report.py` — `latency.csv`,
+  `latency_meta.json` (host, versions, protocol, the explicit
+  reproducibility-boundary statement, the savings figure) and `llm_calls.json`
+  (observed cost, never the pre-run estimate). **Every savings figure carries the
+  resolved model identifier that produced it**, asserted in a test.
+  `LevyEngine.__init__` gained an optional `llm_client` injection point,
+  mirroring `embedding_manager`.
+- `scripts/run_latency.py` — offline driver: reads the configuration list from a
+  reference `results.csv` (read-only), requires an explicit `--out-dir`, serves
+  `responses.jsonl` when present, writes `latency.csv` + `latency_meta.json`.
+  **`scripts/populate_responses.py` is the repository's second networked entry
+  point and the only one that spends money** — one real Anthropic call per unique
+  prompt, `--dry-run` first, excluded from pytest by the same AST guard as
+  `scripts/fetch_corpora.py` (now `TestAcquisitionIsOutOfBand.OUT_OF_BAND_SCRIPTS`,
+  which also catches an import-and-call-`main()` invocation and asserts no
+  `levy/latency/` module imports a network library at module scope).
+- `tests/test_latency_timing.py` (10), `test_latency_benchmark.py` (15),
+  `test_latency_report.py` (21), `test_latency_population.py` (8) — all offline:
+  segment sums never exceeding the total on exact hit / semantic hit / miss,
+  default behaviour identical without a collector, cold-vs-warm asserted by
+  **counting client invocations per probe text** (not by comparing durations,
+  which would pass on a fast machine even if the memo were never cleared),
+  percentiles from exactly the measured repetitions, all ten FAQ rows with no
+  empty percentile, the boundary statement, no savings figure without a model,
+  resume-skip and budget-stop through `httpx.MockTransport`, and the reference
+  result directory byte-identical after a full driver run.
 
 ### Known gaps: current code vs frozen spec
 
@@ -488,9 +540,13 @@ implied by the spec, not bugs:
    the SDK's `AsyncAnthropic` client fits naturally — recorded as a documented
    resolution, not silent drift (see `openspec/changes/add-anthropic-connector/design.md`).
    **Model default drift:** the frozen S&D's example model string
-   (`claude-3-sonnet-20240229`) is retired; the connector defaults to
-   `claude-opus-4-8` instead — flagged here per the frozen-docs rule, not silently
-   resolved.
+   (`claude-3-sonnet-20240229`) is retired; the connector defaults to a current
+   model instead — flagged here per the frozen-docs rule, not silently resolved.
+   Since LEV-14 that default is **`claude-haiku-4-5-20251001` at $1/$5 per MTok**,
+   the model the latency pilot actually calls: `anthropic_model` and the two
+   price fields are one triple describing one model, and the previous
+   `claude-opus-4-8` / $5 / $25 values described a model no run had ever called.
+   Escalating the model means changing all three together.
 3. ~~**No Faiss HNSW index**~~ — **Resolved (LEV-2).** `SemanticCache` now owns a
    `VectorIndex` (Faiss HNSW or brute-force oracle) and uses `similarity =
    1/(1+L2_distance)` per Algorithm 1. **Threshold-scale flag for LEV-4/LEV-8:**
@@ -641,6 +697,17 @@ python scripts/merge_results.py --out-dir results/run-001 \
 # third-party corpus text in tracked files, data/raw/ spot-check)
 scripts/audit_release.sh
 
+# Latency (LEV-14). Offline half: reads the config list from a reference
+# results.csv (read-only) and measures the lookup path per configuration.
+python scripts/run_latency.py --reference results/run-003/results.csv \
+    --dataset data/ground_truth.full.csv --embedding-provider sentence-transformers \
+    --out-dir results/latency-faq --workload faq
+# Billed half — REAL API CALLS, one per unique prompt. Dry-run first; prompts
+# already in responses.jsonl are skipped, so an interrupted run resumes without
+# paying twice. Set --model and BOTH price flags to the model actually used.
+python scripts/populate_responses.py --dataset data/ground_truth.full.csv \
+    --workload faq --out-dir results/latency-faq --dry-run
+
 # Results dashboard (LEV-10, D6 — desirable): a bundle must exist first (any
 # command above that writes an analysis/ dir); the `--` separator is required
 # by Streamlit so --bundle/--dataset reach the script's own argparse.
@@ -713,6 +780,7 @@ Release (2026-11-02).
 | LEV-11 | — (D2 data production: real dataset + published D2 artifact) | Urgent | **complete** — 900 pairs published as ids + labels; κ = 0.5000 after the chat (2026-08-06) and code (2026-08-07) re-samples, 0.3267 at first publication; below the 0.7 bar, recorded as a finding |
 | LEV-12 | `add-corpus-acquisition` | High | archived (2026-08-04) |
 | LEV-13 | — (D3 production run: 30 configurations + analysis + ±5% replication) | Urgent | **run complete 2026-08-07**, result of record `results/run-003/` — see the results note below |
+| LEV-14 | `add-latency-measurement` | Urgent | **implemented + run 2026-08-07**, result of record `results/latency-faq/` — see the latency note below |
 
 Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 → LEV-11 (D2)
 → LEV-13 (D3). **LEV-11 and LEV-13 are deliberately separate:** D2 is human-paced
@@ -749,6 +817,37 @@ including which directories are scratch, is `docs/DATA_PRODUCTION.md`
 
 Both null results are findings, not defects — do not rescale the thresholds to
 chase hit rate (known-gap note #3), and do not re-run to hunt for a model effect.
+
+### Latency measurement — results (2026-08-07, LEV-14)
+
+**Result of record: `results/latency-faq/`** (gitignored, like every result
+directory). FAQ workload, ten configurations, real 900-pair dataset with
+`sentence-transformers`; provider half on **`claude-haiku-4-5-20251001`**, 600
+real calls, 0 refusals, no budget halt.
+
+- **Median lookup overhead 10.16 ms vs median provider latency 3407 ms →
+  ~3397 ms avoided per cache hit; the overhead is 0.30 % of the call it
+  avoids.** The cache's own cost is not what makes it uneconomic here — the
+  hit rate is (24.0 % best cell, below the frozen 30 % bar). Those two findings
+  belong together: a hit is worth ~340× what consulting the cache costs, and
+  the D3 grid produces one less than a quarter of the time.
+- **Embedding dominates the lookup**, and it is the only segment where the two
+  models differ: MiniLM 6.6–8.3 ms cold, ModernBERT 11.5–12.3 ms (p50). Index
+  search is 0.10–0.21 ms and the exact-cache lookup 0.002–0.010 ms. Warm
+  (memoized) embedding is 0.0014–0.005 ms — three orders of magnitude under
+  cold, which is why the two are reported separately and never averaged.
+- **Observed cost $0.713 for 600 Haiku calls** ($0.00119/call); the same token
+  totals priced at Sonnet-class rates project to $2.14. Recorded, with the
+  model identifier, in `results/latency-faq/llm_calls.json`.
+- **Provider latency does not replicate** and every figure above carries its
+  model. Lookup overhead does replicate, subject to the host recorded in
+  `latency_meta.json` (Apple arm64, 16 cores, Python 3.10.19).
+- `results/run-003/` was hashed into `results/latency-faq/run-003.manifest.sha256`
+  and copied out of the tree before any of this ran, and re-verified with zero
+  differences afterwards. Re-run the replication check with **`--no-json`**:
+  its default writes `replication.json` back into the reference directory.
+  Also pass **`--llm-latency-seconds 0`** — the default 0.5 s makes ~16,000
+  mock calls sleep for ~2.2 hours and looks exactly like a hang (0 % CPU).
 
 ## Conventions
 

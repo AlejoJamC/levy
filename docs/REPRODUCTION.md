@@ -393,6 +393,58 @@ give materially different figures on the 225 pairs where the two disagree.
 
 ---
 
+## Latency: what a lookup costs, and what a hit avoids
+
+The Project Proposal assesses economic viability on hit rate **and** latency —
+"cache lookup overhead vs LLM call savings". The two halves are measured
+separately because only one of them replicates.
+
+### The reproducible half — lookup overhead (offline)
+
+Runs offline with mock providers and makes no provider call. It reads the
+configuration list from an existing `results.csv` (read-only; nothing is
+written to that directory) and measures each configuration's lookup path:
+
+```bash
+python scripts/run_latency.py --reference results/reproduce/results.csv --out-dir results/latency-faq
+```
+
+Writes `latency.csv` — per configuration, p50/p95 for embedding **cold** and
+**warm**, index search, exact-cache lookup and the total lookup path — and
+`latency_meta.json`, which records the host specification, library versions,
+warm-up and repetition counts, and the reproducibility boundary. Add
+`--embedding-provider sentence-transformers` and `--dataset
+data/ground_truth.full.csv` to measure the real encoders on the real dataset.
+
+Cold and warm embedding figures are reported separately and are never averaged:
+cold is what a query this process has not seen costs, warm is what the
+memoised path costs, and both are true of the artefact.
+
+### The non-reproducible half — provider latency (billed, out-of-band)
+
+`scripts/populate_responses.py` is **the second networked entry point in this
+repository and the only one that spends money**, alongside
+`scripts/fetch_corpora.py`. It calls a real Anthropic model once per unique
+prompt of a workload and records the response, its latency and its token
+counts. No test invokes it — an AST guard in `tests/test_corpus_acquisition.py`
+enforces that — and reproducing the results above does not require running it.
+
+Re-running it will **not** reproduce the published provider figures: they are
+specific to the model, provider, region, network path and moment recorded with
+them. Every figure derived from them carries its resolved model identifier.
+
+```bash
+# Estimate first: prints the call count and sends nothing.
+python scripts/populate_responses.py --dataset data/ground_truth.full.csv \
+    --workload faq --out-dir results/latency-faq --dry-run
+```
+
+Prompts already in the corpus are skipped, so an interrupted run resumes
+without paying twice, and the budget guard halts before sending once the
+estimated spend reaches its cap. The response corpus itself
+(`results/latency-faq/responses.jsonl`) is gitignored: it is model output
+generated over licensed corpus text.
+
 ## Exploring results interactively (D6, desirable)
 
 Once a bundle exists (Step 3b above, or `results/reproduce/analysis` from the

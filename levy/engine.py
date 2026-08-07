@@ -1,7 +1,14 @@
 import time
 import logging
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, TYPE_CHECKING
 from levy.config import LevyConfig
+from levy.latency.timing import (
+    SEGMENT_EXACT_LOOKUP,
+    SEGMENT_TOTAL_LOOKUP,
+    mark,
+    segment,
+    since_ms,
+)
 from levy.models import LLMRequest, LevyResult, LLMResponse
 from levy.llm_client import LLMClient, MockLLMClient, OpenAILLMClient, OllamaLLMClient, AnthropicLLMClient
 from levy.embedding_manager import EmbeddingManager
@@ -16,15 +23,27 @@ from levy.cache.exact_cache import ExactCache
 from levy.cache.semantic_cache import SemanticCache
 from levy.metrics import LevyMetrics
 
+if TYPE_CHECKING:  # pragma: no cover -- typing only
+    from levy.latency.timing import TimingCollector
+
 logger = logging.getLogger(__name__)
 
 class LevyEngine:
-    def __init__(self, config: LevyConfig = LevyConfig(), embedding_manager: Optional[EmbeddingManager] = None):
+    def __init__(
+        self,
+        config: LevyConfig = LevyConfig(),
+        embedding_manager: Optional[EmbeddingManager] = None,
+        llm_client: Optional[LLMClient] = None,
+    ):
         self.config = config
         self.metrics = LevyMetrics()
 
-        # 1. Initialize LLM Client
-        if config.llm_provider == "openai":
+        # 1. Initialize LLM Client. An injected client wins over the configured
+        # provider (LEV-14: the latency replay serves responses recorded earlier
+        # from a real provider, so the timed run itself makes no network call).
+        if llm_client is not None:
+            self.llm_client = llm_client
+        elif config.llm_provider == "openai":
             if not config.openai_api_key:
                 raise ValueError("OpenAI API key required for 'openai' provider")
             self.llm_client = OpenAILLMClient(
@@ -78,14 +97,30 @@ class LevyEngine:
             ef_search=self.config.hnsw_ef_search,
         )
 
-    def generate(self, prompt: str, **kwargs) -> LevyResult:
+    def generate(self, prompt: str, timing: Optional["TimingCollector"] = None, **kwargs) -> LevyResult:
+        """
+        Serve `prompt` through exact cache → semantic cache → LLM.
+
+        `timing` (LEV-14) is an opt-in measurement surface: when a collector is
+        passed, the exact-cache lookup, the embedding, the index search and the
+        whole lookup path are recorded into it. The returned `LevyResult`, the
+        recorded metrics and the cache contents are the same either way, and
+        with no collector no additional clock is read. The total-lookup segment
+        ends where the lookup does — a miss's LLM call and the subsequent store
+        are not lookup overhead and are excluded, which is also what keeps the
+        segment sum from exceeding the total.
+        """
         start_time = time.time()
+        lookup_start = mark() if timing is not None else 0.0
         request = LLMRequest(prompt=prompt, extra_params=kwargs)
-        
+
         # 1. Check Exact Cache
         if self.config.enable_exact_cache:
-            entry = self.exact_cache.get(request)
+            with segment(timing, SEGMENT_EXACT_LOOKUP):
+                entry = self.exact_cache.get(request)
             if entry:
+                if timing is not None:
+                    timing.record(SEGMENT_TOTAL_LOOKUP, since_ms(lookup_start))
                 latency = (time.time() - start_time) * 1000
                 self.metrics.record_hit("exact", saved_tokens=len(entry.response_text.split())) # Approx token count
                 self.metrics.record_request(latency)
@@ -102,8 +137,10 @@ class LevyEngine:
         if self.config.enable_semantic_cache:
             # Note: exact cache get doesn't compute embedding usually, 
             # but semantic needs it. Semantic cache 'get' computes it internaly if needed.
-            entry = self.semantic_cache.get(request)
+            entry = self.semantic_cache.get(request, timing=timing)
             if entry:
+                if timing is not None:
+                    timing.record(SEGMENT_TOTAL_LOOKUP, since_ms(lookup_start))
                 latency = (time.time() - start_time) * 1000
                 score = entry.metadata.get('last_similarity_score', 0.0)
                 self.metrics.record_hit("semantic", saved_tokens=len(entry.response_text.split()))
@@ -117,7 +154,9 @@ class LevyEngine:
                     metadata=entry.metadata
                 )
 
-        # 3. LLM Call
+        # 3. LLM Call — the lookup path ends here, whatever the call costs.
+        if timing is not None:
+            timing.record(SEGMENT_TOTAL_LOOKUP, since_ms(lookup_start))
         logger.info(f"Cache miss. Calling LLM for: {prompt[:30]}...")
         try:
             llm_response = self.llm_client.generate(request)

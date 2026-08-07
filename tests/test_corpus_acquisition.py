@@ -979,41 +979,86 @@ class TestHtmlNormalisation(unittest.TestCase):
 
 class TestAcquisitionIsOutOfBand(unittest.TestCase):
     """
-    Acquisition is the only network-touching entry point, and it must stay
-    outside the test suite. These are structural guards, not conventions.
+    The repository's two network-touching entry points — `fetch_corpora.py`
+    (LEV-12, acquisition) and `populate_responses.py` (LEV-14, billed provider
+    calls) — must stay outside the test suite. These are structural guards, not
+    conventions.
     """
 
     NETWORK_MODULES = {"urllib", "urllib.request", "socket", "http", "http.client", "httpx", "requests"}
 
-    def test_no_test_module_invokes_acquisition(self):
+    # Script stems no test may execute, and the reason each is out of band.
+    OUT_OF_BAND_SCRIPTS = {
+        "fetch_corpora": "acquires third-party corpora over the network",
+        "populate_responses": "makes billed Anthropic API calls",
+    }
+
+    def test_no_test_module_invokes_an_out_of_band_script(self):
         """
-        No test *calls* anything with `fetch_corpora.py` as an argument.
+        No test *calls* anything with one of those script names as an argument.
 
         Checked on the AST rather than by substring, so this module can go on
-        naming the script in prose and in expected-output assertions — which
-        is exactly how a replicator learns about it — while an actual
+        naming the scripts in prose and in expected-output assertions — which
+        is exactly how a replicator learns about them — while an actual
         invocation, through `_run`, `subprocess` or anything else, still fails.
+
+        Importing the module and calling its `main()` is caught too: `main` is
+        in `runners`, and an import of the script's name is checked separately
+        below.
         """
-        runners = {"_run", "run", "call", "check_call", "check_output", "Popen", "system"}
+        runners = {"_run", "run", "call", "check_call", "check_output", "Popen", "system", "main"}
         offenders = []
         for path in sorted((REPO_ROOT / "tests").glob("test_*.py")):
             tree = ast.parse(path.read_text(encoding="utf-8"))
             for node in ast.walk(tree):
+                if isinstance(node, (ast.Import, ast.ImportFrom)):
+                    names = (
+                        {alias.name for alias in node.names}
+                        if isinstance(node, ast.Import)
+                        else {node.module or ""}
+                    )
+                    if names & set(self.OUT_OF_BAND_SCRIPTS):
+                        offenders.append(f"{path.name}:{node.lineno} (import)")
+                    continue
+
                 if not isinstance(node, ast.Call):
                     continue
                 callee = node.func
                 name = callee.attr if isinstance(callee, ast.Attribute) else getattr(callee, "id", "")
                 if name not in runners:
                     continue
+                # `<module>.main(...)` where <module> is an out-of-band script.
+                if isinstance(callee, ast.Attribute) and isinstance(callee.value, ast.Name):
+                    if callee.value.id in self.OUT_OF_BAND_SCRIPTS:
+                        offenders.append(f"{path.name}:{node.lineno} (call)")
                 for argument in list(node.args) + [kw.value for kw in node.keywords]:
                     for inner in ast.walk(argument):
                         if (
                             isinstance(inner, ast.Constant)
                             and isinstance(inner.value, str)
-                            and "fetch_corpora" in inner.value
+                            and any(script in inner.value for script in self.OUT_OF_BAND_SCRIPTS)
                         ):
                             offenders.append(f"{path.name}:{node.lineno}")
         self.assertEqual(offenders, [])
+
+    def test_latency_package_imports_nothing_that_can_reach_the_network(self):
+        """
+        `levy/latency/` is imported by the offline suite, so nothing in it may
+        pull in a network library at module scope. The billed loop's *logic*
+        lives in `levy/latency/population.py` precisely so it can be tested;
+        what must not follow it into the package is the ability to open a
+        socket without a caller handing one over.
+        """
+        for module in sorted((REPO_ROOT / "levy" / "latency").glob("*.py")):
+            tree = ast.parse(module.read_text(encoding="utf-8"))
+            imported = set()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    imported.update(alias.name for alias in node.names)
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    imported.add(node.module)
+            with self.subTest(module=module.name):
+                self.assertEqual(imported & self.NETWORK_MODULES, set())
 
     def test_dataset_package_imports_nothing_that_can_reach_the_network(self):
         for module in sorted((REPO_ROOT / "levy" / "dataset").glob("*.py")):
