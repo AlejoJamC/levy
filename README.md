@@ -150,11 +150,11 @@ synchronous `LLMClient` interface as Mock/OpenAI/Ollama:
 config = LevyConfig(
     llm_provider="anthropic",
     # anthropic_api_key defaults to the ANTHROPIC_API_KEY env var (.env)
-    anthropic_model="claude-opus-4-8",       # default; override per config
+    anthropic_model="claude-haiku-4-5-20251001",  # default; override per config
     anthropic_max_retries=2,                 # SDK's own exponential backoff
     anthropic_budget_cap_usd=200.0,          # hard stop (frozen budget cap)
-    anthropic_input_price_per_mtok=5.0,      # USD / 1M input tokens
-    anthropic_output_price_per_mtok=25.0,    # USD / 1M output tokens
+    anthropic_input_price_per_mtok=1.0,      # USD / 1M input tokens
+    anthropic_output_price_per_mtok=5.0,     # USD / 1M output tokens
 )
 engine = LevyEngine(config)
 result = engine.generate("Hello")
@@ -181,8 +181,10 @@ result = engine.generate("Hello")
   returning (and thereby caching) empty content.
 - **Model default drift (documented, not silently resolved):** the frozen
   S&D Report's example model string (`claude-3-sonnet-20240229`) is retired.
-  `anthropic_model` defaults to the current recommended model
-  (`claude-opus-4-8`) instead.
+  `anthropic_model` defaults to a current model instead —
+  `claude-haiku-4-5-20251001`, the model the latency measurement calls. The
+  model id and the two per-MTok prices are one triple describing one model:
+  change them together, or the budget guard costs a model you are not running.
 
 **One-time real-API smoke check — opt-in and billed.** This makes one real API
 call charged to the `ANTHROPIC_API_KEY` in your `.env`. It is deliberately

@@ -11,13 +11,17 @@ to (query_text, response, embedding_model)") is held in self._entries.
 
 import hashlib
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TYPE_CHECKING
 
 import numpy as np
 
 from levy.cache.base import CacheInterface
 from levy.cache.vector_index import VectorIndex, _l2_normalize, make_vector_index
+from levy.latency.timing import SEGMENT_EMBED, SEGMENT_INDEX_SEARCH, segment
 from levy.models import CacheEntry, LLMRequest
+
+if TYPE_CHECKING:  # pragma: no cover -- typing only
+    from levy.latency.timing import TimingCollector
 
 logger = logging.getLogger(__name__)
 
@@ -68,14 +72,25 @@ class SemanticCache(CacheInterface):
     # CacheInterface
     # ------------------------------------------------------------------
 
-    def get(self, request: LLMRequest) -> Optional[CacheEntry]:
+    def get(self, request: LLMRequest, timing: Optional["TimingCollector"] = None) -> Optional[CacheEntry]:
+        """
+        Look up `request`, optionally decomposing the cost into `timing`.
+
+        `timing` (LEV-14) only observes: the return type, the retrieval rule and
+        the threshold decision are identical with and without it, and with no
+        collector no clock is read. Embedding and index search are timed here
+        rather than inside `VectorIndex`, so `VectorIndex.search()` keeps its
+        signature and both backends stay measurable through the same path.
+        """
         if self._index.size() == 0:
             return None
 
-        raw = self.embedding_client.embed(request.prompt)
+        with segment(timing, SEGMENT_EMBED):
+            raw = self.embedding_client.embed(request.prompt)
         q_vec = _l2_normalize(np.array(raw, dtype=np.float32))
 
-        ids, distances = self._index.search(q_vec.tolist(), k=1)
+        with segment(timing, SEGMENT_INDEX_SEARCH):
+            ids, distances = self._index.search(q_vec.tolist(), k=1)
         if not ids:
             return None
 

@@ -249,6 +249,13 @@ output/
 # release rather than tracked here.
 results/
 
+# Real-provider response corpus (LEV-14). Already covered by `results/` above;
+# named explicitly because it is the one file here that carries model output
+# generated over licensed corpus text — the same reasoning that keeps
+# data/ground_truth.full.* out of the tree. If `results/` is ever re-included
+# so a published run can ship, this line must survive that change.
+results/latency-faq/responses.jsonl
+
 # Raw third-party corpora (LEV-12). The directory tree is tracked so a clean
 # clone has somewhere to acquire into; the corpus files themselves never reach
 # the remote — Quora QQP grants no redistribution right and SODD is CC BY-NC-SA.

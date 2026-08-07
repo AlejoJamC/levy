@@ -120,6 +120,32 @@ resolved.
    the text from an Apache-2.0 repository is not available. This is the same
    approach Google takes for PAWS-QQP. §6 describes the mechanism; the ±5%
    replication criterion is preserved through checksums of the raw inputs.
+4. **Real-model response population: FAQ only (2026-08-07, LEV-14).** The
+   latency measurement the Project Proposal requires — "cache lookup overhead
+   vs LLM call savings" — needs real provider responses to measure what a hit
+   avoids. Those were obtained for the **FAQ workload only**; `chat` and `code`
+   remain mock-populated, as every run to date has been.
+
+   The rationale is the D3 result itself: FAQ is the only workload where the
+   cache measurably operates. Its best cell reaches a 24.0 % hit rate, against
+   2.3 % (chat) and 2.0 % (code), so on the other two workloads a real-response
+   run would characterise a path taken fewer than once in forty lookups, at
+   full price. The frozen documents impose no per-workload requirement on
+   provider calls: the experimental procedure and the harness pseudo-code
+   contain no LLM call at all, and the budget line is an estimate rather than a
+   commitment to a call volume.
+
+   Consequences, stated so they are not read past: the measured saving per
+   cache hit is a **FAQ figure produced by one named model**, recorded with
+   that model identifier in `results/latency-faq/llm_calls.json` and
+   `latency_meta.json`. It is not a per-workload result, and provider latency
+   does not replicate — see the reproducibility boundary recorded in the same
+   sidecar. The lookup-overhead half of the measurement is offline, covers the
+   ten FAQ configurations, and does replicate.
+
+   This deviation touches no D2 artefact: no pair, label or identifier changes,
+   and the response corpus is not part of the released dataset (it is
+   gitignored, for the same licence reason as `data/ground_truth.full.*`).
 
 **Fallback corpora** (per `docs/Project_Proposal.md` Risk 1 — "primary
 corpus unavailable or insufficient in size/quality"): if a primary corpus

@@ -139,27 +139,18 @@ class EmbeddingManager:
 
     def embed_with(self, model_name: str, text: str) -> List[float]:
         """Embed text using a specific study-model alias (runtime switching)."""
+        key = self._memo_key_for(model_name, text)
+        if key in self._memo:
+            return self._memo[key]
+
         if self._provider == "mock":
-            client = self._get_mock_client()
-            key = _memo_key("mock", text)
-            if key not in self._memo:
-                self._memo[key] = client.embed(text)
-            return self._memo[key]
-
-        if self._provider == "ollama":
-            client = self._get_ollama_client()
-            key = _memo_key("ollama:" + model_name, text)
-            if key not in self._memo:
-                self._memo[key] = client.embed(text)
-            return self._memo[key]
-
-        spec = _resolve(model_name)
-        prefixed = spec.prefix + text
-        memo_k = _memo_key(spec.checkpoint, prefixed)
-        if memo_k not in self._memo:
-            client = self._get_st_client(spec)
-            self._memo[memo_k] = client.embed(prefixed)
-        return self._memo[memo_k]
+            self._memo[key] = self._get_mock_client().embed(text)
+        elif self._provider == "ollama":
+            self._memo[key] = self._get_ollama_client().embed(text)
+        else:
+            spec = _resolve(model_name)
+            self._memo[key] = self._get_st_client(spec).embed(spec.prefix + text)
+        return self._memo[key]
 
     def get_dimension(self, model_name: Optional[str] = None) -> int:
         """Return the embedding dimension for the given (or default) model."""
@@ -198,9 +189,41 @@ class EmbeddingManager:
         """Evict all cached embeddings (for tests or per-configuration resets)."""
         self._memo.clear()
 
+    def forget(self, text: str) -> bool:
+        """Evict the memoized embedding of `text` under the default model."""
+        return self.forget_with(self._default_model_name, text)
+
+    def forget_with(self, model_name: str, text: str) -> bool:
+        """
+        Evict one memo entry; returns True if there was one to evict.
+
+        Single-entry eviction exists for the latency benchmark (LEV-14), which
+        reports embedding cost cold and warm as separate figures: a cold sample
+        clears exactly the text it is about to measure, leaving every other
+        memoized embedding — and therefore the rest of the run — untouched.
+        `clear_memoization()` would flush the whole cache and turn every
+        subsequent sample cold.
+        """
+        return self._memo.pop(self._memo_key_for(model_name, text), None) is not None
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _memo_key_for(self, model_name: str, text: str) -> Tuple[str, str]:
+        """
+        The memo key `embed_with` would use for this (model, text).
+
+        Single source of the keying rule, so eviction cannot drift from
+        insertion — including the per-model prefix, which is part of what is
+        actually embedded and therefore part of the key.
+        """
+        if self._provider == "mock":
+            return _memo_key("mock", text)
+        if self._provider == "ollama":
+            return _memo_key("ollama:" + model_name, text)
+        spec = _resolve(model_name)
+        return _memo_key(spec.checkpoint, spec.prefix + text)
 
     def _get_mock_client(self) -> MockEmbeddingClient:
         if "mock" not in self._clients:

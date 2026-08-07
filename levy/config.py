@@ -22,11 +22,17 @@ class LevyConfig:
     anthropic_api_key: Optional[str] = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY"))
     # S&D Report's example model (claude-3-sonnet-20240229) is retired; defaulting to the
     # current recommended model is intentional frozen-doc drift, not silent resolution.
-    anthropic_model: str = "claude-opus-4-8"
+    #
+    # LEV-14: this triple is set to the model a run actually uses, together. The
+    # previous default (claude-opus-4-8 at $5/$25 per MTok) described a model no
+    # run had ever called, and a cost figure carried over from it would be wrong
+    # in both directions. The latency pilot runs claude-haiku-4-5-20251001, so
+    # that is what these describe; escalating the model means changing all three.
+    anthropic_model: str = "claude-haiku-4-5-20251001"
     anthropic_max_retries: int = 2
     anthropic_budget_cap_usd: float = 200.0  # frozen budget hard cap (~$50 expected spend)
-    anthropic_input_price_per_mtok: float = 5.0  # USD per 1M input tokens, claude-opus-4-8
-    anthropic_output_price_per_mtok: float = 25.0  # USD per 1M output tokens, claude-opus-4-8
+    anthropic_input_price_per_mtok: float = 1.0  # USD per 1M input tokens, claude-haiku-4-5
+    anthropic_output_price_per_mtok: float = 5.0  # USD per 1M output tokens, claude-haiku-4-5
     
     # Embedding settings
     embedding_provider: str = "sentence-transformers"  # "mock", "sentence-transformers", "ollama"
