@@ -25,9 +25,10 @@ This directory holds the ground-truth dataset for the Levy capstone study
 >
 > **Update 2026-08-07.** The `chat` workload was re-drawn (seed 4242) and
 > re-annotated blind; its 300 pairs are a different sample from the ones first
-> published. κ is now **0.4356** overall (faq 0.5267, code 0.2267, chat 0.5533) —
-> still below 0.7, with `code` the sole workload under the bar. `DATASHEET.md` §3
-> records the re-sample and §4 the updated breakdown.
+> published. `code` was re-drawn the same way on 2026-08-07 (seed 8484) and
+> re-annotated. κ is now **0.5000** overall (faq 0.5267, code 0.4200, chat 0.5533)
+> — still below 0.7. `DATASHEET.md` §3 records both re-samples and §4 the
+> breakdown.
 
 `ground_truth.csv` and `ground_truth.json` in this directory contain **15
 synthetic fixture pairs (5 per workload)**, not real data. Every row carries

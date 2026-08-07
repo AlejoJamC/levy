@@ -1,12 +1,12 @@
 {
   "generated_by": "scripts/sample_dataset.py",
-  "generated_at_utc": "20260806T211915Z",
-  "seed": 4242,
+  "generated_at_utc": "20260807T110055Z",
+  "seed": 8484,
   "n_per_workload": 300,
   "positive_ratio": 0.5,
   "n_pairs": 900,
   "sampled_workloads_this_run": [
-    "chat"
+    "code"
   ],
   "provenance_note": "Top-level seed / n_per_workload / positive_ratio describe the most recent invocation. When workloads were sampled at different times, the per-workload 'seed' and 'sampled_at_utc' under 'workloads' are authoritative.",
   "normalisation_rule": "stdlib html.parser: tags dropped, text content kept (including inside <code>/<pre>), block-level tags emit one space, entities unescaped, whitespace runs collapsed to a single space, result stripped",
@@ -79,11 +79,10 @@
         }
       ],
       "n_pairs": 300,
-      "seed": 42,
+      "seed": 8484,
       "n_per_workload": 300,
       "positive_ratio": 0.5,
-      "sampled_at_utc": null,
-      "provenance_backfilled": true
+      "sampled_at_utc": "20260807T110055Z"
     },
     "chat": {
       "corpus": "twitter-pit2015",

@@ -11,7 +11,7 @@ The research behind Levy benchmarks false positive rates of semantic caching acr
 | [docs/REPRODUCTION.md](docs/REPRODUCTION.md) | Run the full evaluation pipeline from a fresh checkout — one Docker command, or step by step with conda. Fully offline. |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Component map traced to the frozen specification, request flow, experiment flow, provider-abstraction patterns. |
 | [data/DATASHEET.md](data/DATASHEET.md) | Dataset provenance: source corpora and licences, sampling protocol, annotation guidelines, annotator-agreement result. |
-| [data/README.md](data/README.md) | What is currently in `data/` and what replaces it. |
+| [data/README.md](data/README.md) | What is committed in `data/` and what you generate locally. |
 
 **Run everything in one command** (see [docs/REPRODUCTION.md](docs/REPRODUCTION.md) for detail):
 
@@ -351,12 +351,17 @@ To switch models between experiment runs, change `embedding_model` in `LevyConfi
 ## Ground-truth dataset tooling
 
 `levy/dataset/` + `scripts/` provide the data-agnostic platform for D2 (900
-annotated query pairs across 3 workloads: FAQ, code, chat). This is
-**tooling only** — `data/ground_truth.csv` / `data/ground_truth.json`
-currently ship 15 synthetic fixture pairs (5/workload, obviously fake text,
-`source_corpus="synthetic-fixture"`), not the real dataset. See
-`data/README.md` and `data/DATASHEET.md` for the full protocol and the
-platform-vs-data-production split.
+annotated query pairs across 3 workloads: FAQ, code, chat).
+
+Two datasets live side by side. `data/ground_truth.csv` / `.json` hold **15
+synthetic fixture pairs** (5/workload, obviously fake text,
+`source_corpus="synthetic-fixture"`) — the permanent offline default for the
+test suite and the pipeline. The real 900 pairs are published as
+`data/ground_truth.ids.csv`: identifiers and labels only, no query text, because
+the source corpora grant no redistribution right. You rebuild the text locally
+from your own copy of the corpora — see
+[`docs/REPRODUCTION.md`](docs/REPRODUCTION.md). Protocol, licences and
+annotator agreement are in `data/README.md` and `data/DATASHEET.md`.
 
 ```bash
 # Sample a dataset (falls back to synthetic MockCorpusSource per workload
@@ -395,8 +400,8 @@ python scripts/run_experiments.py --out-dir results/smoke-run
 python scripts/run_experiments.py --out-dir results/smoke-run \
     --models all-MiniLM-L6-v2 --workloads faq --thresholds 0.70,0.90
 
-# Real study run (once the real 900-pair dataset lands):
-python scripts/run_experiments.py --dataset data/ground_truth.csv \
+# Real study run — the rehydrated 900-pair dataset and real embeddings:
+python scripts/run_experiments.py --dataset data/ground_truth.full.csv \
     --embedding-provider sentence-transformers --out-dir results/run-001
 ```
 
@@ -487,6 +492,11 @@ diff table naming the configuration, the metric, both values, and the
 deviation. Under mock providers the harness is byte-deterministic, so a
 self-comparison matches exactly; the tolerance is there for real-provider
 runs.
+
+The verdict is also written to `replication.json` beside the reference, so it
+can be read rather than inferred from an exit code. It records which
+configurations it covers, so a run over part of the grid cannot be mistaken for
+one covering all of it.
 
 ## Results dashboard (D6, desirable)
 
