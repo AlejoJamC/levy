@@ -1,0 +1,853 @@
+{
+  "generated_at": "2026-08-07T14:08:03+00:00",
+  "inputs": {
+    "harness_dir": "results/run-003",
+    "n_configurations": 30,
+    "dataset_path_for_kappa": "data/ground_truth.full.csv",
+    "harness_run_meta": {
+      "generated_by": "scripts/merge_results.py",
+      "generated_at_utc": "20260807T140746Z",
+      "dataset_path": "data/ground_truth.full.csv",
+      "embedding_provider": "sentence-transformers",
+      "llm_provider": "mock",
+      "n_configurations": 30,
+      "grid": [
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "faq",
+          "threshold": 0.7
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "faq",
+          "threshold": 0.75
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "faq",
+          "threshold": 0.8
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "faq",
+          "threshold": 0.85
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "faq",
+          "threshold": 0.9
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "code",
+          "threshold": 0.7
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "code",
+          "threshold": 0.75
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "code",
+          "threshold": 0.8
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "code",
+          "threshold": 0.85
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "code",
+          "threshold": 0.9
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "chat",
+          "threshold": 0.7
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "chat",
+          "threshold": 0.75
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "chat",
+          "threshold": 0.8
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "chat",
+          "threshold": 0.85
+        },
+        {
+          "model": "all-MiniLM-L6-v2",
+          "workload": "chat",
+          "threshold": 0.9
+        },
+        {
+          "model": "modernbert",
+          "workload": "faq",
+          "threshold": 0.7
+        },
+        {
+          "model": "modernbert",
+          "workload": "faq",
+          "threshold": 0.75
+        },
+        {
+          "model": "modernbert",
+          "workload": "faq",
+          "threshold": 0.8
+        },
+        {
+          "model": "modernbert",
+          "workload": "faq",
+          "threshold": 0.85
+        },
+        {
+          "model": "modernbert",
+          "workload": "faq",
+          "threshold": 0.9
+        },
+        {
+          "model": "modernbert",
+          "workload": "code",
+          "threshold": 0.7
+        },
+        {
+          "model": "modernbert",
+          "workload": "code",
+          "threshold": 0.75
+        },
+        {
+          "model": "modernbert",
+          "workload": "code",
+          "threshold": 0.8
+        },
+        {
+          "model": "modernbert",
+          "workload": "code",
+          "threshold": 0.85
+        },
+        {
+          "model": "modernbert",
+          "workload": "code",
+          "threshold": 0.9
+        },
+        {
+          "model": "modernbert",
+          "workload": "chat",
+          "threshold": 0.7
+        },
+        {
+          "model": "modernbert",
+          "workload": "chat",
+          "threshold": 0.75
+        },
+        {
+          "model": "modernbert",
+          "workload": "chat",
+          "threshold": 0.8
+        },
+        {
+          "model": "modernbert",
+          "workload": "chat",
+          "threshold": 0.85
+        },
+        {
+          "model": "modernbert",
+          "workload": "chat",
+          "threshold": 0.9
+        }
+      ],
+      "model_identities": {
+        "all-MiniLM-L6-v2": {
+          "canonical_name": "all-MiniLM-L6-v2",
+          "checkpoint": "sentence-transformers/all-MiniLM-L6-v2",
+          "dimension": 384
+        },
+        "modernbert": {
+          "canonical_name": "modernbert",
+          "checkpoint": "nomic-ai/modernbert-embed-base",
+          "dimension": 768
+        }
+      },
+      "merged_from": [
+        {
+          "directory": "results/staging-prev-minus-code",
+          "n_configurations": 20,
+          "config_ids": [
+            "all-MiniLM-L6-v2|faq|0.70",
+            "all-MiniLM-L6-v2|faq|0.75",
+            "all-MiniLM-L6-v2|faq|0.80",
+            "all-MiniLM-L6-v2|faq|0.85",
+            "all-MiniLM-L6-v2|faq|0.90",
+            "all-MiniLM-L6-v2|chat|0.70",
+            "all-MiniLM-L6-v2|chat|0.75",
+            "all-MiniLM-L6-v2|chat|0.80",
+            "all-MiniLM-L6-v2|chat|0.85",
+            "all-MiniLM-L6-v2|chat|0.90",
+            "modernbert|faq|0.70",
+            "modernbert|faq|0.75",
+            "modernbert|faq|0.80",
+            "modernbert|faq|0.85",
+            "modernbert|faq|0.90",
+            "modernbert|chat|0.70",
+            "modernbert|chat|0.75",
+            "modernbert|chat|0.80",
+            "modernbert|chat|0.85",
+            "modernbert|chat|0.90"
+          ],
+          "run_meta": {
+            "generated_by": "scripts/merge_results.py",
+            "generated_at_utc": "20260807T060848Z",
+            "dataset_path": "data/ground_truth.full.csv",
+            "embedding_provider": "sentence-transformers",
+            "llm_provider": "mock",
+            "n_configurations": 30,
+            "grid": [
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "faq",
+                "threshold": 0.7
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "faq",
+                "threshold": 0.75
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "faq",
+                "threshold": 0.8
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "faq",
+                "threshold": 0.85
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "faq",
+                "threshold": 0.9
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "code",
+                "threshold": 0.7
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "code",
+                "threshold": 0.75
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "code",
+                "threshold": 0.8
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "code",
+                "threshold": 0.85
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "code",
+                "threshold": 0.9
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "chat",
+                "threshold": 0.7
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "chat",
+                "threshold": 0.75
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "chat",
+                "threshold": 0.8
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "chat",
+                "threshold": 0.85
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "chat",
+                "threshold": 0.9
+              },
+              {
+                "model": "modernbert",
+                "workload": "faq",
+                "threshold": 0.7
+              },
+              {
+                "model": "modernbert",
+                "workload": "faq",
+                "threshold": 0.75
+              },
+              {
+                "model": "modernbert",
+                "workload": "faq",
+                "threshold": 0.8
+              },
+              {
+                "model": "modernbert",
+                "workload": "faq",
+                "threshold": 0.85
+              },
+              {
+                "model": "modernbert",
+                "workload": "faq",
+                "threshold": 0.9
+              },
+              {
+                "model": "modernbert",
+                "workload": "code",
+                "threshold": 0.7
+              },
+              {
+                "model": "modernbert",
+                "workload": "code",
+                "threshold": 0.75
+              },
+              {
+                "model": "modernbert",
+                "workload": "code",
+                "threshold": 0.8
+              },
+              {
+                "model": "modernbert",
+                "workload": "code",
+                "threshold": 0.85
+              },
+              {
+                "model": "modernbert",
+                "workload": "code",
+                "threshold": 0.9
+              },
+              {
+                "model": "modernbert",
+                "workload": "chat",
+                "threshold": 0.7
+              },
+              {
+                "model": "modernbert",
+                "workload": "chat",
+                "threshold": 0.75
+              },
+              {
+                "model": "modernbert",
+                "workload": "chat",
+                "threshold": 0.8
+              },
+              {
+                "model": "modernbert",
+                "workload": "chat",
+                "threshold": 0.85
+              },
+              {
+                "model": "modernbert",
+                "workload": "chat",
+                "threshold": 0.9
+              }
+            ],
+            "model_identities": {
+              "all-MiniLM-L6-v2": {
+                "canonical_name": "all-MiniLM-L6-v2",
+                "checkpoint": "sentence-transformers/all-MiniLM-L6-v2",
+                "dimension": 384
+              },
+              "modernbert": {
+                "canonical_name": "modernbert",
+                "checkpoint": "nomic-ai/modernbert-embed-base",
+                "dimension": 768
+              }
+            },
+            "merged_from": [
+              {
+                "directory": "results/run-001-nochat",
+                "n_configurations": 20,
+                "config_ids": [
+                  "all-MiniLM-L6-v2|faq|0.70",
+                  "all-MiniLM-L6-v2|faq|0.75",
+                  "all-MiniLM-L6-v2|faq|0.80",
+                  "all-MiniLM-L6-v2|faq|0.85",
+                  "all-MiniLM-L6-v2|faq|0.90",
+                  "all-MiniLM-L6-v2|code|0.70",
+                  "all-MiniLM-L6-v2|code|0.75",
+                  "all-MiniLM-L6-v2|code|0.80",
+                  "all-MiniLM-L6-v2|code|0.85",
+                  "all-MiniLM-L6-v2|code|0.90",
+                  "modernbert|faq|0.70",
+                  "modernbert|faq|0.75",
+                  "modernbert|faq|0.80",
+                  "modernbert|faq|0.85",
+                  "modernbert|faq|0.90",
+                  "modernbert|code|0.70",
+                  "modernbert|code|0.75",
+                  "modernbert|code|0.80",
+                  "modernbert|code|0.85",
+                  "modernbert|code|0.90"
+                ],
+                "run_meta": {
+                  "dataset_path": "data/ground_truth.full.csv",
+                  "llm_provider": "mock",
+                  "embedding_provider": "sentence-transformers",
+                  "n_configurations": 30,
+                  "grid": [
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "faq",
+                      "threshold": 0.7
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "faq",
+                      "threshold": 0.75
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "faq",
+                      "threshold": 0.8
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "faq",
+                      "threshold": 0.85
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "faq",
+                      "threshold": 0.9
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "code",
+                      "threshold": 0.7
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "code",
+                      "threshold": 0.75
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "code",
+                      "threshold": 0.8
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "code",
+                      "threshold": 0.85
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "code",
+                      "threshold": 0.9
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "chat",
+                      "threshold": 0.7
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "chat",
+                      "threshold": 0.75
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "chat",
+                      "threshold": 0.8
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "chat",
+                      "threshold": 0.85
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "chat",
+                      "threshold": 0.9
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "faq",
+                      "threshold": 0.7
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "faq",
+                      "threshold": 0.75
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "faq",
+                      "threshold": 0.8
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "faq",
+                      "threshold": 0.85
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "faq",
+                      "threshold": 0.9
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "code",
+                      "threshold": 0.7
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "code",
+                      "threshold": 0.75
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "code",
+                      "threshold": 0.8
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "code",
+                      "threshold": 0.85
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "code",
+                      "threshold": 0.9
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "chat",
+                      "threshold": 0.7
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "chat",
+                      "threshold": 0.75
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "chat",
+                      "threshold": 0.8
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "chat",
+                      "threshold": 0.85
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "chat",
+                      "threshold": 0.9
+                    }
+                  ],
+                  "model_identities": {
+                    "all-MiniLM-L6-v2": {
+                      "canonical_name": "all-MiniLM-L6-v2",
+                      "checkpoint": "sentence-transformers/all-MiniLM-L6-v2",
+                      "dimension": 384
+                    },
+                    "modernbert": {
+                      "canonical_name": "modernbert",
+                      "checkpoint": "nomic-ai/modernbert-embed-base",
+                      "dimension": 768
+                    }
+                  },
+                  "latency": {
+                    "total_elapsed_seconds": 9006.710990042004,
+                    "note": "LLM latency is synthetic: MockLLMClient sleeps a fixed 0.5s per call and is not a measurement of any real provider's performance."
+                  }
+                }
+              },
+              {
+                "directory": "results/run-002-chat",
+                "n_configurations": 10,
+                "config_ids": [
+                  "all-MiniLM-L6-v2|chat|0.70",
+                  "all-MiniLM-L6-v2|chat|0.75",
+                  "all-MiniLM-L6-v2|chat|0.80",
+                  "all-MiniLM-L6-v2|chat|0.85",
+                  "all-MiniLM-L6-v2|chat|0.90",
+                  "modernbert|chat|0.70",
+                  "modernbert|chat|0.75",
+                  "modernbert|chat|0.80",
+                  "modernbert|chat|0.85",
+                  "modernbert|chat|0.90"
+                ],
+                "run_meta": {
+                  "dataset_path": "data/ground_truth.full.csv",
+                  "llm_provider": "mock",
+                  "embedding_provider": "sentence-transformers",
+                  "n_configurations": 10,
+                  "grid": [
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "chat",
+                      "threshold": 0.7
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "chat",
+                      "threshold": 0.75
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "chat",
+                      "threshold": 0.8
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "chat",
+                      "threshold": 0.85
+                    },
+                    {
+                      "model": "all-MiniLM-L6-v2",
+                      "workload": "chat",
+                      "threshold": 0.9
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "chat",
+                      "threshold": 0.7
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "chat",
+                      "threshold": 0.75
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "chat",
+                      "threshold": 0.8
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "chat",
+                      "threshold": 0.85
+                    },
+                    {
+                      "model": "modernbert",
+                      "workload": "chat",
+                      "threshold": 0.9
+                    }
+                  ],
+                  "model_identities": {
+                    "all-MiniLM-L6-v2": {
+                      "canonical_name": "all-MiniLM-L6-v2",
+                      "checkpoint": "sentence-transformers/all-MiniLM-L6-v2",
+                      "dimension": 384
+                    },
+                    "modernbert": {
+                      "canonical_name": "modernbert",
+                      "checkpoint": "nomic-ai/modernbert-embed-base",
+                      "dimension": 768
+                    }
+                  },
+                  "latency": {
+                    "total_elapsed_seconds": 2920.266234083014,
+                    "note": "LLM latency is synthetic: MockLLMClient sleeps a fixed 0.5s per call and is not a measurement of any real provider's performance."
+                  }
+                }
+              }
+            ],
+            "latency": {
+              "note": "Merged from separate harness runs, so no single elapsed time describes this result set; per-run timings are under 'merged_from'. LLM latency is synthetic in all of them (MockLLMClient sleeps a fixed 0.5s per call)."
+            }
+          }
+        },
+        {
+          "directory": "results/staging-code",
+          "n_configurations": 10,
+          "config_ids": [
+            "all-MiniLM-L6-v2|code|0.70",
+            "all-MiniLM-L6-v2|code|0.75",
+            "all-MiniLM-L6-v2|code|0.80",
+            "all-MiniLM-L6-v2|code|0.85",
+            "all-MiniLM-L6-v2|code|0.90",
+            "modernbert|code|0.70",
+            "modernbert|code|0.75",
+            "modernbert|code|0.80",
+            "modernbert|code|0.85",
+            "modernbert|code|0.90"
+          ],
+          "run_meta": {
+            "dataset_path": "data/ground_truth.full.csv",
+            "llm_provider": "mock",
+            "embedding_provider": "sentence-transformers",
+            "n_configurations": 10,
+            "grid": [
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "code",
+                "threshold": 0.7
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "code",
+                "threshold": 0.75
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "code",
+                "threshold": 0.8
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "code",
+                "threshold": 0.85
+              },
+              {
+                "model": "all-MiniLM-L6-v2",
+                "workload": "code",
+                "threshold": 0.9
+              },
+              {
+                "model": "modernbert",
+                "workload": "code",
+                "threshold": 0.7
+              },
+              {
+                "model": "modernbert",
+                "workload": "code",
+                "threshold": 0.75
+              },
+              {
+                "model": "modernbert",
+                "workload": "code",
+                "threshold": 0.8
+              },
+              {
+                "model": "modernbert",
+                "workload": "code",
+                "threshold": 0.85
+              },
+              {
+                "model": "modernbert",
+                "workload": "code",
+                "threshold": 0.9
+              }
+            ],
+            "model_identities": {
+              "all-MiniLM-L6-v2": {
+                "canonical_name": "all-MiniLM-L6-v2",
+                "checkpoint": "sentence-transformers/all-MiniLM-L6-v2",
+                "dimension": 384
+              },
+              "modernbert": {
+                "canonical_name": "modernbert",
+                "checkpoint": "nomic-ai/modernbert-embed-base",
+                "dimension": 768
+              }
+            },
+            "latency": {
+              "total_elapsed_seconds": 3126.9353675410002,
+              "note": "LLM latency is synthetic: MockLLMClient sleeps a fixed 0.5s per call and is not a measurement of any real provider's performance."
+            }
+          }
+        }
+      ],
+      "latency": {
+        "note": "Merged from separate harness runs, so no single elapsed time describes this result set; per-run timings are under 'merged_from'. LLM latency is synthetic in all of them (MockLLMClient sleeps a fixed 0.5s per call)."
+      }
+    }
+  },
+  "parameters": {
+    "alpha": 0.05,
+    "kappa_threshold": 0.7
+  },
+  "anova": {
+    "response": "fpr",
+    "formula": "fpr ~ C(model) * C(workload)",
+    "significant_effects": [
+      "workload"
+    ],
+    "degenerate_response": false,
+    "decisions": {
+      "H0_1": "retain",
+      "H0_2": "reject",
+      "H0_3": "retain"
+    },
+    "diagnostics": {
+      "design": {
+        "models": [
+          "all-MiniLM-L6-v2",
+          "modernbert"
+        ],
+        "workloads": [
+          "chat",
+          "code",
+          "faq"
+        ],
+        "cell_counts": {
+          "all-MiniLM-L6-v2|chat": 5,
+          "all-MiniLM-L6-v2|code": 5,
+          "all-MiniLM-L6-v2|faq": 5,
+          "modernbert|chat": 5,
+          "modernbert|code": 5,
+          "modernbert|faq": 5
+        },
+        "balanced": true
+      },
+      "sum_of_squares_type": "II",
+      "n_observations": 30,
+      "residual_mean": -1.7347234759768072e-19,
+      "residual_std": 0.012455481896296325,
+      "note": "Diagnostics are reported for the author's interpretation; the pipeline does not modify the frozen analysis plan in response to them.",
+      "shapiro_wilk": {
+        "W": 0.8726633867832454,
+        "p_value": 0.0019212667891201321
+      },
+      "levene": {
+        "statistic": 3.970322263599086,
+        "p_value": 0.00913770906843805
+      }
+    }
+  },
+  "tukey": {
+    "ran": true,
+    "statement": "Tukey HSD ran for significant effect(s): workload (alpha=0.05).",
+    "per_effect": {
+      "model": "skipped: ANOVA retained the null for model at alpha=0.05",
+      "workload": "ran: ANOVA rejected the null for workload at alpha=0.05; 3 groups compared",
+      "model:workload": "skipped: ANOVA retained the null for model:workload at alpha=0.05"
+    }
+  },
+  "outputs": {
+    "tables": [
+      "anova.csv",
+      "tukey.csv",
+      "tukey_status.csv",
+      "curves_hit_rate.csv",
+      "curves_precision.csv"
+    ],
+    "kappa": "kappa.json",
+    "figures": [
+      "figures/curve_hit_rate.png",
+      "figures/curve_hit_rate.pdf",
+      "figures/curve_precision.png",
+      "figures/curve_precision.pdf"
+    ]
+  },
+  "library_versions": {
+    "python": "3.10.19",
+    "pandas": "2.3.3",
+    "statsmodels": "0.14.6",
+    "matplotlib": "3.10.9",
+    "scipy": "1.15.2"
+  },
+  "note": "Tables are timestamp-free and byte-identical across re-runs on identical input; versions and the generation timestamp live only in this sidecar."
+}

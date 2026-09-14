@@ -29,6 +29,14 @@ quietly stale.
 > dataset changes exactly one argument — see
 > [Swapping in the real dataset](#swapping-in-the-real-dataset).
 
+> **Where the results of record live.** The published D3 study run —
+> `results.csv`, `decisions.csv`, `latency.csv`, the analysis bundle, and
+> `responses.jsonl` — is committed at [`release/`](../release/) in this
+> repository, produced by commit `fc1b5c2` (recorded in
+> [`release/PROVENANCE.md`](../release/PROVENANCE.md)). To compare a fresh
+> run against it: `python scripts/check_replication.py --reference
+> release/results.csv --no-json`.
+
 ---
 
 ## Route A — Docker (one command)

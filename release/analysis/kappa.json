@@ -1,0 +1,72 @@
+{
+  "status": "computed",
+  "source": "levy.dataset.kappa.kappa_report",
+  "dataset_path": "data/ground_truth.full.csv",
+  "n_pairs": 900,
+  "threshold": 0.7,
+  "fully_annotated": true,
+  "passes_threshold": false,
+  "provenance": {
+    "source_corpora": [
+      "quora-qqp",
+      "sodd",
+      "twitter-pit2015"
+    ],
+    "fixture_only": false,
+    "note": "Derived from the released dataset."
+  },
+  "overall": {
+    "n_annotated": 900,
+    "n_excluded_unannotated": 0,
+    "observed_agreement": 0.75,
+    "expected_agreement": 0.5,
+    "kappa": 0.5,
+    "confusion": {
+      "tp": 299,
+      "fp": 74,
+      "fn": 151,
+      "tn": 376
+    }
+  },
+  "per_workload": {
+    "faq": {
+      "n_annotated": 300,
+      "n_excluded_unannotated": 0,
+      "observed_agreement": 0.7633333333333333,
+      "expected_agreement": 0.5,
+      "kappa": 0.5266666666666666,
+      "confusion": {
+        "tp": 121,
+        "fp": 42,
+        "fn": 29,
+        "tn": 108
+      }
+    },
+    "code": {
+      "n_annotated": 300,
+      "n_excluded_unannotated": 0,
+      "observed_agreement": 0.71,
+      "expected_agreement": 0.5,
+      "kappa": 0.41999999999999993,
+      "confusion": {
+        "tp": 65,
+        "fp": 2,
+        "fn": 85,
+        "tn": 148
+      }
+    },
+    "chat": {
+      "n_annotated": 300,
+      "n_excluded_unannotated": 0,
+      "observed_agreement": 0.7766666666666666,
+      "expected_agreement": 0.5,
+      "kappa": 0.5533333333333332,
+      "confusion": {
+        "tp": 113,
+        "fp": 30,
+        "fn": 37,
+        "tn": 120
+      }
+    }
+  }
+}

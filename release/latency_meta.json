@@ -1,0 +1,57 @@
+{
+  "generated_utc": "2026-08-07T21:24:32+00:00",
+  "dataset_path": "data/ground_truth.full.csv",
+  "reference_results": "results/run-003/results.csv",
+  "embedding_provider": "sentence-transformers",
+  "model_identities": {
+    "all-MiniLM-L6-v2": {
+      "canonical_name": "all-MiniLM-L6-v2",
+      "checkpoint": "sentence-transformers/all-MiniLM-L6-v2",
+      "dimension": 384
+    },
+    "modernbert": {
+      "canonical_name": "modernbert",
+      "checkpoint": "nomic-ai/modernbert-embed-base",
+      "dimension": 768
+    }
+  },
+  "n_configurations": 10,
+  "protocol": {
+    "warmup_iterations": 5,
+    "measured_repetitions": 30,
+    "probe_seed": 42,
+    "percentile_method": "nearest-rank (no interpolation)",
+    "clock": "time.perf_counter (monotonic)",
+    "note": "Warm-up iterations are discarded and take no part in any reported percentile; each reported percentile is computed from exactly the measured repetitions of its segment."
+  },
+  "host": {
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "machine": "arm64",
+    "processor": "arm",
+    "cpu_count": 16,
+    "python_version": "3.10.19",
+    "python_implementation": "CPython",
+    "library_versions": {
+      "numpy": "2.2.6",
+      "faiss": "1.10.0",
+      "torch": "2.9.1",
+      "sentence_transformers": "5.5.1",
+      "anthropic": "0.116.0"
+    }
+  },
+  "reproducibility_boundary": "Lookup-overhead measurement (latency.csv) is reproducible: it runs entirely offline and a third party re-running it on their own hardware should obtain comparable figures, subject to the host specification recorded here. Provider-latency measurement (llm_calls.json) is NOT reproducible: it is specific to the model, provider, region, network path and moment recorded with it, and re-running it will not reproduce these values. Every provider-derived figure carries the resolved model identifier that produced it and must not be read as model-independent.",
+  "savings": {
+    "lookup_overhead_p50_ms": 10.158083499845816,
+    "provider_latency_p50_ms": 3407.446458004415,
+    "net_saved_per_hit_ms": 3397.288374504569,
+    "overhead_as_fraction_of_provider_latency": 0.0029811425139149327,
+    "model": "claude-haiku-4-5-20251001",
+    "note": "Latency avoided per cache hit, measured against claude-haiku-4-5-20251001. Provider latency is model-, provider-, region- and time-dependent; this figure belongs to that model and does not generalise. A larger model would avoid more, not less."
+  },
+  "response_corpus": {
+    "path": "results/latency-faq/responses.jsonl",
+    "n_records": 600,
+    "served": 5706,
+    "delegated_to_mock": 438
+  }
+}

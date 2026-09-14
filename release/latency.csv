@@ -1,0 +1,11 @@
+config_id,model,workload,threshold,n_lookups,embed_cold_p50_ms,embed_cold_p95_ms,embed_warm_p50_ms,embed_warm_p95_ms,index_search_p50_ms,index_search_p95_ms,exact_lookup_p50_ms,exact_lookup_p95_ms,total_lookup_p50_ms,total_lookup_p95_ms
+all-MiniLM-L6-v2|faq|0.70,all-MiniLM-L6-v2,faq,0.70,60,8.2866,9.6673,0.0050,0.0104,0.1691,0.2136,0.0089,0.0157,8.5317,9.9037
+all-MiniLM-L6-v2|faq|0.75,all-MiniLM-L6-v2,faq,0.75,60,7.2607,10.6107,0.0015,0.0024,0.1245,0.2000,0.0024,0.0050,7.4609,10.8145
+all-MiniLM-L6-v2|faq|0.80,all-MiniLM-L6-v2,faq,0.80,60,7.2570,9.5326,0.0015,0.0021,0.1211,0.2168,0.0022,0.0049,7.6085,9.7195
+all-MiniLM-L6-v2|faq|0.85,all-MiniLM-L6-v2,faq,0.85,60,7.4410,10.5010,0.0014,0.0020,0.1043,0.1824,0.0021,0.0058,7.6755,10.7333
+all-MiniLM-L6-v2|faq|0.90,all-MiniLM-L6-v2,faq,0.90,60,6.6332,9.2088,0.0014,0.0018,0.1204,0.2206,0.0021,0.0036,6.9363,9.4078
+modernbert|faq|0.70,modernbert,faq,0.70,60,12.3379,14.1668,0.0049,0.0100,0.2087,0.2525,0.0096,0.0171,12.7141,14.4971
+modernbert|faq|0.75,modernbert,faq,0.75,60,11.5433,22.6119,0.0017,0.0021,0.1674,0.2695,0.0024,0.0049,11.7844,22.9679
+modernbert|faq|0.80,modernbert,faq,0.80,60,12.1722,14.8498,0.0015,0.0058,0.1632,0.2283,0.0023,0.0045,12.4020,15.1175
+modernbert|faq|0.85,modernbert,faq,0.85,60,12.1913,13.8011,0.0015,0.0021,0.1629,0.2476,0.0025,0.0059,12.4865,14.0425
+modernbert|faq|0.90,modernbert,faq,0.90,60,12.3316,15.4739,0.0014,0.0019,0.1494,0.2442,0.0023,0.0041,12.5985,15.7848
