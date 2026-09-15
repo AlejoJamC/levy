@@ -159,6 +159,7 @@ def write_run_meta(
     model_identities: Dict[str, dict],
     elapsed_seconds: float,
     path: PathLike,
+    llm_latency_seconds: float = 0.5,
 ) -> None:
     """
     Write run parameters and latency statistics to a sidecar, deliberately
@@ -179,9 +180,10 @@ def write_run_meta(
         "model_identities": model_identities,
         "latency": {
             "total_elapsed_seconds": elapsed_seconds,
+            "mock_llm_latency_seconds": llm_latency_seconds,
             "note": (
-                "LLM latency is synthetic: MockLLMClient sleeps a fixed 0.5s per call and "
-                "is not a measurement of any real provider's performance."
+                f"LLM latency is synthetic: MockLLMClient sleeps a fixed {llm_latency_seconds}s "
+                "per call and is not a measurement of any real provider's performance."
             ),
         },
     }

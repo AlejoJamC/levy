@@ -46,6 +46,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--workloads", type=str, default=None, help="Comma-separated workload subset (default: faq,code,chat)")
     parser.add_argument("--thresholds", type=str, default=None, help="Comma-separated threshold subset (default: 0.70,0.75,0.80,0.85,0.90)")
     parser.add_argument("--embedding-provider", type=str, default="mock", choices=["mock", "sentence-transformers", "ollama"], help="Embedding provider for the sweep (default: mock, fully offline)")
+    parser.add_argument("--llm-latency-seconds", type=float, default=0.5, help="MockLLMClient sleep per call in seconds (default: 0.5, matching production latency order of magnitude); 0 disables the sleep")
     return parser
 
 
@@ -82,7 +83,12 @@ def main(argv=None) -> int:
 
     start = time.perf_counter()
     try:
-        results, model_identities = run_sweep(pairs, configs=configs, embedding_provider=args.embedding_provider)
+        results, model_identities = run_sweep(
+            pairs,
+            configs=configs,
+            embedding_provider=args.embedding_provider,
+            llm_latency_seconds=args.llm_latency_seconds,
+        )
     except ExperimentSanityError as exc:
         print(f"[run_experiments] sanity check failed: {exc}", file=sys.stderr)
         return 1
@@ -99,6 +105,7 @@ def main(argv=None) -> int:
         model_identities=model_identities,
         elapsed_seconds=elapsed,
         path=args.out_dir / "run_meta.json",
+        llm_latency_seconds=args.llm_latency_seconds,
     )
     print(f"[run_experiments] wrote {len(results)} configuration result(s) to {args.out_dir}")
     return 0
