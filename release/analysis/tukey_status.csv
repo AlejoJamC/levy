@@ -1,0 +1,5 @@
+effect,ran,reason
+model,False,skipped: ANOVA retained the null for model at alpha=0.05
+model:workload,False,skipped: ANOVA retained the null for model:workload at alpha=0.05
+workload,True,ran: ANOVA rejected the null for workload at alpha=0.05; 3 groups compared
+__overall__,True,Tukey HSD ran for significant effect(s): workload (alpha=0.05).

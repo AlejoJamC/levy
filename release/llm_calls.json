@@ -1,0 +1,45 @@
+{
+  "n_calls": 600,
+  "model": "claude-haiku-4-5-20251001",
+  "latency_ms": {
+    "p50": 3407.446458004415,
+    "p95": 4495.642375004536,
+    "min": 889.4005000038305,
+    "max": 7449.138167001365,
+    "mean": 3373.170907061855
+  },
+  "tokens": {
+    "input_total": 12766,
+    "output_total": 140037,
+    "input_mean_per_call": 21.276666666666667,
+    "output_mean_per_call": 233.395
+  },
+  "prices_per_mtok_usd": {
+    "input": 1.0,
+    "output": 5.0
+  },
+  "observed_cost_usd": {
+    "total": 0.7129509999999999,
+    "per_call": 0.0011882516666666665
+  },
+  "window_utc": {
+    "first_call": "2026-08-07T20:35:03+00:00",
+    "last_call": "2026-08-07T21:08:57+00:00"
+  },
+  "workload": "faq",
+  "dataset_path": "data/ground_truth.full.csv",
+  "refusals": 0,
+  "halted": null,
+  "repriced": {
+    "model_priced": "claude-sonnet-5",
+    "basis": "token totals observed in this run, priced at the named model's rates",
+    "prices_per_mtok_usd": {
+      "input": 3.0,
+      "output": 15.0
+    },
+    "projected_cost_usd": {
+      "total": 2.138853,
+      "per_call": 0.003564755
+    }
+  }
+}

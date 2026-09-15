@@ -301,6 +301,14 @@ data/ground_truth.full.json
 # file ever carries corpus text.
 !data/ground_truth.ids.csv
 
+# release/ — the sole publication folder for benchmark results (LEV-15). Every
+# CSV placed there is audited by hand before it lands (aggregate metrics and
+# internal pair_id/config_id values only; no third-party corpus text, no
+# secrets, no PII) — see release/PROVENANCE.md for what was checked. This
+# exception applies ONLY to release/; every other directory keeps the
+# deny-by-default rule above.
+!release/**/*.csv
+
 # Corpus adapter fixtures: real column structure, entirely synthetic content
 # ("fixture-" prefixed). Required by the offline test suite.
 !tests/fixtures/corpora/**/*.tsv
