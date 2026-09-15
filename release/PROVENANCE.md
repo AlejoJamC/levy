@@ -10,6 +10,9 @@ file is never renamed, dated, or suffixed, and neither is anything else here.
 - **Source data:** `results/run-003/` (D3 grid: 30-configuration sweep,
   statistical analysis) and `results/latency-faq/` (latency measurement),
   both gitignored working-tree output, copied here after review.
+  `d3-results/replication/cross-environment.*` is not copied from anywhere —
+  it is an independently generated re-run of the same grid inside the D7
+  container (LEV-16), kept alongside the original as replication evidence.
 - **Compliance check performed before copying:** every file was checked for
   third-party corpus text, secrets/API keys, emails, IP addresses, and PII.
   None found. No file here contains original query text from any source
@@ -21,21 +24,28 @@ file is never renamed, dated, or suffixed, and neither is anything else here.
 
 ## Contents
 
+Organised by deliverable, per `docs/Specification_and_Design_Report.md:282-296`
+(D3 = evaluation results/analysis; the latency pilot is not itself one of the
+named D1-D7 deliverables, so it is kept in its own folder rather than under a
+D-number it doesn't have).
+
 | File | Description |
 |---|---|
-| `results.csv` | 30 rows, one per configuration: TP/FP/TN/FN, precision, recall, F0.5, false positive rate, hit rate |
-| `decisions.csv` | 9,000 rows, per-pair cache decisions underlying `results.csv` |
-| `run_meta.json` | Dataset path, providers, resolved model checkpoints, grid definition |
-| `replication.json` | ±5% replication check against the frozen Success Criterion 3 |
-| `analysis/anova.csv`, `analysis/tukey.csv`, `analysis/tukey_status.csv` | Two-way ANOVA and Tukey HSD results for H0(1-3) |
-| `analysis/curves_precision.csv`, `analysis/curves_hit_rate.csv` | Threshold-vs-metric tables per (model, workload) |
-| `analysis/kappa.json` | Cohen's kappa (annotation agreement) |
-| `analysis/analysis_meta.json` | Analysis run metadata |
-| `analysis/figures/*.png`, `analysis/figures/*.pdf` | Threshold-vs-precision and threshold-vs-hit-rate figures |
-| `latency.csv` | Per-configuration lookup-overhead percentiles (embedding, index search, exact-cache lookup, total) |
-| `latency_meta.json` | Host spec, library versions, protocol, latency-vs-savings figures |
-| `llm_calls.json` | Observed cost/token/latency totals for the 600 real provider calls |
-| `responses.jsonl` | 600 records: `sha256(prompt)`, model, token counts, latency, and the model's generated response text — never the prompt |
+| `d3-results/results.csv` | 30 rows, one per configuration: TP/FP/TN/FN, precision, recall, F0.5, false positive rate, hit rate |
+| `d3-results/decisions.csv` | 9,000 rows, per-pair cache decisions underlying `results.csv` |
+| `d3-results/run_meta.json` | Dataset path, providers, resolved model checkpoints, grid definition |
+| `d3-results/replication/determinism.replication.json` | Same-host re-run: every diff expected to be exactly 0.0 (byte-deterministic harness) |
+| `d3-results/replication/cross-environment.replication.json` | Independent re-run inside the D7 container (Linux, real `sentence-transformers` embeddings) against the frozen ±5% Success Criterion 3; measured max abs deviation 0.0 |
+| `d3-results/replication/cross-environment.results.csv` | The container run's own `results.csv`, generated independently, not copied — byte-identical to `d3-results/results.csv` |
+| `d3-results/analysis/anova.csv`, `.../tukey.csv`, `.../tukey_status.csv` | Two-way ANOVA and Tukey HSD results for H0(1-3) |
+| `d3-results/analysis/curves_precision.csv`, `.../curves_hit_rate.csv` | Threshold-vs-metric tables per (model, workload) |
+| `d3-results/analysis/kappa.json` | Cohen's kappa (annotation agreement) |
+| `d3-results/analysis/analysis_meta.json` | Analysis run metadata |
+| `d3-results/analysis/figures/*.png`, `.../figures/*.pdf` | Threshold-vs-precision and threshold-vs-hit-rate figures |
+| `latency/latency.csv` | Per-configuration lookup-overhead percentiles (embedding, index search, exact-cache lookup, total) |
+| `latency/latency_meta.json` | Host spec, library versions, protocol, latency-vs-savings figures |
+| `latency/llm_calls.json` | Observed cost/token/latency totals for the 600 real provider calls |
+| `latency/responses.jsonl` | 600 records: `sha256(prompt)`, model, token counts, latency, and the model's generated response text — never the prompt |
 
 ## Integrity
 

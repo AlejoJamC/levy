@@ -1,0 +1,600 @@
+  {
+  "generated_by": "scripts/check_replication.py",
+  "generated_at_utc": "20260915T230651Z",
+  "comparison_type": "cross-environment",
+  "environment": {
+    "platform": "Linux-7.0.12-linuxkit-aarch64-with-glibc2.36",
+    "python_version": "3.10.21",
+    "processor": ""
+  },
+  "criterion": "S&D Report Success Criterion 3 / Proposal Criterion 3: released code and data replicate headline precision and recall within +/-5%",
+  "passed": true,
+  "rule": "|candidate - reference| <= max(0.01, 5% * |reference|) per configuration, for precision and recall",
+  "relative_tolerance": 0.05,
+  "absolute_floor": 0.01,
+  "reference": "/opt/levy/reference/results.csv",
+  "dataset_path": "data/ground_truth.full.csv",
+  "embedding_provider": "sentence-transformers",
+  "metrics": [
+    "precision",
+    "recall"
+  ],
+  "n_comparisons": 60,
+  "n_out_of_tolerance": 0,
+  "config_ids": [
+    "all-MiniLM-L6-v2|chat|0.70",
+    "all-MiniLM-L6-v2|chat|0.75",
+    "all-MiniLM-L6-v2|chat|0.80",
+    "all-MiniLM-L6-v2|chat|0.85",
+    "all-MiniLM-L6-v2|chat|0.90",
+    "all-MiniLM-L6-v2|code|0.70",
+    "all-MiniLM-L6-v2|code|0.75",
+    "all-MiniLM-L6-v2|code|0.80",
+    "all-MiniLM-L6-v2|code|0.85",
+    "all-MiniLM-L6-v2|code|0.90",
+    "all-MiniLM-L6-v2|faq|0.70",
+    "all-MiniLM-L6-v2|faq|0.75",
+    "all-MiniLM-L6-v2|faq|0.80",
+    "all-MiniLM-L6-v2|faq|0.85",
+    "all-MiniLM-L6-v2|faq|0.90",
+    "modernbert|chat|0.70",
+    "modernbert|chat|0.75",
+    "modernbert|chat|0.80",
+    "modernbert|chat|0.85",
+    "modernbert|chat|0.90",
+    "modernbert|code|0.70",
+    "modernbert|code|0.75",
+    "modernbert|code|0.80",
+    "modernbert|code|0.85",
+    "modernbert|code|0.90",
+    "modernbert|faq|0.70",
+    "modernbert|faq|0.75",
+    "modernbert|faq|0.80",
+    "modernbert|faq|0.85",
+    "modernbert|faq|0.90"
+  ],
+  "missing_configs": [],
+  "extra_configs": [],
+  "comparisons": [
+    {
+      "config_id": "all-MiniLM-L6-v2|chat|0.70",
+      "metric": "precision",
+      "reference": 0.714286,
+      "candidate": 0.714286,
+      "abs_diff": 0.0,
+      "tolerance": 0.0357143,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|chat|0.70",
+      "metric": "recall",
+      "reference": 0.034965,
+      "candidate": 0.034965,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|chat|0.75",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|chat|0.75",
+      "metric": "recall",
+      "reference": 0.013986,
+      "candidate": 0.013986,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|chat|0.80",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|chat|0.80",
+      "metric": "recall",
+      "reference": 0.006993,
+      "candidate": 0.006993,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|chat|0.85",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|chat|0.85",
+      "metric": "recall",
+      "reference": 0.006993,
+      "candidate": 0.006993,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|chat|0.90",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|chat|0.90",
+      "metric": "recall",
+      "reference": 0.006993,
+      "candidate": 0.006993,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|code|0.70",
+      "metric": "precision",
+      "reference": 0.666667,
+      "candidate": 0.666667,
+      "abs_diff": 0.0,
+      "tolerance": 0.033333350000000005,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|code|0.70",
+      "metric": "recall",
+      "reference": 0.059701,
+      "candidate": 0.059701,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|code|0.75",
+      "metric": "precision",
+      "reference": 0.666667,
+      "candidate": 0.666667,
+      "abs_diff": 0.0,
+      "tolerance": 0.033333350000000005,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|code|0.75",
+      "metric": "recall",
+      "reference": 0.059701,
+      "candidate": 0.059701,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|code|0.80",
+      "metric": "precision",
+      "reference": 0.6,
+      "candidate": 0.6,
+      "abs_diff": 0.0,
+      "tolerance": 0.03,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|code|0.80",
+      "metric": "recall",
+      "reference": 0.044776,
+      "candidate": 0.044776,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|code|0.85",
+      "metric": "precision",
+      "reference": 0.75,
+      "candidate": 0.75,
+      "abs_diff": 0.0,
+      "tolerance": 0.037500000000000006,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|code|0.85",
+      "metric": "recall",
+      "reference": 0.044776,
+      "candidate": 0.044776,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|code|0.90",
+      "metric": "precision",
+      "reference": 0.5,
+      "candidate": 0.5,
+      "abs_diff": 0.0,
+      "tolerance": 0.025,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|code|0.90",
+      "metric": "recall",
+      "reference": 0.014925,
+      "candidate": 0.014925,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|faq|0.70",
+      "metric": "precision",
+      "reference": 0.875,
+      "candidate": 0.875,
+      "abs_diff": 0.0,
+      "tolerance": 0.043750000000000004,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|faq|0.70",
+      "metric": "recall",
+      "reference": 0.386503,
+      "candidate": 0.386503,
+      "abs_diff": 0.0,
+      "tolerance": 0.01932515,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|faq|0.75",
+      "metric": "precision",
+      "reference": 0.880952,
+      "candidate": 0.880952,
+      "abs_diff": 0.0,
+      "tolerance": 0.0440476,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|faq|0.75",
+      "metric": "recall",
+      "reference": 0.226994,
+      "candidate": 0.226994,
+      "abs_diff": 0.0,
+      "tolerance": 0.0113497,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|faq|0.80",
+      "metric": "precision",
+      "reference": 0.904762,
+      "candidate": 0.904762,
+      "abs_diff": 0.0,
+      "tolerance": 0.0452381,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|faq|0.80",
+      "metric": "recall",
+      "reference": 0.116564,
+      "candidate": 0.116564,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|faq|0.85",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|faq|0.85",
+      "metric": "recall",
+      "reference": 0.07362,
+      "candidate": 0.07362,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|faq|0.90",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "all-MiniLM-L6-v2|faq|0.90",
+      "metric": "recall",
+      "reference": 0.030675,
+      "candidate": 0.030675,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|chat|0.70",
+      "metric": "precision",
+      "reference": 0.857143,
+      "candidate": 0.857143,
+      "abs_diff": 0.0,
+      "tolerance": 0.042857150000000004,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|chat|0.70",
+      "metric": "recall",
+      "reference": 0.041958,
+      "candidate": 0.041958,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|chat|0.75",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|chat|0.75",
+      "metric": "recall",
+      "reference": 0.006993,
+      "candidate": 0.006993,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|chat|0.80",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|chat|0.80",
+      "metric": "recall",
+      "reference": 0.006993,
+      "candidate": 0.006993,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|chat|0.85",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|chat|0.85",
+      "metric": "recall",
+      "reference": 0.006993,
+      "candidate": 0.006993,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|chat|0.90",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|chat|0.90",
+      "metric": "recall",
+      "reference": 0.006993,
+      "candidate": 0.006993,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|code|0.70",
+      "metric": "precision",
+      "reference": 0.666667,
+      "candidate": 0.666667,
+      "abs_diff": 0.0,
+      "tolerance": 0.033333350000000005,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|code|0.70",
+      "metric": "recall",
+      "reference": 0.059701,
+      "candidate": 0.059701,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|code|0.75",
+      "metric": "precision",
+      "reference": 0.666667,
+      "candidate": 0.666667,
+      "abs_diff": 0.0,
+      "tolerance": 0.033333350000000005,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|code|0.75",
+      "metric": "recall",
+      "reference": 0.059701,
+      "candidate": 0.059701,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|code|0.80",
+      "metric": "precision",
+      "reference": 0.8,
+      "candidate": 0.8,
+      "abs_diff": 0.0,
+      "tolerance": 0.04000000000000001,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|code|0.80",
+      "metric": "recall",
+      "reference": 0.059701,
+      "candidate": 0.059701,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|code|0.85",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|code|0.85",
+      "metric": "recall",
+      "reference": 0.044776,
+      "candidate": 0.044776,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|code|0.90",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|code|0.90",
+      "metric": "recall",
+      "reference": 0.014925,
+      "candidate": 0.014925,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|faq|0.70",
+      "metric": "precision",
+      "reference": 0.916667,
+      "candidate": 0.916667,
+      "abs_diff": 0.0,
+      "tolerance": 0.04583335,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|faq|0.70",
+      "metric": "recall",
+      "reference": 0.337423,
+      "candidate": 0.337423,
+      "abs_diff": 0.0,
+      "tolerance": 0.016871149999999998,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|faq|0.75",
+      "metric": "precision",
+      "reference": 0.888889,
+      "candidate": 0.888889,
+      "abs_diff": 0.0,
+      "tolerance": 0.04444445,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|faq|0.75",
+      "metric": "recall",
+      "reference": 0.196319,
+      "candidate": 0.196319,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|faq|0.80",
+      "metric": "precision",
+      "reference": 0.913043,
+      "candidate": 0.913043,
+      "abs_diff": 0.0,
+      "tolerance": 0.04565215,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|faq|0.80",
+      "metric": "recall",
+      "reference": 0.128834,
+      "candidate": 0.128834,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|faq|0.85",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|faq|0.85",
+      "metric": "recall",
+      "reference": 0.07362,
+      "candidate": 0.07362,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|faq|0.90",
+      "metric": "precision",
+      "reference": 1.0,
+      "candidate": 1.0,
+      "abs_diff": 0.0,
+      "tolerance": 0.05,
+      "within_tolerance": true
+    },
+    {
+      "config_id": "modernbert|faq|0.90",
+      "metric": "recall",
+      "reference": 0.030675,
+      "candidate": 0.030675,
+      "abs_diff": 0.0,
+      "tolerance": 0.01,
+      "within_tolerance": true
+    }
+  ]
+}

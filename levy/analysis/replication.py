@@ -128,6 +128,17 @@ def compare_results(
     )
 
 
+#: What a comparison run is checking. "determinism" is a self-comparison on
+#: the same host: under mock providers the harness is byte-deterministic
+#: (LEV-4), so the only passing outcome is abs_diff == 0.0 everywhere, and
+#: this label makes that expectation explicit rather than implied by context.
+#: "cross-environment" is a re-run on a different host (e.g. the D7 container)
+#: against real embeddings, where the frozen +/-5% tolerance is what the
+#: criterion actually exists to absorb (float embedding output is not
+#: bit-identical across environments).
+COMPARISON_TYPES: Tuple[str, ...] = ("determinism", "cross-environment")
+
+
 def report_to_dict(
     report: ReplicationReport,
     reference_path: str,
@@ -136,6 +147,8 @@ def report_to_dict(
     relative: float = RELATIVE_TOLERANCE,
     absolute_floor: float = ABSOLUTE_FLOOR,
     generated_at_utc: str = "",
+    comparison_type: str = "determinism",
+    environment: dict = None,
 ) -> dict:
     """
     The verdict as a JSON-serialisable object, so a consumer can *read* it
@@ -152,11 +165,23 @@ def report_to_dict(
     covers a third of the grid, and a bare `passed: true` read out of context
     would overclaim. Consumers are expected to check coverage against the grid
     they are describing.
+
+    `comparison_type` distinguishes a same-host, byte-deterministic
+    self-comparison (every abs_diff expected to be exactly 0.0) from a
+    cross-environment re-run (a different host and/or real embeddings, where
+    the frozen +/-5% tolerance is the actual criterion being exercised) — see
+    `COMPARISON_TYPES`. A `passed: true` on 60/60 zero diffs means something
+    different depending on which one produced it, so the label is explicit
+    rather than left to be inferred from where the file happens to sit.
     """
+    if comparison_type not in COMPARISON_TYPES:
+        raise ValueError(f"comparison_type must be one of {COMPARISON_TYPES}, got {comparison_type!r}")
     table = report.table
     return {
         "generated_by": "scripts/check_replication.py",
         "generated_at_utc": generated_at_utc,
+        "comparison_type": comparison_type,
+        "environment": environment or {},
         "criterion": (
             "S&D Report Success Criterion 3 / Proposal Criterion 3: released code and "
             "data replicate headline precision and recall within +/-5%"
@@ -189,13 +214,18 @@ def report_to_dict(
     }
 
 
-def format_report(report: ReplicationReport, show_all: bool = False) -> str:
+def format_report(report: ReplicationReport, show_all: bool = False, comparison_type: str = "determinism") -> str:
     """
     Render the report for a terminal. On failure the per-configuration diff
     table names the configuration, the metric, both values, and the computed
     deviation, per the frozen criterion's auditability requirement.
     """
-    lines = [f"Replication rule: {report.rule}"]
+    expectation = (
+        "same host, every abs_diff expected to be exactly 0.0"
+        if comparison_type == "determinism"
+        else "different environment, differences absorbed by the +/-5% tolerance below"
+    )
+    lines = [f"Comparison type: {comparison_type} ({expectation})", f"Replication rule: {report.rule}"]
 
     if report.missing_configs:
         lines.append(f"MISSING from candidate run: {', '.join(report.missing_configs)}")

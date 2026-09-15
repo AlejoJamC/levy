@@ -34,6 +34,7 @@ Examples:
 
 import argparse
 import json
+import platform
 import sys
 import tempfile
 from pathlib import Path
@@ -44,6 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from levy.analysis.io import HarnessContractError, load_results, load_run_meta
 from levy.analysis.replication import (
     ABSOLUTE_FLOOR,
+    COMPARISON_TYPES,
     RELATIVE_TOLERANCE,
     compare_results,
     format_report,
@@ -65,6 +67,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--relative-tolerance", type=float, default=RELATIVE_TOLERANCE, help=f"Relative tolerance (default: {RELATIVE_TOLERANCE}, the frozen +/-5%%)")
     parser.add_argument("--absolute-floor", type=float, default=ABSOLUTE_FLOOR, help=f"Absolute floor for near-zero reference values (default: {ABSOLUTE_FLOOR})")
     parser.add_argument("--llm-latency-seconds", type=float, default=0.5, help="Mock LLM latency for the re-run; does not affect results (default: 0.5, matching a real run)")
+    parser.add_argument("--comparison-type", type=str, default="determinism", choices=list(COMPARISON_TYPES), help="What this run is checking: 'determinism' (same host, expect every abs_diff==0.0) or 'cross-environment' (different host/embeddings, expect <=5%%) (default: determinism)")
     parser.add_argument("--show-all", action="store_true", help="Print every comparison, not just the out-of-tolerance ones")
     parser.add_argument("--out-json", type=Path, default=None, help="Where to write the machine-readable verdict (default: replication.json beside --reference)")
     parser.add_argument("--no-json", action="store_true", help="Do not write the verdict file (the exit code is then the only record)")
@@ -138,7 +141,7 @@ def main(argv=None, output_fn=print) -> int:
         relative=args.relative_tolerance,
         absolute_floor=args.absolute_floor,
     )
-    output_fn(format_report(report, show_all=args.show_all))
+    output_fn(format_report(report, show_all=args.show_all, comparison_type=args.comparison_type))
 
     if not args.no_json:
         out_json = args.out_json or args.reference.parent / "replication.json"
@@ -159,6 +162,12 @@ def main(argv=None, output_fn=print) -> int:
             relative=args.relative_tolerance,
             absolute_floor=args.absolute_floor,
             generated_at_utc=timestamp,
+            comparison_type=args.comparison_type,
+            environment={
+                "platform": platform.platform(),
+                "python_version": platform.python_version(),
+                "processor": platform.processor(),
+            },
         )
         out_json.parent.mkdir(parents=True, exist_ok=True)
         out_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
