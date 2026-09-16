@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-08-07T14:08:03+00:00",
   "inputs": {
-    "harness_dir": "results/run-003",
+    "harness_dir": "d3-results",
     "n_configurations": 30,
     "dataset_path_for_kappa": "data/ground_truth.full.csv",
     "harness_run_meta": {
@@ -177,7 +177,6 @@
       },
       "merged_from": [
         {
-          "directory": "results/staging-prev-minus-code",
           "n_configurations": 20,
           "config_ids": [
             "all-MiniLM-L6-v2|faq|0.70",
@@ -374,7 +373,6 @@
             },
             "merged_from": [
               {
-                "directory": "results/run-001-nochat",
                 "n_configurations": 20,
                 "config_ids": [
                   "all-MiniLM-L6-v2|faq|0.70",
@@ -574,7 +572,6 @@
                 }
               },
               {
-                "directory": "results/run-002-chat",
                 "n_configurations": 10,
                 "config_ids": [
                   "all-MiniLM-L6-v2|chat|0.70",
@@ -670,7 +667,6 @@
           }
         },
         {
-          "directory": "results/staging-code",
           "n_configurations": 10,
           "config_ids": [
             "all-MiniLM-L6-v2|code|0.70",

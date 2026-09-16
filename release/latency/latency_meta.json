@@ -1,7 +1,7 @@
 {
   "generated_utc": "2026-08-07T21:24:32+00:00",
   "dataset_path": "data/ground_truth.full.csv",
-  "reference_results": "results/run-003/results.csv",
+  "reference_results": "d3-results/results.csv",
   "embedding_provider": "sentence-transformers",
   "model_identities": {
     "all-MiniLM-L6-v2": {
@@ -49,7 +49,7 @@
     "note": "Latency avoided per cache hit, measured against claude-haiku-4-5-20251001. Provider latency is model-, provider-, region- and time-dependent; this figure belongs to that model and does not generalise. A larger model would avoid more, not less."
   },
   "response_corpus": {
-    "path": "results/latency-faq/responses.jsonl",
+    "path": "latency/responses.jsonl",
     "n_records": 600,
     "served": 5706,
     "delegated_to_mock": 438

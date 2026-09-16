@@ -1,5 +1,5 @@
-b1a12bb40f425eec7caa9bf3ab104f98c5df2703c0563dbdf51fb0f22934e78a  ./PROVENANCE.md
-304a7d75f59c84b898e2f52a4b7d111b172498320a7389bd73fc345490ae9de1  ./d3-results/analysis/analysis_meta.json
+773b8d14c2f24aa85fb94c7c9751a00b47726a6e1c161bce2ad07363afb9ad6d  ./PROVENANCE.md
+513d5736bc38dfccbc5c2bbbf67d93357013ae080f2fe6fdb8e0563aa75293a9  ./d3-results/analysis/analysis_meta.json
 c0c9f79ef922858f86a0e84f2a6bc7f47cb9e94971ff0c86f394f187eef4d4fe  ./d3-results/analysis/anova.csv
 fe7c7f668efc3d9697c1c7e1727f96a2a5b169f717cb5cfbef501d59f85a158e  ./d3-results/analysis/curves_hit_rate.csv
 13141c575a39b5c0658700cc302c7a8078abe5092b5c2e6991366535fcb3b375  ./d3-results/analysis/curves_precision.csv
@@ -11,13 +11,15 @@ f4043313947abe4646f82ee2ac5fd4a7a827375e6102600761ab8e3814875aeb  ./d3-results/a
 cdbd422d8e42f183901185c7f51c6bce06d8be20366da2da5096f67d7686a2e5  ./d3-results/analysis/tukey.csv
 d16f0776330d8be19f78904ad3e8415002d26cbc952a44f2bd3f02a227046939  ./d3-results/analysis/tukey_status.csv
 f001dcb1f9b01b4c1acc91e204dc4e824276af0859aa3bdfd8f00c2ddcd46401  ./d3-results/decisions.csv
+f5497003a1ec78fba473b9331faf44c0bdae8300f7136603e31f895a831ed044  ./d3-results/replication/brute-force.results.csv
+25402b50508b2eb851a0e93e61af1707a665546974117c7cd1ac476579d3d65f  ./d3-results/replication/brute-force.run_meta.json
 b7772e3beebf302a811ba37fcdd6bc341abda4aeb5ca540c059a1a8e733f3f79  ./d3-results/replication/cross-environment.replication.json
 f5497003a1ec78fba473b9331faf44c0bdae8300f7136603e31f895a831ed044  ./d3-results/replication/cross-environment.results.csv
-23b2b155eba45f5b6aacba0201596207a522a7ef07540b56f5d21075c29550d7  ./d3-results/replication/determinism.replication.json
+86e2e80214944fa5ce7e39059ec22c3037164fe72440c9074edcb6173a547444  ./d3-results/replication/determinism.replication.json
 f5497003a1ec78fba473b9331faf44c0bdae8300f7136603e31f895a831ed044  ./d3-results/results.csv
-3df9e8ab3f1fa25f374069ce3c7bc311f7cfd5207f5f5780abee5917511ec615  ./d3-results/run_meta.json
+1424a02e85528f22e88f81d2010dc1e24b3825d211f4d636d0f5ef76a4a0bb3f  ./d3-results/run_meta.json
 1c694bfabc6f424a3bfbf13d3d7a652c7ce0ba38fc942a66e709018ce0ee8216  ./latency/latency.csv
-18665a83505cea91242f5b7ac7f04d605f60458d280d670b56965b21bd7c3f18  ./latency/latency_meta.json
+b407b6fcbf32d010003bbcdef47419ce2bd6f46f3ca0f8e136dc53f252dcc4ba  ./latency/latency_meta.json
 08d29117779c9d7db6305eb9a3a6ceca27ea586968b1b46395513818fa46f0a9  ./latency/llm_calls.json
 65c0267380660cccee01a44a63cd3936ad0dbb027393ba9a342fe31ebf4416f7  ./latency/responses.jsonl
 39c6c86ada87737bf91d0e0ca47ac02d0a2235dd54402bfbddc4e9b7e58d5394  ./throughput/claude-haiku-4-5-20251001/throughput.csv

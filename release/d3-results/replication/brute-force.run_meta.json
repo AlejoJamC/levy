@@ -1,0 +1,180 @@
+{
+  "dataset_path": "data/ground_truth.full.csv",
+  "llm_provider": "mock",
+  "embedding_provider": "sentence-transformers",
+  "n_configurations": 30,
+  "grid": [
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "faq",
+      "threshold": 0.7
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "faq",
+      "threshold": 0.75
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "faq",
+      "threshold": 0.8
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "faq",
+      "threshold": 0.85
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "faq",
+      "threshold": 0.9
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "code",
+      "threshold": 0.7
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "code",
+      "threshold": 0.75
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "code",
+      "threshold": 0.8
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "code",
+      "threshold": 0.85
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "code",
+      "threshold": 0.9
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "chat",
+      "threshold": 0.7
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "chat",
+      "threshold": 0.75
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "chat",
+      "threshold": 0.8
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "chat",
+      "threshold": 0.85
+    },
+    {
+      "model": "all-MiniLM-L6-v2",
+      "workload": "chat",
+      "threshold": 0.9
+    },
+    {
+      "model": "modernbert",
+      "workload": "faq",
+      "threshold": 0.7
+    },
+    {
+      "model": "modernbert",
+      "workload": "faq",
+      "threshold": 0.75
+    },
+    {
+      "model": "modernbert",
+      "workload": "faq",
+      "threshold": 0.8
+    },
+    {
+      "model": "modernbert",
+      "workload": "faq",
+      "threshold": 0.85
+    },
+    {
+      "model": "modernbert",
+      "workload": "faq",
+      "threshold": 0.9
+    },
+    {
+      "model": "modernbert",
+      "workload": "code",
+      "threshold": 0.7
+    },
+    {
+      "model": "modernbert",
+      "workload": "code",
+      "threshold": 0.75
+    },
+    {
+      "model": "modernbert",
+      "workload": "code",
+      "threshold": 0.8
+    },
+    {
+      "model": "modernbert",
+      "workload": "code",
+      "threshold": 0.85
+    },
+    {
+      "model": "modernbert",
+      "workload": "code",
+      "threshold": 0.9
+    },
+    {
+      "model": "modernbert",
+      "workload": "chat",
+      "threshold": 0.7
+    },
+    {
+      "model": "modernbert",
+      "workload": "chat",
+      "threshold": 0.75
+    },
+    {
+      "model": "modernbert",
+      "workload": "chat",
+      "threshold": 0.8
+    },
+    {
+      "model": "modernbert",
+      "workload": "chat",
+      "threshold": 0.85
+    },
+    {
+      "model": "modernbert",
+      "workload": "chat",
+      "threshold": 0.9
+    }
+  ],
+  "model_identities": {
+    "all-MiniLM-L6-v2": {
+      "canonical_name": "all-MiniLM-L6-v2",
+      "checkpoint": "sentence-transformers/all-MiniLM-L6-v2",
+      "dimension": 384
+    },
+    "modernbert": {
+      "canonical_name": "modernbert",
+      "checkpoint": "nomic-ai/modernbert-embed-base",
+      "dimension": 768
+    }
+  },
+  "vector_index": {
+    "configured_backend": "brute_force",
+    "resolved_backend": "brute_force",
+    "hnsw_params": null
+  },
+  "latency": {
+    "total_elapsed_seconds": 189.761737294,
+    "mock_llm_latency_seconds": 0.0,
+    "note": "LLM latency is synthetic: MockLLMClient sleeps a fixed 0.0s per call and is not a measurement of any real provider's performance."
+  }
+}

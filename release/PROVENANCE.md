@@ -1,27 +1,34 @@
 # Provenance
 
 This folder holds the final, validated benchmark results for Levy — the D3
-evaluation grid, the latency measurement, and the throughput measurement
+evaluation grid (with its determinism, cross-environment and vector-index
+backend validations), the latency measurement, and the throughput measurement
 (one subdirectory per model measured, see below). It is git-tracked (not
 gitignored) so it ships with the repository. There is exactly one version
 per model: when a model's results are regenerated, that model's files are
 overwritten in place. This file is never renamed, dated, or suffixed, and
 neither is anything else here.
 
-- **Producing commit:** `fc1b5c2e8b092f774b7426601ae8951ca6d7af4b` (D3 grid +
-  latency). The throughput measurement (`throughput/`) was added afterwards
-  (LEV-17, `scripts/run_throughput.py`):
-  `throughput/claude-haiku-4-5-20251001/` was committed at `8d14d75`;
-  `throughput/claude-sonnet-4-6/` at `14c6df6`; `throughput/claude-opus-5/`
-  was added after that commit and is not yet committed to git.
-- **Source data:** `results/run-003/` (D3 grid: 30-configuration sweep,
-  statistical analysis), `results/latency-faq/` (latency measurement), and
-  `results/throughput/<model-id>/` (throughput under concurrent load, one
-  subdirectory per model measured), all gitignored working-tree output,
-  copied here after review.
-  `d3-results/replication/cross-environment.*` is not copied from anywhere —
-  it is an independently generated re-run of the same grid inside the D7
-  container (LEV-16), kept alongside the original as replication evidence.
+- **Vector index backend of the D3 run of record (LEV-18).** The D3 sidecar
+  predates backend recording and carries no `vector_index` key, so the backend
+  is stated here rather than left unevidenced. The run necessarily used the
+  `auto` default — `run_experiment` accepted no backend parameter before
+  LEV-18, so every engine took `LevyConfig.vector_index_backend = "auto"` —
+  which resolves to **`faiss_hnsw` (M=32, efConstruction=200, efSearch=64)**
+  wherever faiss is importable, as it is in the study environment. Because
+  `IndexHNSWFlat` at efSearch=64 does not guarantee the true nearest
+  neighbour, and HNSW traversal is deterministic (so any recall loss would
+  reproduce perfectly and stay invisible to the replication check), the grid
+  was re-run end-to-end on the exact `brute_force` backend for comparison.
+  **Result: `results.csv` byte-identical across all 30 configurations — zero
+  decision flips, zero outcome flips.** Of 9,000 per-pair decisions, 35 differ
+  only in the reported `similarity` value, by at most **1.0 × 10⁻⁶** (Faiss
+  returns squared L2 which is square-rooted, brute force computes L2 directly;
+  same neighbour, last-digit rounding). The tightest margin any decision had
+  to its threshold was 0.000307 — **307× the largest observed delta** — so the
+  agreement is robust, not coincidental. Runs matched on dataset, grid,
+  providers and resolved checkpoints. Approximate-index recall loss is
+  therefore measured, not assumed, and did not affect any reported number.
 - **Compliance check performed before copying:** every file was checked for
   third-party corpus text, secrets/API keys, emails, IP addresses, and PII.
   None found. No file here contains original query text from any source
@@ -38,9 +45,9 @@ neither is anything else here.
 ## Contents
 
 Organised by deliverable, per `docs/Specification_and_Design_Report.md:282-296`
-(D3 = evaluation results/analysis; the latency pilot is not itself one of the
-named D1-D7 deliverables, so it is kept in its own folder rather than under a
-D-number it doesn't have).
+(D3 = the evaluation results and their analysis; the latency pilot is not
+itself one of the named D1-D7 deliverables, so it is kept in its own folder
+rather than under a D-number it doesn't have).
 
 | File | Description |
 |---|---|
@@ -50,6 +57,8 @@ D-number it doesn't have).
 | `d3-results/replication/determinism.replication.json` | Same-host re-run: every diff expected to be exactly 0.0 (byte-deterministic harness) |
 | `d3-results/replication/cross-environment.replication.json` | Independent re-run inside the D7 container (Linux, real `sentence-transformers` embeddings) against the frozen ±5% Success Criterion 3; measured max abs deviation 0.0 |
 | `d3-results/replication/cross-environment.results.csv` | The container run's own `results.csv`, generated independently, not copied — byte-identical to `d3-results/results.csv` |
+| `d3-results/replication/brute-force.results.csv` | The exact-kNN (`--vector-index-backend brute_force`) re-run's own `results.csv`, generated independently, not copied — byte-identical to `d3-results/results.csv`, which is the evidence that the approximate Faiss/HNSW index cost no decision (LEV-18) |
+| `d3-results/replication/brute-force.run_meta.json` | That run's sidecar, and the first to carry the `vector_index` block: `configured_backend` / `resolved_backend` (never the literal `auto`) plus HNSW params when Faiss resolves |
 | `d3-results/analysis/anova.csv`, `.../tukey.csv`, `.../tukey_status.csv` | Two-way ANOVA and Tukey HSD results for H0(1-3) |
 | `d3-results/analysis/curves_precision.csv`, `.../curves_hit_rate.csv` | Threshold-vs-metric tables per (model, workload) |
 | `d3-results/analysis/kappa.json` | Cohen's kappa (annotation agreement) |
@@ -68,5 +77,7 @@ D-number it doesn't have).
 ## Integrity
 
 `checksums.sha256` in this folder is a SHA-256 manifest of every other file
-listed above, generated at the same time this folder was populated. It
-verifies this folder's own contents — it does not reference `results/`.
+listed above, regenerated whenever this folder's contents change. It is
+self-contained: every path it names is inside this folder, so the manifest can
+be verified from a clone of the repository alone, with
+`shasum -a 256 -c checksums.sha256` run from this directory.

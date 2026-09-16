@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
+from levy.cache.vector_index import BruteForceVectorIndex, FaissHNSWVectorIndex, make_vector_index
+from levy.config import LevyConfig
 from levy.dataset.schema import QueryPair
 from levy.embedding_manager import EmbeddingManager
 from levy.experiment.config import ExperimentConfig, full_grid
@@ -59,6 +61,7 @@ def run_sweep(
     configs: Optional[List[ExperimentConfig]] = None,
     embedding_provider: str = "mock",
     llm_latency_seconds: float = 0.5,
+    vector_index_backend: str = "auto",
 ) -> Tuple[List[EvaluationResult], Dict[str, dict]]:
     """
     Run every configuration in `configs` (the full frozen grid by default),
@@ -70,6 +73,9 @@ def run_sweep(
 
     `llm_latency_seconds` forwards to each configuration's `MockLLMClient`
     (default 0.5, matching a real run); tests pass 0 to keep the suite fast.
+
+    `vector_index_backend` (LEV-18) forwards to every configuration's
+    `LevyConfig.vector_index_backend` ("auto" | "faiss" | "brute_force").
     """
     if configs is None:
         configs = full_grid()
@@ -88,11 +94,50 @@ def run_sweep(
                 pairs,
                 embedding_manager=manager,
                 llm_latency_seconds=llm_latency_seconds,
+                vector_index_backend=vector_index_backend,
             )
         )
 
     model_identities = {model: manager.get_model_identity().as_dict() for model, manager in managers.items()}
     return results, model_identities
+
+
+def resolve_vector_index_backend_info(vector_index_backend: str = "auto") -> dict:
+    """
+    What `vector_index_backend` ("auto" | "faiss" | "brute_force") actually
+    resolves to (LEV-18) -- reuses `make_vector_index`, the real factory
+    every engine in the sweep constructs its index through, rather than
+    re-deriving the "auto prefers Faiss if importable" rule separately,
+    so this can't drift from what actually ran. The resolved value is never
+    the literal string "auto"; HNSW params are included only when the
+    resolved backend is Faiss (brute-force has none to report).
+    """
+    defaults = LevyConfig()
+    index = make_vector_index(
+        backend=vector_index_backend,
+        m=defaults.hnsw_m,
+        ef_construction=defaults.hnsw_ef_construction,
+        ef_search=defaults.hnsw_ef_search,
+    )
+    if isinstance(index, FaissHNSWVectorIndex):
+        resolved = "faiss_hnsw"
+        params = {
+            "m": defaults.hnsw_m,
+            "ef_construction": defaults.hnsw_ef_construction,
+            "ef_search": defaults.hnsw_ef_search,
+        }
+    elif isinstance(index, BruteForceVectorIndex):
+        resolved = "brute_force"
+        params = None
+    else:  # pragma: no cover -- defensive; make_vector_index only returns the above two
+        resolved = type(index).__name__
+        params = None
+
+    return {
+        "configured_backend": vector_index_backend,
+        "resolved_backend": resolved,
+        "hnsw_params": params,
+    }
 
 
 def write_results_csv(results: List[EvaluationResult], path: PathLike) -> None:
@@ -160,11 +205,16 @@ def write_run_meta(
     elapsed_seconds: float,
     path: PathLike,
     llm_latency_seconds: float = 0.5,
+    vector_index_backend: str = "auto",
 ) -> None:
     """
     Write run parameters and latency statistics to a sidecar, deliberately
     kept out of `results.csv` / `decisions.csv` so those two stay
     byte-identical across deterministic re-runs.
+
+    `vector_index_backend` (LEV-18) is resolved via
+    `resolve_vector_index_backend_info` before writing -- the literal string
+    "auto" must never land in this file, since it names no actual backend.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -178,6 +228,7 @@ def write_run_meta(
             for config in configs
         ],
         "model_identities": model_identities,
+        "vector_index": resolve_vector_index_backend_info(vector_index_backend),
         "latency": {
             "total_elapsed_seconds": elapsed_seconds,
             "mock_llm_latency_seconds": llm_latency_seconds,

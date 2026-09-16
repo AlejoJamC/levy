@@ -16,11 +16,11 @@ across re-runs on identical input.
 
 Examples:
     # Analyse a harness run; kappa dataset taken from the run's run_meta.json:
-    python scripts/run_analysis.py --results-dir results/run-001 \\
-        --out-dir results/run-001/analysis
+    python scripts/run_analysis.py --results-dir results/study-run \\
+        --out-dir results/study-run/analysis
 
     # Point kappa at an explicit dataset instead:
-    python scripts/run_analysis.py --results-dir results/run-001 \\
+    python scripts/run_analysis.py --results-dir results/study-run \\
         --dataset data/ground_truth.csv --out-dir analysis/
 """
 

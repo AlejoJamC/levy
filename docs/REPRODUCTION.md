@@ -202,7 +202,7 @@ Defaults: dataset `data/ground_truth.csv`, output directory
 positionally or by environment variable:
 
 ```bash
-scripts/reproduce.sh data/ground_truth.csv results/run-001
+scripts/reproduce.sh data/ground_truth.csv results/study-run
 ```
 
 | Variable | Default | Meaning |
@@ -345,7 +345,7 @@ different steps, no separate guide, no code change. (Produce that file first
 with Step 2b above: acquire the corpora, then rehydrate.)
 
 ```bash
-scripts/reproduce.sh data/ground_truth.full.csv results/run-001
+scripts/reproduce.sh data/ground_truth.full.csv results/study-run
 ```
 
 or, stage by stage, the same `--dataset` value in each of the three commands
@@ -360,7 +360,7 @@ model weights on first use and needs network access:
 
 ```bash
 LEVY_EMBEDDING_PROVIDER=sentence-transformers \
-    scripts/reproduce.sh data/ground_truth.full.csv results/run-001
+    scripts/reproduce.sh data/ground_truth.full.csv results/study-run
 ```
 
 The output structure is identical; only the numbers change. With real
@@ -414,7 +414,7 @@ configuration list from an existing `results.csv` (read-only; nothing is
 written to that directory) and measures each configuration's lookup path:
 
 ```bash
-python scripts/run_latency.py --reference results/reproduce/results.csv --out-dir results/latency-faq
+python scripts/run_latency.py --reference results/reproduce/results.csv --out-dir results/latency-run
 ```
 
 Writes `latency.csv` — per configuration, p50/p95 for embedding **cold** and
@@ -444,13 +444,13 @@ them. Every figure derived from them carries its resolved model identifier.
 ```bash
 # Estimate first: prints the call count and sends nothing.
 python scripts/populate_responses.py --dataset data/ground_truth.full.csv \
-    --workload faq --out-dir results/latency-faq --dry-run
+    --workload faq --out-dir results/latency-run --dry-run
 ```
 
 Prompts already in the corpus are skipped, so an interrupted run resumes
 without paying twice, and the budget guard halts before sending once the
 estimated spend reaches its cap. The response corpus itself
-(`results/latency-faq/responses.jsonl`) is gitignored: it is model output
+(`results/latency-run/responses.jsonl`) is gitignored: it is model output
 generated over licensed corpus text.
 
 ## Exploring results interactively (D6, desirable)
