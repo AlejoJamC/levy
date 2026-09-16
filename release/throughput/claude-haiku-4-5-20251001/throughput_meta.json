@@ -1,0 +1,35 @@
+{
+  "generated_by": "scripts/run_throughput.py",
+  "command": "uvicorn (levy.api.app.create_app(config=...), programmatic, not the CLI default app)",
+  "model_id": "claude-haiku-4-5-20251001",
+  "llm_provider": "mock",
+  "anthropic_model": null,
+  "mock_llm_latency_seconds_used": 3.407446458004415,
+  "mock_llm_latency_provenance": {
+    "source": "release/latency/llm_calls.json",
+    "percentile": "p50",
+    "value_ms": 3407.446458004415,
+    "model": "claude-haiku-4-5-20251001",
+    "n_calls": 600
+  },
+  "embedding_provider": "sentence-transformers",
+  "levels": [
+    1,
+    4,
+    16,
+    64
+  ],
+  "arms": [
+    "all-hit",
+    "all-miss"
+  ],
+  "threadpool_worker_count": 40,
+  "threadpool_note": "anyio.to_thread.current_default_thread_limiter().total_tokens -- the bound FastAPI dispatches sync `def` endpoints through; not derived from os.cpu_count(). Measured on the client process in --client-only mode (anyio's default is a fixed constant, not independently confirmed inside the server's own environment).",
+  "server_isolation_note": "docker run --cpus=2 levy:latest (D7 pipeline image, environment.yml env, live repo bind-mounted for current source incl. LEV-19 fixes); client ran natively on host, not sharing the server's cgroup",
+  "error_breakdowns": {},
+  "host": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python_version": "3.10.19",
+    "cpu_count": 16
+  }
+}

@@ -1,4 +1,4 @@
-fe3b45b378dba5127eb65d3f24b12018b326ed6a870f10000aa24eb4844d048e  ./PROVENANCE.md
+b1a12bb40f425eec7caa9bf3ab104f98c5df2703c0563dbdf51fb0f22934e78a  ./PROVENANCE.md
 304a7d75f59c84b898e2f52a4b7d111b172498320a7389bd73fc345490ae9de1  ./d3-results/analysis/analysis_meta.json
 c0c9f79ef922858f86a0e84f2a6bc7f47cb9e94971ff0c86f394f187eef4d4fe  ./d3-results/analysis/anova.csv
 fe7c7f668efc3d9697c1c7e1727f96a2a5b169f717cb5cfbef501d59f85a158e  ./d3-results/analysis/curves_hit_rate.csv
@@ -20,3 +20,9 @@ f5497003a1ec78fba473b9331faf44c0bdae8300f7136603e31f895a831ed044  ./d3-results/r
 18665a83505cea91242f5b7ac7f04d605f60458d280d670b56965b21bd7c3f18  ./latency/latency_meta.json
 08d29117779c9d7db6305eb9a3a6ceca27ea586968b1b46395513818fa46f0a9  ./latency/llm_calls.json
 65c0267380660cccee01a44a63cd3936ad0dbb027393ba9a342fe31ebf4416f7  ./latency/responses.jsonl
+39c6c86ada87737bf91d0e0ca47ac02d0a2235dd54402bfbddc4e9b7e58d5394  ./throughput/claude-haiku-4-5-20251001/throughput.csv
+7bbef2454513b3b3fb93bc81816a1eca7a1f9131ada9a16f2a7659bfee24e3d3  ./throughput/claude-haiku-4-5-20251001/throughput_meta.json
+933640ee4099eea8e22c7057d1b146325a9dfc0a45858011ac7fae11acbaab00  ./throughput/claude-opus-5/throughput.csv
+e28134f7e1f8b6e4af0c978e5ab56380b2cac57b7a67ab87713989453a7f6c90  ./throughput/claude-opus-5/throughput_meta.json
+c472150d1aab64c55038ced7cbf59b133c0f16a1960098f4afd7fd6517983cd1  ./throughput/claude-sonnet-4-6/throughput.csv
+0d6901c0459677708f4901413f0a4063c5d9470230b493b5d820d30149f21786  ./throughput/claude-sonnet-4-6/throughput_meta.json
