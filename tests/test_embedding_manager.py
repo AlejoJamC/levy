@@ -5,7 +5,10 @@ All tests run offline with mock clients injected into the manager's client cache
 so no model downloads or network access are required.
 """
 
+import threading
+import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 from levy.config import LevyConfig
 from levy.embedding_manager import EmbeddingManager, KNOWN_MODEL_NAMES, _resolve
@@ -319,6 +322,84 @@ class TestSentenceTransformerLazyConstruction(unittest.TestCase):
             # Second call reuses the cached client -- no second construction.
             manager.embed("world")
             FakeCls.assert_called_once()
+
+
+class TestConcurrentFirstLoad(unittest.TestCase):
+    """
+    LEV-19: _get_*_client raced multiple threads through an unsynchronized
+    check-then-act on `self._clients`, so a construction slow enough for a
+    concurrent request to interleave (a real model load, in production) could
+    run more than once for the same checkpoint. Each helper's constructor
+    sleeps to force that interleaving window open; a passing count of 1 means
+    the lock actually excludes the second thread rather than the race simply
+    not firing on this run.
+    """
+
+    def test_st_client_constructed_once_under_concurrent_first_use(self):
+        construct_count = 0
+        construct_lock = threading.Lock()
+
+        class _SlowFakeClient:
+            def __init__(self, model_name, trust_remote_code=False):
+                nonlocal construct_count
+                with construct_lock:
+                    construct_count += 1
+                time.sleep(0.05)
+
+            def embed(self, text):
+                return [0.0] * 384
+
+        manager = EmbeddingManager("all-MiniLM-L6-v2", provider="sentence-transformers")
+
+        with mock.patch("levy.embedding_manager.SentenceTransformerClient", _SlowFakeClient):
+            with ThreadPoolExecutor(max_workers=16) as ex:
+                list(ex.map(lambda i: manager.embed(f"text {i}"), range(16)))
+
+        self.assertEqual(construct_count, 1)
+
+    def test_mock_client_constructed_once_under_concurrent_first_use(self):
+        construct_count = 0
+        construct_lock = threading.Lock()
+
+        class _SlowFakeClient:
+            def __init__(self, dimension=384):
+                nonlocal construct_count
+                with construct_lock:
+                    construct_count += 1
+                time.sleep(0.05)
+
+            def embed(self, text):
+                return [0.0] * 384
+
+        manager = EmbeddingManager("all-MiniLM-L6-v2", provider="mock")
+
+        with mock.patch("levy.embedding_manager.MockEmbeddingClient", _SlowFakeClient):
+            with ThreadPoolExecutor(max_workers=16) as ex:
+                list(ex.map(lambda i: manager.embed(f"text {i}"), range(16)))
+
+        self.assertEqual(construct_count, 1)
+
+    def test_ollama_client_constructed_once_under_concurrent_first_use(self):
+        construct_count = 0
+        construct_lock = threading.Lock()
+
+        class _SlowFakeClient:
+            def __init__(self, base_url, model):
+                nonlocal construct_count
+                with construct_lock:
+                    construct_count += 1
+                time.sleep(0.05)
+
+            def embed(self, text):
+                return [0.0] * 384
+
+        manager = EmbeddingManager("qwen3", provider="ollama", ollama_base_url="http://fake:1")
+
+        with mock.patch("levy.embedding_manager.OllamaEmbeddingClient", _SlowFakeClient):
+            with ThreadPoolExecutor(max_workers=16) as ex:
+                list(ex.map(lambda i: manager.embed(f"text {i}"), range(16)))
+
+        self.assertEqual(construct_count, 1)
 
 
 if __name__ == "__main__":

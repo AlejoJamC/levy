@@ -7,6 +7,7 @@ All offline: RedisStore is exercised against a small in-memory fake client
 
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 
 from levy.cache.base import CacheInterface
 from levy.cache.exact_cache import ExactCache
@@ -100,6 +101,27 @@ class TestInMemoryStore(unittest.TestCase):
         store = InMemoryStore()
         store.delete("does-not-exist")  # must not raise
         self.assertEqual(store.entries, {})
+
+    def test_concurrent_set_at_capacity_does_not_raise(self):
+        """LEV-19-class bug: set()'s check-then-evict (len() then
+        next(iter(self.entries))) was not atomic. FastAPI dispatches
+        concurrent requests to a threadpool, so concurrent set() calls at
+        capacity could interleave and raise 'dictionary changed size during
+        iteration'. A small max_size forces eviction on nearly every call."""
+        store = InMemoryStore(max_size=5)
+        errors = []
+
+        def set_one(i):
+            try:
+                store.set(f"key-{i}", CacheEntry(key_hash=f"key-{i}", prompt=f"p{i}", response_text=f"r{i}"))
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+
+        with ThreadPoolExecutor(max_workers=16) as ex:
+            list(ex.map(set_one, range(100)))
+
+        self.assertEqual(errors, [])
+        self.assertLessEqual(len(store.entries), 5)
 
 
 # ---------------------------------------------------------------------------

@@ -8,8 +8,10 @@ and engine end-to-end with mock embeddings.
 """
 
 import math
+import threading
 import unittest
 import unittest.mock
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 
@@ -462,6 +464,93 @@ class TestMakeVectorIndexAutoFallback(unittest.TestCase):
         with unittest.mock.patch("builtins.__import__", side_effect=_blocked_import):
             idx = make_vector_index(backend="auto")
         self.assertIsInstance(idx, BruteForceVectorIndex)
+
+
+# ---------------------------------------------------------------------------
+# Concurrent access (LEV-19-class bugs found investigating a server crash
+# under concurrent load: BruteForceVectorIndex.add()/search() raced on the
+# same list with no lock, and SemanticCache._next_id was a non-atomic
+# read-modify-write that could hand out duplicate entry ids).
+# ---------------------------------------------------------------------------
+
+class TestBruteForceConcurrentAccess(unittest.TestCase):
+
+    def test_concurrent_add_all_present_no_exception(self):
+        """N threads each add() one distinct vector at once; every vector must
+        land (no lost update) and no thread may observe a torn/partial list."""
+        idx = BruteForceVectorIndex()
+        n = 50
+        errors = []
+
+        def add_one(i):
+            try:
+                idx.add([float(i), 0.0], entry_id=i)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+
+        with ThreadPoolExecutor(max_workers=16) as ex:
+            list(ex.map(add_one, range(n)))
+
+        self.assertEqual(errors, [])
+        self.assertEqual(idx.size(), n)
+
+    def test_concurrent_add_and_search_no_exception(self):
+        """search() reads the same lists add() mutates; interleaving them
+        concurrently must not raise (e.g. a numpy stack over a growing list)."""
+        idx = BruteForceVectorIndex()
+        idx.add([0.0, 0.0], entry_id=-1)  # seed so early search()es have data
+        errors = []
+        stop = threading.Event()
+
+        def adder():
+            for i in range(200):
+                try:
+                    idx.add([float(i), 1.0], entry_id=i)
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(exc)
+            stop.set()
+
+        def searcher():
+            while not stop.is_set():
+                try:
+                    idx.search([0.0, 0.0], k=1)
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(exc)
+
+        with ThreadPoolExecutor(max_workers=5) as ex:
+            futures = [ex.submit(adder)] + [ex.submit(searcher) for _ in range(4)]
+            for f in futures:
+                f.result(timeout=30)
+
+        self.assertEqual(errors, [])
+
+
+class TestSemanticCacheConcurrentSet(unittest.TestCase):
+
+    def test_concurrent_set_assigns_unique_ids(self):
+        """LEV-19: self._next_id += 1 is not atomic. Concurrent set() calls
+        for distinct prompts must not collide on the same entry_id -- a
+        collision silently drops one entry from self._entries."""
+
+        class ControlledClient:
+            def embed(self, text):
+                return [1.0, 0.0]
+
+            def get_dimension(self):
+                return 2
+
+        sc = SemanticCache(embedding_client=ControlledClient(), threshold=0.0, backend="brute_force")
+        n = 50
+
+        def set_one(i):
+            sc.set(LLMRequest(prompt=f"prompt-{i}"), f"response-{i}", embedding=[float(i), 0.0])
+
+        with ThreadPoolExecutor(max_workers=16) as ex:
+            list(ex.map(set_one, range(n)))
+
+        self.assertEqual(sc.size(), n)
+        self.assertEqual(len(sc._entries), n)
+        self.assertEqual(len(set(sc._entries.keys())), n)  # every id genuinely unique
 
 
 if __name__ == "__main__":

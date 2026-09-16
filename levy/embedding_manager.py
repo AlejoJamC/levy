@@ -10,6 +10,7 @@ Responsibilities:
 """
 
 import hashlib
+import threading
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -117,6 +118,13 @@ class EmbeddingManager:
 
         # Lazy-loaded clients keyed by checkpoint string (or "mock" / "ollama").
         self._clients: Dict[str, EmbeddingClient] = {}
+        # Guards first-construction of a client (LEV-19): FastAPI dispatches
+        # sync endpoints to a worker threadpool, so concurrent requests can
+        # call _get_st_client for the same not-yet-loaded checkpoint at once.
+        # Double-checked locking so an already-loaded client is returned
+        # without ever acquiring the lock -- only the first load is
+        # serialized, not warm lookups.
+        self._clients_lock = threading.Lock()
         # Memoization cache: (model_key, sha256(text)) → vector
         self._memo: Dict[Tuple[str, str], List[float]] = {}
 
@@ -226,22 +234,40 @@ class EmbeddingManager:
         return _memo_key(spec.checkpoint, spec.prefix + text)
 
     def _get_mock_client(self) -> MockEmbeddingClient:
-        if "mock" not in self._clients:
-            self._clients["mock"] = MockEmbeddingClient(dimension=self._mock_dimension)
-        return self._clients["mock"]  # type: ignore[return-value]
+        client = self._clients.get("mock")
+        if client is not None:
+            return client  # type: ignore[return-value]
+        with self._clients_lock:
+            client = self._clients.get("mock")
+            if client is None:
+                client = MockEmbeddingClient(dimension=self._mock_dimension)
+                self._clients["mock"] = client
+            return client  # type: ignore[return-value]
 
     def _get_ollama_client(self) -> OllamaEmbeddingClient:
-        if "ollama" not in self._clients:
-            self._clients["ollama"] = OllamaEmbeddingClient(
-                base_url=self._ollama_base_url,
-                model=self._default_model_name,
-            )
-        return self._clients["ollama"]  # type: ignore[return-value]
+        client = self._clients.get("ollama")
+        if client is not None:
+            return client  # type: ignore[return-value]
+        with self._clients_lock:
+            client = self._clients.get("ollama")
+            if client is None:
+                client = OllamaEmbeddingClient(
+                    base_url=self._ollama_base_url,
+                    model=self._default_model_name,
+                )
+                self._clients["ollama"] = client
+            return client  # type: ignore[return-value]
 
     def _get_st_client(self, spec: _ModelSpec) -> SentenceTransformerClient:
-        if spec.checkpoint not in self._clients:
-            self._clients[spec.checkpoint] = SentenceTransformerClient(
-                model_name=spec.checkpoint,
-                trust_remote_code=spec.trust_remote_code,
-            )
-        return self._clients[spec.checkpoint]  # type: ignore[return-value]
+        client = self._clients.get(spec.checkpoint)
+        if client is not None:
+            return client  # type: ignore[return-value]
+        with self._clients_lock:
+            client = self._clients.get(spec.checkpoint)
+            if client is None:
+                client = SentenceTransformerClient(
+                    model_name=spec.checkpoint,
+                    trust_remote_code=spec.trust_remote_code,
+                )
+                self._clients[spec.checkpoint] = client
+            return client  # type: ignore[return-value]

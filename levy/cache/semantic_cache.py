@@ -11,6 +11,7 @@ to (query_text, response, embedding_model)") is held in self._entries.
 
 import hashlib
 import logging
+import threading
 from typing import Dict, List, Optional, TYPE_CHECKING
 
 import numpy as np
@@ -67,6 +68,11 @@ class SemanticCache(CacheInterface):
         # spec "separate metadata dictionary mapping internal IDs to (query_text, response, embedding_model)"
         self._entries: Dict[int, CacheEntry] = {}
         self._next_id: int = 0
+        # LEV-19-class bug: `self._next_id += 1` is a read-modify-write, not
+        # atomic; concurrent set() calls (FastAPI's threadpool) could hand out
+        # the same entry_id twice, silently overwriting one entry with another
+        # in self._entries. Guards id allocation + the entries write together.
+        self._id_lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # CacheInterface
@@ -119,9 +125,6 @@ class SemanticCache(CacheInterface):
             embedding = self.embedding_client.embed(request.prompt)
 
         vec = _l2_normalize(np.array(embedding, dtype=np.float32))
-        entry_id = self._next_id
-        self._next_id += 1
-
         key_hash = hashlib.sha256(request.prompt.encode("utf-8")).hexdigest()
         entry = CacheEntry(
             key_hash=key_hash,
@@ -130,8 +133,11 @@ class SemanticCache(CacheInterface):
             embedding=vec.tolist(),
             metadata=metadata or {},
         )
-        self._index.add(vec.tolist(), entry_id)
-        self._entries[entry_id] = entry
+        with self._id_lock:
+            entry_id = self._next_id
+            self._next_id += 1
+            self._index.add(vec.tolist(), entry_id)
+            self._entries[entry_id] = entry
 
     def clear(self) -> None:
         self.reset()
@@ -146,6 +152,7 @@ class SemanticCache(CacheInterface):
 
     def reset(self) -> None:
         """Empty the index and id→entry map; restart id counter."""
-        self._index.reset()
-        self._entries.clear()
-        self._next_id = 0
+        with self._id_lock:
+            self._index.reset()
+            self._entries.clear()
+            self._next_id = 0
