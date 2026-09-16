@@ -127,6 +127,12 @@ class EmbeddingManager:
         self._clients_lock = threading.Lock()
         # Memoization cache: (model_key, sha256(text)) → vector
         self._memo: Dict[Tuple[str, str], List[float]] = {}
+        # Guards embed_with's read-then-compute-then-write (LEV-19): without
+        # this, two concurrent requests for the same uncached (model, text)
+        # each compute their own embedding call before either writes the
+        # memo, so the second call's work is pure waste. Double-checked: an
+        # already-memoized key is returned without ever acquiring the lock.
+        self._memo_lock = threading.Lock()
 
     @classmethod
     def from_config(cls, config) -> "EmbeddingManager":
@@ -148,17 +154,23 @@ class EmbeddingManager:
     def embed_with(self, model_name: str, text: str) -> List[float]:
         """Embed text using a specific study-model alias (runtime switching)."""
         key = self._memo_key_for(model_name, text)
-        if key in self._memo:
-            return self._memo[key]
+        cached = self._memo.get(key)
+        if cached is not None:
+            return cached
 
-        if self._provider == "mock":
-            self._memo[key] = self._get_mock_client().embed(text)
-        elif self._provider == "ollama":
-            self._memo[key] = self._get_ollama_client().embed(text)
-        else:
-            spec = _resolve(model_name)
-            self._memo[key] = self._get_st_client(spec).embed(spec.prefix + text)
-        return self._memo[key]
+        with self._memo_lock:
+            cached = self._memo.get(key)
+            if cached is not None:
+                return cached
+            if self._provider == "mock":
+                value = self._get_mock_client().embed(text)
+            elif self._provider == "ollama":
+                value = self._get_ollama_client().embed(text)
+            else:
+                spec = _resolve(model_name)
+                value = self._get_st_client(spec).embed(spec.prefix + text)
+            self._memo[key] = value
+            return value
 
     def get_dimension(self, model_name: Optional[str] = None) -> int:
         """Return the embedding dimension for the given (or default) model."""

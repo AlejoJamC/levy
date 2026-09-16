@@ -401,6 +401,32 @@ class TestConcurrentFirstLoad(unittest.TestCase):
 
         self.assertEqual(construct_count, 1)
 
+    def test_memo_computed_once_under_concurrent_same_key_access(self):
+        """LEV-19: embed_with's memo read-then-compute-then-write raced too --
+        many threads requesting the SAME uncached (model, text) each computed
+        their own embedding before any of them wrote the memo. A slow fake
+        embed() widens the race window; a passing count of 1 means the lock
+        actually excludes the other 15 threads, not that the race didn't fire."""
+        compute_count = 0
+        compute_lock = threading.Lock()
+
+        class _SlowMockClient(MockEmbeddingClient):
+            def embed(self, text):
+                nonlocal compute_count
+                with compute_lock:
+                    compute_count += 1
+                time.sleep(0.05)
+                return super().embed(text)
+
+        manager = EmbeddingManager("all-MiniLM-L6-v2", provider="mock")
+        manager._clients["mock"] = _SlowMockClient(dimension=384)
+
+        with ThreadPoolExecutor(max_workers=16) as ex:
+            results = list(ex.map(lambda i: manager.embed("same text every time"), range(16)))
+
+        self.assertEqual(compute_count, 1)
+        self.assertTrue(all(r == results[0] for r in results))
+
 
 if __name__ == "__main__":
     unittest.main()
