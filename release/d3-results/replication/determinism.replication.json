@@ -6,7 +6,7 @@
   "rule": "|candidate - reference| <= max(0.01, 5% * |reference|) per configuration, for precision and recall",
   "relative_tolerance": 0.05,
   "absolute_floor": 0.01,
-  "reference": "results/run-003/results.csv",
+  "reference": "d3-results/results.csv",
   "dataset_path": "data/ground_truth.full.csv",
   "embedding_provider": "sentence-transformers",
   "metrics": [

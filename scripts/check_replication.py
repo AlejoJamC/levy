@@ -25,10 +25,10 @@ re-sampled workload legitimately covers 10 of 30 cells, and a bare "PASSED" read
 out of that context would overclaim. Any existing file is backed up first.
 
 Examples:
-    python scripts/check_replication.py --reference results/run-001/results.csv
+    python scripts/check_replication.py --reference results/study-run/results.csv
 
     # Keep the candidate run's outputs instead of discarding the temp dir:
-    python scripts/check_replication.py --reference results/run-001/results.csv \\
+    python scripts/check_replication.py --reference results/study-run/results.csv \\
         --dataset data/ground_truth.csv --keep-dir /tmp/replication-candidate
 """
 

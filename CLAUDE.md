@@ -677,20 +677,20 @@ uvicorn levy.api.app:app --reload
 # Offline by default (fixture dataset + mock embeddings); prefer this over
 # retyping the three stages below.
 scripts/reproduce.sh                          # -> results/reproduce/
-scripts/reproduce.sh data/ground_truth.csv results/run-001
+scripts/reproduce.sh data/ground_truth.csv results/study-run
 
 # Same pipeline in the container (builds from environment.yml; ~5.5 min cold, 16.4 GB):
 docker compose run --rm pipeline
 
 # Individual stages (LEV-4 sweep, LEV-8 analysis), fully offline:
-python scripts/run_experiments.py --out-dir results/run-001
-python scripts/run_analysis.py --results-dir results/run-001 --out-dir results/run-001/analysis
-python scripts/check_replication.py --reference results/run-001/results.csv  # ±5% criterion
+python scripts/run_experiments.py --out-dir results/study-run
+python scripts/run_analysis.py --results-dir results/study-run --out-dir results/study-run/analysis
+python scripts/check_replication.py --reference results/study-run/results.csv  # ±5% criterion
 
 # Grid ran in pieces (e.g. `--workloads chat` = 10 of 30 rows)? Merge instead of
 # re-running the cells that were fine. Fails loudly on a duplicate config_id or a
 # set that isn't exactly the 30-cell grid; backs up the target first.
-python scripts/merge_results.py --out-dir results/run-001 \
+python scripts/merge_results.py --out-dir results/study-run \
     results/run-faq results/run-code results/run-chat
 
 # Release audit (LICENSE, secrets in tree + all git history, personal data,
@@ -699,14 +699,14 @@ scripts/audit_release.sh
 
 # Latency (LEV-14). Offline half: reads the config list from a reference
 # results.csv (read-only) and measures the lookup path per configuration.
-python scripts/run_latency.py --reference results/run-003/results.csv \
+python scripts/run_latency.py --reference results/study-run/results.csv \
     --dataset data/ground_truth.full.csv --embedding-provider sentence-transformers \
-    --out-dir results/latency-faq --workload faq
+    --out-dir results/latency-run --workload faq
 # Billed half — REAL API CALLS, one per unique prompt. Dry-run first; prompts
 # already in responses.jsonl are skipped, so an interrupted run resumes without
 # paying twice. Set --model and BOTH price flags to the model actually used.
 python scripts/populate_responses.py --dataset data/ground_truth.full.csv \
-    --workload faq --out-dir results/latency-faq --dry-run
+    --workload faq --out-dir results/latency-run --dry-run
 
 # Results dashboard (LEV-10, D6 — desirable): a bundle must exist first (any
 # command above that writes an analysis/ dir); the `--` separator is required
@@ -779,8 +779,8 @@ Release (2026-11-02).
 | LEV-10 | `add-results-dashboard` | Low (desirable) | archived |
 | LEV-11 | — (D2 data production: real dataset + published D2 artifact) | Urgent | **complete** — 900 pairs published as ids + labels; κ = 0.5000 after the chat (2026-08-06) and code (2026-08-07) re-samples, 0.3267 at first publication; below the 0.7 bar, recorded as a finding |
 | LEV-12 | `add-corpus-acquisition` | High | archived (2026-08-04) |
-| LEV-13 | — (D3 production run: 30 configurations + analysis + ±5% replication) | Urgent | **run complete 2026-08-07**, result of record `results/run-003/` — see the results note below |
-| LEV-14 | `add-latency-measurement` | Urgent | **implemented + run 2026-08-07**, result of record `results/latency-faq/` — see the latency note below |
+| LEV-13 | — (D3 production run: 30 configurations + analysis + ±5% replication) | Urgent | **run complete 2026-08-07**, published as `release/d3-results/` — see the results note below |
+| LEV-14 | `add-latency-measurement` | Urgent | **implemented + run 2026-08-07**, published as `release/latency/` — see the latency note below |
 
 Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 → LEV-11 (D2)
 → LEV-13 (D3). **LEV-11 and LEV-13 are deliberately separate:** D2 is human-paced
@@ -794,12 +794,11 @@ and keep the issue status in sync.
 Full grid over the real 900-pair dataset with `sentence-transformers` embeddings.
 The `chat` cells come from a separate run over the re-sampled workload, merged in
 with `scripts/merge_results.py`; faq and code are the 2026-08-06 run, unchanged.
-**Result of record: `results/run-003/`** (gitignored — results ship with a release,
-not the tree). Staging directories from the merges (`run-001-nochat`,
-`run-002-chat`, `staging-code`, `staging-prev-minus-code`) were merge inputs, not
-results: pointing the analysis, `check_replication.py` or the poster at one of them
-returns a valid-looking answer covering part of the grid. Replicate and build only
-against the consolidated directory. The full re-run-one-workload procedure,
+**Published as `release/d3-results/`** — that is the copy of record, and the one to
+replicate or build against. Beware the merge inputs a partial re-run produces: each
+covers only part of the grid, so pointing the analysis, `check_replication.py` or
+the poster at one returns a valid-looking answer over a subset. Always consolidate
+first, and build only against the consolidated set. The full re-run-one-workload procedure,
 including which directories are scratch, is `docs/DATA_PRODUCTION.md`
 §"Re-drawing one workload".
 
@@ -810,7 +809,8 @@ including which directories are scratch, is `docs/DATA_PRODUCTION.md`
   faq / all-MiniLM-L6-v2 at threshold 0.70 = 24.0%. All 30 configurations fail
   the criterion.
 - **±5% replication passed**, 60/60 (configuration, metric) comparisons over all
-  30 configurations, recorded in `results/run-003/replication.json`.
+  30 configurations, recorded in
+  `release/d3-results/replication/determinism.replication.json`.
 - Precision is high wherever anything is cached at all (0.87–1.00 on faq), which
   is the flip side of the same effect: the `1/(1+L2)` band 0.70–0.90 corresponds
   to ~0.91–0.998 cosine, so the cache almost never fires.
@@ -820,8 +820,7 @@ chase hit rate (known-gap note #3), and do not re-run to hunt for a model effect
 
 ### Latency measurement — results (2026-08-07, LEV-14)
 
-**Result of record: `results/latency-faq/`** (gitignored, like every result
-directory). FAQ workload, ten configurations, real 900-pair dataset with
+**Published as `release/latency/`.** FAQ workload, ten configurations, real 900-pair dataset with
 `sentence-transformers`; provider half on **`claude-haiku-4-5-20251001`**, 600
 real calls, 0 refusals, no budget halt.
 
@@ -838,13 +837,13 @@ real calls, 0 refusals, no budget halt.
   cold, which is why the two are reported separately and never averaged.
 - **Observed cost $0.713 for 600 Haiku calls** ($0.00119/call); the same token
   totals priced at Sonnet-class rates project to $2.14. Recorded, with the
-  model identifier, in `results/latency-faq/llm_calls.json`.
+  model identifier, in `release/latency/llm_calls.json`.
 - **Provider latency does not replicate** and every figure above carries its
   model. Lookup overhead does replicate, subject to the host recorded in
   `latency_meta.json` (Apple arm64, 16 cores, Python 3.10.19).
-- `results/run-003/` was hashed into `results/latency-faq/run-003.manifest.sha256`
-  and copied out of the tree before any of this ran, and re-verified with zero
-  differences afterwards. Re-run the replication check with **`--no-json`**:
+- The D3 grid was hashed into a SHA-256 manifest and copied out of the tree before
+  any of this ran, then re-verified with zero differences afterwards. Re-run the
+  replication check with **`--no-json`**:
   its default writes `replication.json` back into the reference directory.
   Also pass **`--llm-latency-seconds 0`** — the default 0.5 s makes ~16,000
   mock calls sleep for ~2.2 hours and looks exactly like a hang (0 % CPU).

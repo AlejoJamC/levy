@@ -404,7 +404,7 @@ python scripts/run_experiments.py --out-dir results/smoke-run \
 
 # Real study run — the rehydrated 900-pair dataset and real embeddings:
 python scripts/run_experiments.py --dataset data/ground_truth.full.csv \
-    --embedding-provider sentence-transformers --out-dir results/run-001
+    --embedding-provider sentence-transformers --out-dir results/study-run
 ```
 
 Outputs written to `--out-dir`:
@@ -440,13 +440,13 @@ dissertation's tables once real results exist.
 
 ```bash
 # One invocation -> every table and figure:
-python scripts/run_analysis.py --results-dir results/run-001 \
-    --out-dir results/run-001/analysis
+python scripts/run_analysis.py --results-dir results/study-run \
+    --out-dir results/study-run/analysis
 
 # Point the kappa section at an explicit dataset (default: the dataset_path
 # recorded in the run's run_meta.json):
-python scripts/run_analysis.py --results-dir results/run-001 \
-    --dataset data/ground_truth.csv --out-dir results/run-001/analysis
+python scripts/run_analysis.py --results-dir results/study-run \
+    --dataset data/ground_truth.csv --out-dir results/study-run/analysis
 ```
 
 Outputs written to `--out-dir`:
@@ -478,7 +478,7 @@ recorded in a reference `results.csv`, then compares precision and recall per
 configuration:
 
 ```bash
-python scripts/check_replication.py --reference results/run-001/results.csv
+python scripts/check_replication.py --reference results/study-run/results.csv
 ```
 
 Tolerance rule (stated in every report, so the criterion stays auditable):

@@ -22,9 +22,9 @@ Examples:
         --dataset data/ground_truth.csv --out-dir /tmp/levy_latency --workload faq
 
     # The study run, over the real dataset and the real encoders:
-    python scripts/run_latency.py --reference results/run-003/results.csv \\
+    python scripts/run_latency.py --reference results/study-run/results.csv \\
         --dataset data/ground_truth.full.csv --embedding-provider sentence-transformers \\
-        --out-dir results/latency-faq --workload faq
+        --out-dir results/latency-run --workload faq
 """
 
 import argparse

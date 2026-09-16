@@ -27,6 +27,7 @@ def run_experiment(
     embedding_manager: Optional[EmbeddingManager] = None,
     embedding_provider: str = "mock",
     llm_latency_seconds: float = 0.5,
+    vector_index_backend: str = "auto",
 ) -> EvaluationResult:
     """
     Replay `pairs` (filtered to `config.workload`) against a fresh engine
@@ -40,6 +41,10 @@ def run_experiment(
 
     `llm_latency_seconds` forwards to `MockLLMClient` (default 0.5, matching
     a real run's synthetic delay); tests pass 0 to keep the suite fast.
+
+    `vector_index_backend` (LEV-18) forwards to `LevyConfig.vector_index_backend`
+    ("auto" | "faiss" | "brute_force"); HNSW params (M/efConstruction/efSearch)
+    are not exposed here and stay at `LevyConfig`'s own defaults.
     """
     workload_pairs = [pair for pair in pairs if pair.workload == config.workload]
 
@@ -52,6 +57,7 @@ def run_experiment(
         enable_semantic_cache=True,
         similarity_threshold=config.threshold,
         cache_store_type="memory",
+        vector_index_backend=vector_index_backend,
     )
     engine = LevyEngine(engine_config, embedding_manager=embedding_manager)
 

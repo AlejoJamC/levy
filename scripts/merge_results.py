@@ -24,14 +24,14 @@ write.
 
 Examples:
     # Three per-workload runs into a fresh result set:
-    python scripts/merge_results.py --out-dir results/run-001 \\
+    python scripts/merge_results.py --out-dir results/study-run \\
         results/run-faq results/run-code results/run-chat
 
     # Fold a re-run of the chat workload into an existing result set in place.
-    # The chat rows must not still be in results/run-001 — remove or re-run
+    # The chat rows must not still be in results/study-run — remove or re-run
     # that directory's cells rather than merging a duplicate.
-    python scripts/merge_results.py --out-dir results/run-001 \\
-        results/run-001 results/run-chat-reseeded
+    python scripts/merge_results.py --out-dir results/study-run \\
+        results/study-run results/run-chat-reseeded
 """
 
 import argparse

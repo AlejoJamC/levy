@@ -14,7 +14,13 @@ from pathlib import Path
 
 from levy.dataset.io import load_dataset
 from levy.experiment.config import ExperimentConfig
-from levy.experiment.runner import run_sweep, write_decisions_csv, write_results_csv, write_run_meta
+from levy.experiment.runner import (
+    resolve_vector_index_backend_info,
+    run_sweep,
+    write_decisions_csv,
+    write_results_csv,
+    write_run_meta,
+)
 
 FIXTURE = Path(__file__).resolve().parent.parent / "data" / "ground_truth.csv"
 
@@ -146,6 +152,75 @@ class TestOutputContract(unittest.TestCase):
         self.assertIn("latency", meta)
         self.assertIn("total_elapsed_seconds", meta["latency"])
         self.assertEqual(meta["embedding_provider"], "mock")
+
+
+class TestVectorIndexBackendResolution(unittest.TestCase):
+    """LEV-18: the sidecar must record the RESOLVED backend, never "auto"."""
+
+    def test_brute_force_resolves_with_no_hnsw_params(self):
+        info = resolve_vector_index_backend_info("brute_force")
+        self.assertEqual(info["configured_backend"], "brute_force")
+        self.assertEqual(info["resolved_backend"], "brute_force")
+        self.assertIsNone(info["hnsw_params"])
+
+    def test_auto_never_resolves_to_the_literal_string_auto(self):
+        info = resolve_vector_index_backend_info("auto")
+        self.assertEqual(info["configured_backend"], "auto")
+        self.assertIn(info["resolved_backend"], ("faiss_hnsw", "brute_force"))
+        self.assertNotEqual(info["resolved_backend"], "auto")
+        if info["resolved_backend"] == "faiss_hnsw":
+            self.assertEqual(info["hnsw_params"].keys(), {"m", "ef_construction", "ef_search"})
+        else:
+            self.assertIsNone(info["hnsw_params"])
+
+    def test_faiss_resolves_to_faiss_hnsw_with_params(self):
+        info = resolve_vector_index_backend_info("faiss")
+        self.assertEqual(info["resolved_backend"], "faiss_hnsw")
+        self.assertEqual(info["hnsw_params"], {"m": 32, "ef_construction": 200, "ef_search": 64})
+
+    def test_write_run_meta_records_resolved_backend_not_auto(self):
+        pairs = load_dataset(FIXTURE)
+        configs = _small_grid()
+        results, model_identities = run_sweep(
+            pairs, configs=configs, embedding_provider="mock", llm_latency_seconds=0,
+            vector_index_backend="brute_force",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            write_run_meta(
+                results=results,
+                configs=configs,
+                dataset_path=FIXTURE,
+                embedding_provider="mock",
+                model_identities=model_identities,
+                elapsed_seconds=1.23,
+                path=tmp_path / "run_meta.json",
+                vector_index_backend="brute_force",
+            )
+            with (tmp_path / "run_meta.json").open(encoding="utf-8") as fh:
+                meta = json.load(fh)
+
+        self.assertIn("vector_index", meta)
+        self.assertEqual(meta["vector_index"]["resolved_backend"], "brute_force")
+        self.assertIsNone(meta["vector_index"]["hnsw_params"])
+
+    def test_write_run_meta_defaults_to_auto_but_resolves_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            write_run_meta(
+                results=[],
+                configs=[],
+                dataset_path=FIXTURE,
+                embedding_provider="mock",
+                model_identities={},
+                elapsed_seconds=0.0,
+                path=tmp_path / "run_meta.json",
+            )
+            with (tmp_path / "run_meta.json").open(encoding="utf-8") as fh:
+                meta = json.load(fh)
+
+        self.assertEqual(meta["vector_index"]["configured_backend"], "auto")
+        self.assertNotEqual(meta["vector_index"]["resolved_backend"], "auto")
 
 
 if __name__ == "__main__":

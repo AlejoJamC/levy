@@ -137,7 +137,7 @@ resolved.
 
    Consequences, stated so they are not read past: the measured saving per
    cache hit is a **FAQ figure produced by one named model**, recorded with
-   that model identifier in `results/latency-faq/llm_calls.json` and
+   that model identifier in `release/latency/llm_calls.json` and
    `latency_meta.json`. It is not a per-workload result, and provider latency
    does not replicate — see the reproducibility boundary recorded in the same
    sidecar. The lookup-overhead half of the measurement is offline, covers the

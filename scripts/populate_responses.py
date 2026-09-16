@@ -28,11 +28,11 @@ figure carried over from it would be wrong in both directions.
 Examples:
     # What would this cost? Sends nothing.
     python scripts/populate_responses.py --dataset data/ground_truth.full.csv \\
-        --workload faq --out-dir results/latency-faq --dry-run
+        --workload faq --out-dir results/latency-run --dry-run
 
     # The pilot run.
     python scripts/populate_responses.py --dataset data/ground_truth.full.csv \\
-        --workload faq --out-dir results/latency-faq \\
+        --workload faq --out-dir results/latency-run \\
         --model claude-haiku-4-5-20251001 \\
         --input-price-per-mtok 1.0 --output-price-per-mtok 5.0
 """

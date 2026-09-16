@@ -27,7 +27,7 @@ What it is not:
 | Corpora | all three acquired, checksums pinned in `data/corpora.json` |
 | Dataset | 900 pairs, 300 per workload, 900/900 blind-annotated |
 | Cohen's κ | 0.5000 (faq 0.5267, code 0.4200, chat 0.5533) — below the frozen κ > 0.7 bar; a finding, see [`../data/DATASHEET.md`](../data/DATASHEET.md) §4 |
-| D3 result of record | `results/run-003/` — H0₁ retained, H0₂ rejected, H0₃ retained; best hit rate 24.0%, so all 30 configurations miss the 30% bar; ±5% replication passed 60/60 |
+| D3 results | published as [`../release/d3-results/`](../release/d3-results/) — H0₁ retained, H0₂ rejected, H0₃ retained; best hit rate 24.0%, so all 30 configurations miss the 30% bar; ±5% replication passed 60/60 |
 
 ---
 
@@ -405,13 +405,13 @@ terminal session. Everything is redirected to the log, including the completion
 marker, so nothing holds the terminal:
 
 ```bash
-nohup sh -c 'LEVY_EMBEDDING_PROVIDER=sentence-transformers scripts/reproduce.sh data/ground_truth.full.csv results/run-001; echo "== RUN DONE (exit $?) =="' > results/run-001.log 2>&1 < /dev/null & disown
+nohup sh -c 'LEVY_EMBEDDING_PROVIDER=sentence-transformers scripts/reproduce.sh data/ground_truth.full.csv results/study-run; echo "== RUN DONE (exit $?) =="' > results/study-run.log 2>&1 < /dev/null & disown
 ```
 
 Check on it:
 
 ```bash
-grep "RUN DONE" results/run-001.log
+grep "RUN DONE" results/study-run.log
 ```
 
 Empty means still running. The script is `set -euo pipefail`, so any stage failing
@@ -421,7 +421,7 @@ failed — that is a **result**, not a crash; keep the outputs and record it.
 ## Step 12 — Verify the bundle
 
 ```bash
-ls -la results/run-001/ results/run-001/analysis/
+ls -la results/study-run/ results/study-run/analysis/
 ```
 
 | Path | Contents |
@@ -441,7 +441,7 @@ Row count must be 30:
 
 ```bash
 python -c "
-import csv; r=list(csv.DictReader(open('results/run-001/results.csv')))
+import csv; r=list(csv.DictReader(open('results/study-run/results.csv')))
 print('rows:', len(r), '| unique configs:', len({x['config_id'] for x in r}))
 "
 ```
@@ -451,7 +451,7 @@ print('rows:', len(r), '| unique configs:', len({x['config_id'] for x in r}))
 ```bash
 python -c "
 import csv
-r=list(csv.DictReader(open('results/run-001/results.csv')))
+r=list(csv.DictReader(open('results/study-run/results.csv')))
 print(f\"{'model':<20}{'workload':<8}{'thr':<7}{'hit_rate':<10}{'precision':<11}{'fpr':<8}\")
 for x in sorted(r, key=lambda x:(x['model'],x['workload'],float(x['threshold']))):
     v = float(x['hit_rate'])
@@ -524,8 +524,8 @@ Set the three variables once, then work down:
 
 ```bash
 W=code                      # the workload being re-drawn
-PREV=results/run-002        # current result of record
-NEXT=results/run-003        # the one this procedure produces
+PREV=results/<current>      # the current consolidated result directory
+NEXT=results/<next>         # the one this procedure produces
 ```
 
 **1. Re-draw the workload.** Reads only that workload's corpus, so the other two

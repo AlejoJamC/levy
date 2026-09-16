@@ -21,7 +21,7 @@ Examples:
 
     # Real study run once the real dataset + sentence-transformers models are available:
     python scripts/run_experiments.py --dataset data/ground_truth.csv \\
-        --embedding-provider sentence-transformers --out-dir results/run-001
+        --embedding-provider sentence-transformers --out-dir results/study-run
 """
 
 import argparse
@@ -47,6 +47,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--thresholds", type=str, default=None, help="Comma-separated threshold subset (default: 0.70,0.75,0.80,0.85,0.90)")
     parser.add_argument("--embedding-provider", type=str, default="mock", choices=["mock", "sentence-transformers", "ollama"], help="Embedding provider for the sweep (default: mock, fully offline)")
     parser.add_argument("--llm-latency-seconds", type=float, default=0.5, help="MockLLMClient sleep per call in seconds (default: 0.5, matching production latency order of magnitude); 0 disables the sleep")
+    parser.add_argument("--vector-index-backend", type=str, default="auto", choices=["auto", "faiss", "brute_force"], help="Vector index backend for the sweep (default: auto, prefers Faiss if importable). The RESOLVED backend (never the literal 'auto') is recorded in run_meta.json.")
     return parser
 
 
@@ -88,6 +89,7 @@ def main(argv=None) -> int:
             configs=configs,
             embedding_provider=args.embedding_provider,
             llm_latency_seconds=args.llm_latency_seconds,
+            vector_index_backend=args.vector_index_backend,
         )
     except ExperimentSanityError as exc:
         print(f"[run_experiments] sanity check failed: {exc}", file=sys.stderr)
@@ -106,6 +108,7 @@ def main(argv=None) -> int:
         elapsed_seconds=elapsed,
         path=args.out_dir / "run_meta.json",
         llm_latency_seconds=args.llm_latency_seconds,
+        vector_index_backend=args.vector_index_backend,
     )
     print(f"[run_experiments] wrote {len(results)} configuration result(s) to {args.out_dir}")
     return 0
