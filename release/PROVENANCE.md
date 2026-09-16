@@ -12,8 +12,8 @@ neither is anything else here.
   latency). The throughput measurement (`throughput/`) was added afterwards
   (LEV-17, `scripts/run_throughput.py`):
   `throughput/claude-haiku-4-5-20251001/` was committed at `8d14d75`;
-  `throughput/claude-sonnet-4-6/` was added after that commit and is not yet
-  committed to git.
+  `throughput/claude-sonnet-4-6/` at `14c6df6`; `throughput/claude-opus-5/`
+  was added after that commit and is not yet committed to git.
 - **Source data:** `results/run-003/` (D3 grid: 30-configuration sweep,
   statistical analysis), `results/latency-faq/` (latency measurement), and
   `results/throughput/<model-id>/` (throughput under concurrent load, one
@@ -63,6 +63,7 @@ D-number it doesn't have).
 | `throughput/<model-id>/throughput_meta.json` | Concurrency ladder, arms, LLM provider and delay basis, threadpool worker count, server isolation note (`docker run --cpus=2`), host spec |
 | `throughput/claude-haiku-4-5-20251001/` | `--llm-provider mock`: no live call; the mock's per-call delay is the real measured p50 from `latency/llm_calls.json`'s 600-call billed run (a replay of an already-observed latency, not a live measurement) |
 | `throughput/claude-sonnet-4-6/` | `--llm-provider anthropic`: every all-miss request is a real, live, billed call to this model; latency and error rate are the live API's own, not simulated |
+| `throughput/claude-opus-5/` | `--llm-provider anthropic`: same as the Sonnet run, live and billed, against this model |
 
 ## Integrity
 
