@@ -14,6 +14,7 @@ Factory: make_vector_index(backend, dim, **hnsw_params) selects the backend per 
 
 import logging
 import math
+import threading
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 
@@ -85,36 +86,46 @@ class BruteForceVectorIndex(VectorIndex):
         self._vectors: List[np.ndarray] = []
         self._ids: List[int] = []
         self._dim: int = 0
+        # LEV-19-class bug: add()/search() mutate/read the same lists, and
+        # FastAPI dispatches concurrent requests to a threadpool -- a search()
+        # reading self._vectors while an add() appends to it is a real race,
+        # not just a lost-update risk. One lock serializes both.
+        self._lock = threading.Lock()
 
     def add(self, vector: List[float], entry_id: int) -> None:
         v = np.array(vector, dtype=np.float32)
-        if self._dim == 0:
-            self._dim = len(v)
-        self._vectors.append(v)
-        self._ids.append(entry_id)
+        with self._lock:
+            if self._dim == 0:
+                self._dim = len(v)
+            self._vectors.append(v)
+            self._ids.append(entry_id)
 
     def search(self, vector: List[float], k: int = 1) -> Tuple[List[int], List[float]]:
-        if not self._vectors:
-            return [], []
         q = np.array(vector, dtype=np.float32)
-        mat = np.stack(self._vectors)  # (n, dim)
+        with self._lock:
+            if not self._vectors:
+                return [], []
+            mat = np.stack(self._vectors)  # (n, dim)
+            ids_snapshot = list(self._ids)
         diffs = mat - q
         sq_dists = np.sum(diffs ** 2, axis=1)
         l2_dists = np.sqrt(sq_dists)
-        k_eff = min(k, len(self._ids))
+        k_eff = min(k, len(ids_snapshot))
         top_idx = np.argsort(l2_dists)[:k_eff]
         return (
-            [self._ids[i] for i in top_idx],
+            [ids_snapshot[i] for i in top_idx],
             [float(l2_dists[i]) for i in top_idx],
         )
 
     def reset(self) -> None:
-        self._vectors.clear()
-        self._ids.clear()
-        self._dim = 0
+        with self._lock:
+            self._vectors.clear()
+            self._ids.clear()
+            self._dim = 0
 
     def size(self) -> int:
-        return len(self._vectors)
+        with self._lock:
+            return len(self._vectors)
 
 
 # ---------------------------------------------------------------------------
@@ -140,8 +151,19 @@ class FaissHNSWVectorIndex(VectorIndex):
         self._ef_search = ef_search
         self._index = None  # created lazily
         self._size = 0
+        # LEV-19-class bug, more severe here: Faiss's IndexHNSWFlat is not
+        # internally thread-safe for concurrent graph mutation. A search()
+        # traversing the HNSW graph while another thread's add() mutates it
+        # (or two concurrent add_with_ids calls) is a real, reproduced
+        # segfault under concurrent load -- confirmed while investigating
+        # LEV-19 (6+ redundant loads fixed the construction race; this index
+        # still crashed under sustained concurrent add+search afterward).
+        # Faiss provides no snapshot mechanism, so add() and search() are
+        # fully serialized against each other, unlike BruteForceVectorIndex.
+        self._lock = threading.Lock()
 
     def _ensure_index(self, dim: int):
+        # Only ever called while holding self._lock (from add()).
         if self._index is None:
             import faiss  # guarded: caller must check availability
             hnsw = faiss.IndexHNSWFlat(dim, self._m)
@@ -151,17 +173,19 @@ class FaissHNSWVectorIndex(VectorIndex):
 
     def add(self, vector: List[float], entry_id: int) -> None:
         v = np.array(vector, dtype=np.float32).reshape(1, -1)
-        self._ensure_index(v.shape[1])
         ids = np.array([entry_id], dtype=np.int64)
-        self._index.add_with_ids(v, ids)
-        self._size += 1
+        with self._lock:
+            self._ensure_index(v.shape[1])
+            self._index.add_with_ids(v, ids)
+            self._size += 1
 
     def search(self, vector: List[float], k: int = 1) -> Tuple[List[int], List[float]]:
-        if self._index is None or self._size == 0:
-            return [], []
         q = np.array(vector, dtype=np.float32).reshape(1, -1)
-        k_eff = min(k, self._size)
-        sq_distances, ids = self._index.search(q, k_eff)
+        with self._lock:
+            if self._index is None or self._size == 0:
+                return [], []
+            k_eff = min(k, self._size)
+            sq_distances, ids = self._index.search(q, k_eff)
         # Faiss IndexHNSWFlat returns squared L2 distances; take sqrt for consistency
         # with BruteForceVectorIndex and the spec's "L2 distance" formula.
         return (
@@ -170,8 +194,9 @@ class FaissHNSWVectorIndex(VectorIndex):
         )
 
     def reset(self) -> None:
-        self._index = None
-        self._size = 0
+        with self._lock:
+            self._index = None
+            self._size = 0
 
     def size(self) -> int:
         return self._size
