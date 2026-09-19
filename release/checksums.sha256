@@ -1,4 +1,4 @@
-f32e78cbec5943161d4418b2fe37a0e2349e35ed37cfd34fe45f2894b8d4fc2c  ./PROVENANCE.md
+da1fcacc1ba86ea7173e4a2a66297c74fdb404070dc6b516c9232ba72f2516cd  ./PROVENANCE.md
 411af59fadfc76f52758bfd488d13686bebd0d52ca2239daa3f780914c183f08  ./d3-results/analysis/analysis_meta.json
 e94e353fe7905332ab142767e7818e17c1110e8af7f88f33106d8b6df8965486  ./d3-results/analysis/anova.csv
 fe7c7f668efc3d9697c1c7e1727f96a2a5b169f717cb5cfbef501d59f85a158e  ./d3-results/analysis/curves_hit_rate.csv
@@ -7,6 +7,8 @@ fe7c7f668efc3d9697c1c7e1727f96a2a5b169f717cb5cfbef501d59f85a158e  ./d3-results/a
 b14de37da49b17593b21a47559db82ddb840898d160f24b77b564cd4add2cc5c  ./d3-results/analysis/figures/curve_hit_rate.png
 f4043313947abe4646f82ee2ac5fd4a7a827375e6102600761ab8e3814875aeb  ./d3-results/analysis/figures/curve_precision.pdf
 3cc0c6dbd07a80496c00da5226f4a327ef1d28bad1593b45daa1f27e68ca7506  ./d3-results/analysis/figures/curve_precision.png
+690152c11c93ed76e7c23e36e526fd84b27c9a0311ff16bdd80d4e13fcc51388  ./d3-results/analysis/figures/resid_qq.png
+acdfd350cc1326beaa5ed508a8bef3166951ddf7841ed5ce9620175718a85857  ./d3-results/analysis/figures/resid_vs_fitted.png
 88876706564887ab0c3c1f2322f344453d14c8cca7f525c8778e7fb1e530e029  ./d3-results/analysis/kappa.json
 cdbd422d8e42f183901185c7f51c6bce06d8be20366da2da5096f67d7686a2e5  ./d3-results/analysis/tukey.csv
 d16f0776330d8be19f78904ad3e8415002d26cbc952a44f2bd3f02a227046939  ./d3-results/analysis/tukey_status.csv
@@ -25,6 +27,7 @@ a99778bc9bcf14e0c818ed43621e4b37288c5f3162c2f9d4bfa0505d860df657  ./d3-results/r
 1d582bdf20da01993cb2c596680eb57a39eef58a5963822914bfc624e27dbdf2  ./d3-results/robustness/tests.csv
 bf7d7d32851976b7bb6327de7eb8df8fa61157a62233cdbd1e09193799ed95f1  ./d3-results/robustness/verdicts.csv
 1424a02e85528f22e88f81d2010dc1e24b3825d211f4d636d0f5ef76a4a0bb3f  ./d3-results/run_meta.json
+35a6cab0672d51c1bdb972f3bfa9c0581d088100441c809a22a5590f9396571a  ./figures/architecture.png
 1c694bfabc6f424a3bfbf13d3d7a652c7ce0ba38fc942a66e709018ce0ee8216  ./latency/latency.csv
 b407b6fcbf32d010003bbcdef47419ce2bd6f46f3ca0f8e136dc53f252dcc4ba  ./latency/latency_meta.json
 08d29117779c9d7db6305eb9a3a6ceca27ea586968b1b46395513818fa46f0a9  ./latency/llm_calls.json

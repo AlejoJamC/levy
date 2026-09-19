@@ -3,8 +3,8 @@
 This folder holds the final, validated benchmark results for Levy — the D3
 evaluation grid (with its determinism, cross-environment and vector-index
 backend validations), the latency measurement, the throughput measurement
-(one subdirectory per model measured, see below), and the duplicate-prevalence
-measurement of the source corpora. It is git-tracked (not
+(one subdirectory per model measured, see below), the duplicate-prevalence
+measurement of the source corpora, and the figures used in the dissertation. It is git-tracked (not
 gitignored) so it ships with the repository. There is exactly one version
 per model: when a model's results are regenerated, that model's files are
 overwritten in place. This file is never renamed, dated, or suffixed, and
@@ -45,7 +45,10 @@ neither is anything else here.
   SHA-256 checksums, never a query or any other corpus text;
   `d3-results/robustness/*` carries only counts, rates, test statistics,
   coefficients and intervals aggregated from `decisions.csv` — no `pair_id`,
-  no source corpus id, no text — and repository-relative input paths.
+  no source corpus id, no text — and repository-relative input paths;
+  the figures carry only plotted aggregates (residuals, fitted cell means,
+  curve points) or, for `figures/architecture.png`, module and file names
+  from this repository.
 - **Licence:** Apache 2.0, same as the rest of this repository.
 
 ## Contents
@@ -69,7 +72,9 @@ rather than under a D-number it doesn't have).
 | `d3-results/analysis/curves_precision.csv`, `.../curves_hit_rate.csv` | Threshold-vs-metric tables per (model, workload) |
 | `d3-results/analysis/kappa.json` | Cohen's kappa (annotation agreement) |
 | `d3-results/analysis/analysis_meta.json` | Analysis run metadata |
-| `d3-results/analysis/figures/*.png`, `.../figures/*.pdf` | Threshold-vs-precision and threshold-vs-hit-rate figures |
+| `d3-results/analysis/figures/curve_*.png`, `.../figures/curve_*.pdf` | Threshold-vs-precision and threshold-vs-hit-rate figures, regenerable by `scripts/run_analysis.py` from the curve tables |
+| `d3-results/analysis/figures/resid_qq.png` | Normal Q–Q plot of the two-way ANOVA's 30 standardised residuals. Not produced by the analysis pipeline — prepared for the dissertation |
+| `d3-results/analysis/figures/resid_vs_fitted.png` | Residuals of the two-way ANOVA against fitted values (cell-mean false positive rate), coloured by workload. Not produced by the analysis pipeline — prepared for the dissertation |
 | `d3-results/robustness/event_counts.csv` | Negative-class observations and FP events per (model, workload, threshold) cell and per margin, zero-event flag, pairs with ≥1 event (LEV-22) |
 | `d3-results/robustness/tests.csv` | Per method and hypothesis: statistic, df, p-value, decision — exact stratified permutation (model within workload×threshold, workload within model×threshold) with Monte Carlo cross-check, cluster sign-flip permutation, matched-unit exact test, paired per-configuration t / Wilcoxon, logistic ML and Firth (penalised) LR tests, mixed-effects `(1 \| pair_id)` LR tests flagged `no_verdict_not_converged` (LEV-22) |
 | `d3-results/robustness/coefficients.csv` | Logistic ML (Wald CI), Firth (profile penalised-likelihood CI), mixed-effects and matched-unit coefficients with odds ratios and intervals (LEV-22) |
@@ -88,6 +93,7 @@ rather than under a D-number it doesn't have).
 | `throughput/claude-opus-5/` | `--llm-provider anthropic`: same as the Sonnet run, live and billed, against this model |
 | `prevalence/prevalence.csv` | 3 rows, one per workload (faq / Quora QQP, code / SODD, chat / Twitter PIT-2015): pool size, positive, negative, excluded-band and eligible counts, empty-text drops per class, and duplicate prevalence over the full filtered pool (`prevalence_a` = positive / pool_size) and over the binary-eligible pool (`prevalence_b` = positive / eligible) (LEV-21) |
 | `prevalence/prevalence_meta.json` | Definitions of every column, the boundary statement (source-corpus pools after adapter filtering, not deployed LLM traffic), and per workload: adapter and options, label mapping, native-label census, sampling seed, and the input files' names and SHA-256 checksums |
+| `figures/architecture.png` | Architecture diagram of the released system: the HTTP API layer (`levy/api/`), the core engine and its caches, vector index and provider clients (`levy/`), and the offline research layers (dataset, experiment, analysis, latency, dashboard). Not produced by any script — prepared for the dissertation |
 
 ## Integrity
 
