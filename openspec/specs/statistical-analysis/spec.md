@@ -5,7 +5,6 @@ Capability: the D3 evidence pipeline — hypothesis tests (two-way ANOVA on fals
 ## Purpose
 
 Turn experiment harness outputs into the study's evidence bundle: a two-way ANOVA on false positive rate with explicit reject/retain decisions for the three null hypotheses, conditional Tukey HSD post-hoc tests that always state whether they ran and why, threshold-selection curve tables and figures, annotator-agreement reporting consumed from the dataset capability rather than reimplemented, and the +/-5% replication check — all from one command, dataset-agnostically, with degenerate or undefined results reported as such rather than laundered into retained nulls.
-
 ## Requirements
 ### Requirement: Harness output contract as the only input
 The pipeline SHALL consume the harness output directory (`results.csv` with the per-configuration confusion counts, metrics, and zero-division flags; `decisions.csv`; `run_meta.json`) and SHALL validate the expected columns on load, failing with a clear error naming any missing column rather than producing partial statistics.
@@ -19,7 +18,7 @@ The pipeline SHALL consume the harness output directory (`results.csv` with the 
 - **THEN** the pipeline exits non-zero naming the missing column and writes no output tables
 
 ### Requirement: Two-way ANOVA testing the three frozen hypotheses
-The pipeline SHALL fit a two-way ANOVA on false positive rate with factors (embedding model, workload) including their interaction, and SHALL report, for H0₁ (no model main effect), H0₂ (no workload main effect), and H0₃ (no interaction): degrees of freedom, sum of squares, F-statistic, p-value, and an explicit reject/retain statement at α = 0.05, as a machine-readable table.
+The pipeline SHALL fit a two-way ANOVA on false positive rate with factors (embedding model, workload) including their interaction, and SHALL report, for H0₁ (no model main effect), H0₂ (no workload main effect), and H0₃ (no interaction): degrees of freedom, sum of squares, F-statistic, p-value, and an explicit reject/retain statement at α = 0.05, as a machine-readable table. The same table SHALL report, for each of the three terms, the effect sizes η² = SS_effect / SS_total, partial η² = SS_effect / (SS_effect + SS_residual), and ω² = (SS_effect − df_effect × MS_residual) / (SS_total + MS_residual), computed from the fitted sums of squares. ω² SHALL be reported unclamped, including negative values. The Residual row SHALL carry no effect size, and a degenerate response (zero variance in false positive rate) SHALL report every effect size as undefined rather than as a number.
 
 #### Scenario: Constructed model effect is detected
 - **WHEN** the input fixture has one model's FPR uniformly higher across workloads
@@ -28,6 +27,22 @@ The pipeline SHALL fit a two-way ANOVA on false positive rate with factors (embe
 #### Scenario: Null fixture retains all hypotheses
 - **WHEN** the input fixture has identical FPR distributions across all cells
 - **THEN** all three H0 are explicitly retained with their p-values reported
+
+#### Scenario: Effect sizes match the hand-computed formulas
+- **WHEN** the ANOVA runs on a balanced fixture whose sums of squares are known by hand
+- **THEN** η², partial η² and ω² for model, workload and interaction equal the values computed by hand from those sums of squares
+
+#### Scenario: Negative omega squared is reported, not clamped
+- **WHEN** a term's sum of squares is smaller than df_effect × MS_residual
+- **THEN** its ω² is reported as the negative value the formula yields
+
+#### Scenario: Degenerate response leaves effect sizes undefined
+- **WHEN** every configuration reports the same false positive rate
+- **THEN** every effect size in the table is undefined (empty), alongside the undefined F-tests
+
+#### Scenario: Adding effect sizes changes no existing statistic
+- **WHEN** the analysis is re-run over a harness output directory that was analysed before this change
+- **THEN** df, sum of squares, mean square, F, p-value and decision for every row are identical to the earlier table
 
 ### Requirement: Tukey HSD post-hoc where effects are significant
 The pipeline SHALL run Tukey HSD comparisons for significant effects (over the 6 model×workload cells when the interaction is significant), SHALL report pairwise differences with confidence intervals and adjusted p-values as a table, and SHALL always state whether post-hoc ran and why.

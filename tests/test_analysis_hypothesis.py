@@ -30,6 +30,8 @@ from analysis_fixtures import (
 )
 
 from levy.analysis.hypothesis import (
+    ANOVA_COLUMNS,
+    EFFECT_SIZE_COLUMNS,
     AnovaDesignError,
     run_tukey_hsd,
     run_two_way_anova,
@@ -246,6 +248,86 @@ class TestDegenerateResponse(unittest.TestCase):
         self.assertFalse(tukey.ran)
         self.assertIn("zero variance", tukey.statement)
         self.assertIn("undefined", tukey.per_effect["model"])
+
+
+def hand_effect_sizes(ss_effect, df_effect, ss_total, ss_residual, df_residual):
+    """eta^2, partial eta^2 and omega^2 from their definitions, not the module's code."""
+    ms_residual = ss_residual / df_residual
+    return (
+        ss_effect / ss_total,
+        ss_effect / (ss_effect + ss_residual),
+        (ss_effect - df_effect * ms_residual) / (ss_total + ms_residual),
+    )
+
+
+class TestEffectSizes(unittest.TestCase):
+    """LEV-20: eta^2, partial eta^2, omega^2 per term, pinned against hand arithmetic."""
+
+    def setUp(self):
+        # Same fixture as TestModelEffectFixture: SS 0.30 / 0.20 / 0.0, residual
+        # 0.006 on 24 df, so SS_total = 0.506 and MS_residual = 0.00025.
+        self.cells = additive_cells(model_effect=0.20, workload_effect=0.10, base=0.10)
+        self.table = run_two_way_anova(anova_frame(self.cells)).table.set_index("effect")
+
+    def test_values_match_the_hand_computed_formulas(self):
+        # Spelled out for the model term:
+        #   eta^2         = 0.30 / 0.506                     = 0.592885...
+        #   partial eta^2 = 0.30 / (0.30 + 0.006)            = 0.980392...
+        #   omega^2       = (0.30 - 1*0.00025) / (0.506 + 0.00025) = 0.592098...
+        self.assertAlmostEqual(self.table.loc["model", "eta_sq"], 0.30 / 0.506, places=10)
+        self.assertAlmostEqual(self.table.loc["model", "partial_eta_sq"], 0.30 / 0.306, places=10)
+        self.assertAlmostEqual(self.table.loc["model", "omega_sq"], 0.29975 / 0.50625, places=10)
+
+        ss_model, ss_workload, ss_interaction, ss_residual = hand_sums_of_squares(self.cells)
+        ss_total = ss_model + ss_workload + ss_interaction + ss_residual
+        for effect, ss, df in (
+            ("model", ss_model, 1),
+            ("workload", ss_workload, 2),
+            ("model:workload", ss_interaction, 2),
+        ):
+            eta, partial, omega = hand_effect_sizes(ss, df, ss_total, ss_residual, RESIDUAL_DF)
+            self.assertAlmostEqual(self.table.loc[effect, "eta_sq"], eta, places=10, msg=effect)
+            self.assertAlmostEqual(self.table.loc[effect, "partial_eta_sq"], partial, places=10, msg=effect)
+            self.assertAlmostEqual(self.table.loc[effect, "omega_sq"], omega, places=10, msg=effect)
+
+    def test_negative_omega_squared_is_reported_not_clamped(self):
+        # SS_interaction = 0 < 2 * MS_residual, so omega^2 = -0.0005 / 0.50625.
+        omega = self.table.loc["model:workload", "omega_sq"]
+        self.assertLess(omega, 0.0)
+        self.assertAlmostEqual(omega, -0.0005 / 0.50625, places=12)
+
+    def test_residual_row_carries_no_effect_size(self):
+        for column in EFFECT_SIZE_COLUMNS:
+            self.assertTrue(math.isnan(self.table.loc["Residual", column]), column)
+
+    def test_total_sum_of_squares_is_double_sourced_on_a_non_additive_design(self):
+        # eta^2 * SS_total_hand must reproduce each term's hand SS, which pins the
+        # module's denominator (statsmodels' centered_tss) to the hand total.
+        cells = {
+            ("all-MiniLM-L6-v2", "faq"): 0.10,
+            ("all-MiniLM-L6-v2", "code"): 0.22,
+            ("all-MiniLM-L6-v2", "chat"): 0.31,
+            ("modernbert", "faq"): 0.44,
+            ("modernbert", "code"): 0.25,
+            ("modernbert", "chat"): 0.53,
+        }
+        hand = hand_sums_of_squares(cells)
+        ss_total = sum(hand)
+        table = run_two_way_anova(anova_frame(cells)).table.set_index("effect")
+        for effect, ss in zip(("model", "workload", "model:workload"), hand[:3]):
+            self.assertAlmostEqual(table.loc[effect, "eta_sq"] * ss_total, ss, places=10, msg=effect)
+
+    def test_degenerate_response_leaves_every_effect_size_undefined(self):
+        frame = anova_frame({key: 0.0 for key in additive_cells()})
+        frame["fpr"] = 0.0
+        table = run_two_way_anova(frame).table
+        for column in EFFECT_SIZE_COLUMNS:
+            self.assertTrue(table[column].isna().all(), column)
+
+    def test_existing_columns_keep_their_positions(self):
+        table = run_two_way_anova(anova_frame(self.cells)).table
+        self.assertEqual(list(table.columns), ANOVA_COLUMNS + EFFECT_SIZE_COLUMNS)
+        self.assertTrue(set(ANOVA_COLUMNS).isdisjoint(EFFECT_SIZE_COLUMNS))
 
 
 class TestDesignValidation(unittest.TestCase):

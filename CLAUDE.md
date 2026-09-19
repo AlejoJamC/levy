@@ -386,7 +386,9 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   α=0.05 for H0₁/H0₂/H0₃, plus conditional `pairwise_tukeyhsd` over 2 models /
   3 workloads / the 6 model×workload cells, always with a ran-or-skipped-and-why
   statement; residual diagnostics — design balance, Shapiro-Wilk, Levene — reported,
-  never acted on. **Degenerate-response rule:** zero variance in `fpr` (what the
+  never acted on; η², partial η² and ω² per term (LEV-20) appended to `anova.csv`
+  as `eta_sq`/`partial_eta_sq`/`omega_sq`, ω² deliberately unclamped, kept out of
+  `ANOVA_COLUMNS` so older bundles still load in the dashboard. **Degenerate-response rule:** zero variance in `fpr` (what the
   synthetic fixture yields under mock embeddings) makes the F-tests undefined, so
   decisions are reported as `undefined`, never as retained nulls);
   `curves.py` (tidy threshold-vs-hit-rate / threshold-vs-precision tables per
@@ -745,7 +747,7 @@ edits:
   `add-experiment-harness`, `add-test-infrastructure`, `add-anthropic-connector`,
   `add-fastapi-router`, `add-statistical-analysis`, `add-release-packaging`,
   `add-results-dashboard`, `add-corpus-acquisition` (2026-08-04),
-  `add-ground-truth-dataset` (2026-08-05). **No changes are in flight** —
+  `add-ground-truth-dataset` (2026-08-05), `add-anova-effect-sizes` (2026-09-19). **No changes are in flight** —
   `openspec list` reports none. The remaining D3 work (LEV-13) is a production run of
   already-shipped tooling, so it produces result artifacts rather than capability
   changes and correctly has no OpenSpec change of its own.
@@ -781,6 +783,7 @@ Release (2026-11-02).
 | LEV-12 | `add-corpus-acquisition` | High | archived (2026-08-04) |
 | LEV-13 | — (D3 production run: 30 configurations + analysis + ±5% replication) | Urgent | **run complete 2026-08-07**, published as `release/d3-results/` — see the results note below |
 | LEV-14 | `add-latency-measurement` | Urgent | **implemented + run 2026-08-07**, published as `release/latency/` — see the latency note below |
+| LEV-20 | `add-anova-effect-sizes` | High | archived (2026-09-19) — η², partial η², ω² per ANOVA term, published in `release/d3-results/analysis/anova.csv` |
 
 Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 → LEV-11 (D2)
 → LEV-13 (D3). **LEV-11 and LEV-13 are deliberately separate:** D2 is human-paced

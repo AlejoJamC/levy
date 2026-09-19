@@ -59,7 +59,7 @@ rather than under a D-number it doesn't have).
 | `d3-results/replication/cross-environment.results.csv` | The container run's own `results.csv`, generated independently, not copied — byte-identical to `d3-results/results.csv` |
 | `d3-results/replication/brute-force.results.csv` | The exact-kNN (`--vector-index-backend brute_force`) re-run's own `results.csv`, generated independently, not copied — byte-identical to `d3-results/results.csv`, which is the evidence that the approximate Faiss/HNSW index cost no decision (LEV-18) |
 | `d3-results/replication/brute-force.run_meta.json` | That run's sidecar, and the first to carry the `vector_index` block: `configured_backend` / `resolved_backend` (never the literal `auto`) plus HNSW params when Faiss resolves |
-| `d3-results/analysis/anova.csv`, `.../tukey.csv`, `.../tukey_status.csv` | Two-way ANOVA and Tukey HSD results for H0(1-3) |
+| `d3-results/analysis/anova.csv`, `.../tukey.csv`, `.../tukey_status.csv` | Two-way ANOVA and Tukey HSD results for H0(1-3); `anova.csv` also carries η², partial η² and ω² per term (`eta_sq`, `partial_eta_sq`, `omega_sq`; ω² unclamped, so negative for a term that explains less than chance) (LEV-20) |
 | `d3-results/analysis/curves_precision.csv`, `.../curves_hit_rate.csv` | Threshold-vs-metric tables per (model, workload) |
 | `d3-results/analysis/kappa.json` | Cohen's kappa (annotation agreement) |
 | `d3-results/analysis/analysis_meta.json` | Analysis run metadata |

@@ -334,5 +334,30 @@ class TestSemanticsParity(unittest.TestCase):
         self.assertFalse(decision.hit)
 
 
+class TestEffectSizeColumnsCompatibility(unittest.TestCase):
+    """LEV-20: new bundles carry effect sizes; bundles written before them still load."""
+
+    def test_fresh_bundle_carries_the_effect_size_columns(self):
+        import pandas as pd
+        from levy.analysis.hypothesis import EFFECT_SIZE_COLUMNS
+
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle_dir = _build_sample_bundle(Path(tmp))
+            anova = pd.read_csv(bundle_dir / "anova.csv")
+            for column in EFFECT_SIZE_COLUMNS:
+                self.assertIn(column, anova.columns)
+
+    def test_bundle_without_effect_sizes_still_loads(self):
+        import pandas as pd
+        from levy.analysis.hypothesis import EFFECT_SIZE_COLUMNS
+
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle_dir = _build_sample_bundle(Path(tmp))
+            path = bundle_dir / "anova.csv"
+            pd.read_csv(path).drop(columns=EFFECT_SIZE_COLUMNS).to_csv(path, index=False)
+            bundle = load_bundle(bundle_dir)
+            self.assertEqual(len(bundle.anova), 4)
+
+
 if __name__ == "__main__":
     unittest.main()
