@@ -1,0 +1,4 @@
+workload,corpus,pool_size,positive,negative,excluded,eligible,dropped_empty_text_positive,dropped_empty_text_negative,prevalence_a,prevalence_b
+faq,quora-qqp,404288,149263,255025,0,404288,0,2,0.369200,0.369200
+code,sodd,2138653,222388,629385,1286880,851773,0,3,0.103985,0.261088
+chat,twitter-pit2015,17790,5466,10206,2118,15672,0,0,0.307251,0.348775
