@@ -1,0 +1,13 @@
+method,H0_1_p_value,H0_1_decision,H0_1_verdict,H0_2_p_value,H0_2_decision,H0_2_verdict,role,response_family,threshold_treatment,pair_structure,unit_of_analysis
+anova_frozen,0.4645108197,retain,REFERENCE,0.01880684047,reject,REFERENCE,reference,normal,replicate,ignored,per-configuration rate
+permutation_exact,0.1883476914,retain,AGREE,9.551547119e-08,reject,AGREE,primary,none (permutation),stratum,ignored,decision
+permutation_exact_pooled,0.2161690979,retain,AGREE,,not_applicable,NOT_APPLICABLE,cross_check,none (permutation),stratum,ignored,decision
+permutation_monte_carlo,0.1852907355,retain,AGREE,4.999750012e-05,reject,AGREE,cross_check,none (permutation),stratum,ignored,decision
+permutation_cluster_signflip,0.03125,reject,DISAGREE,,not_applicable,NOT_APPLICABLE,sensitivity,none (permutation),summed within pair,resampling unit = pair,decision
+matched_unit_exact,0.01171875,reject,DISAGREE,,not_applicable,NOT_APPLICABLE,diagnostic,binomial (conditional),matched within pair,"matched per (pair, threshold); thresholds of one pair treated as independent",decision
+paired_config_t,0.07675678559,retain,AGREE,,not_applicable,NOT_APPLICABLE,diagnostic,normal,pairing block,ignored,per-configuration rate
+paired_config_wilcoxon,0.03125,reject,DISAGREE,,not_applicable,NOT_APPLICABLE,diagnostic,none (rank),pairing block,ignored,per-configuration rate
+logistic_ml,0.1629454954,retain,AGREE,3.884730442e-07,reject,AGREE,method,binomial,fixed factor,ignored,decision
+logistic_firth,0.1681398709,retain,AGREE,6.196551344e-07,reject,AGREE,method,binomial,fixed factor,ignored,decision
+glmm_aghq,0.1680815514,no_verdict_not_converged,NO_VERDICT,0.001534256671,no_verdict_not_converged,NO_VERDICT,method,binomial,fixed factor,random intercept,decision
+cluster_bootstrap,,reject,DISAGREE,,reject,AGREE,method,none (resampling),summed within pair,resampling unit = pair,decision
