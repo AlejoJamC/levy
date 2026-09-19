@@ -1,4 +1,4 @@
-baa75e12a0f5815a4758635c44a09e380a96fbcf19c84396fa3f8ea18ba73d1f  ./PROVENANCE.md
+557e219f1643e7eb75f0172b1297f5442f7e1a9a19969d453899c637a688096a  ./PROVENANCE.md
 411af59fadfc76f52758bfd488d13686bebd0d52ca2239daa3f780914c183f08  ./d3-results/analysis/analysis_meta.json
 e94e353fe7905332ab142767e7818e17c1110e8af7f88f33106d8b6df8965486  ./d3-results/analysis/anova.csv
 fe7c7f668efc3d9697c1c7e1727f96a2a5b169f717cb5cfbef501d59f85a158e  ./d3-results/analysis/curves_hit_rate.csv
@@ -22,6 +22,8 @@ f5497003a1ec78fba473b9331faf44c0bdae8300f7136603e31f895a831ed044  ./d3-results/r
 b407b6fcbf32d010003bbcdef47419ce2bd6f46f3ca0f8e136dc53f252dcc4ba  ./latency/latency_meta.json
 08d29117779c9d7db6305eb9a3a6ceca27ea586968b1b46395513818fa46f0a9  ./latency/llm_calls.json
 65c0267380660cccee01a44a63cd3936ad0dbb027393ba9a342fe31ebf4416f7  ./latency/responses.jsonl
+c7dd82e7f947e75ba21b4b34ec6733106bb1b83bac27ae8cf7d870e8bb8dbefc  ./prevalence/prevalence.csv
+4aaeb2291c406cc685d6aa76a75b6da7d7c82fed0cb70dae680c8b3ec776e381  ./prevalence/prevalence_meta.json
 39c6c86ada87737bf91d0e0ca47ac02d0a2235dd54402bfbddc4e9b7e58d5394  ./throughput/claude-haiku-4-5-20251001/throughput.csv
 7bbef2454513b3b3fb93bc81816a1eca7a1f9131ada9a16f2a7659bfee24e3d3  ./throughput/claude-haiku-4-5-20251001/throughput_meta.json
 933640ee4099eea8e22c7057d1b146325a9dfc0a45858011ac7fae11acbaab00  ./throughput/claude-opus-5/throughput.csv
