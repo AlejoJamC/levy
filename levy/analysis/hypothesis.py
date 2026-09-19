@@ -16,10 +16,12 @@ Implements the frozen S&D Report's statistical analysis plan literally:
     significant (over the 6 model x workload cells when the interaction is
     significant), always accompanied by a ran/skipped statement.
 
-Nothing beyond the frozen plan is added: no extra tests, no multiplicity
-corrections across the three hypotheses, no auto-"correction" when residual
-diagnostics look poor. The diagnostics are reported so the author can
-interpret them in the dissertation; interpreting them is not code's job.
+No test is added beyond the frozen plan: no multiplicity corrections across
+the three hypotheses, no auto-"correction" when residual diagnostics look
+poor. The diagnostics are reported so the author can interpret them in the
+dissertation; interpreting them is not code's job. Effect sizes (eta^2,
+partial eta^2, omega^2) are reported per term alongside the F-tests (LEV-20);
+they are descriptive and change no decision.
 """
 
 import math
@@ -74,6 +76,11 @@ ANOVA_COLUMNS = [
     "alpha",
     "decision",
 ]
+
+#: Appended after ANOVA_COLUMNS in the emitted table. Kept out of ANOVA_COLUMNS
+#: because the dashboard uses that list as its required-column set, and bundles
+#: written before these existed must still load.
+EFFECT_SIZE_COLUMNS = ["eta_sq", "partial_eta_sq", "omega_sq"]
 
 TUKEY_COLUMNS = [
     "effect",
@@ -229,6 +236,27 @@ def _residual_diagnostics(residuals: np.ndarray, frame: pd.DataFrame) -> Dict[st
     return diagnostics
 
 
+def _effect_sizes(
+    ss_effect: float,
+    df_effect: float,
+    ss_total: float,
+    ss_residual: float,
+    ms_residual: float,
+) -> Dict[str, float]:
+    """
+    eta^2, partial eta^2 and omega^2 for one term. omega^2 is deliberately not
+    clamped at zero: a negative value says the term explains less than chance.
+    A zero-variance response (ss_total == 0) leaves all three undefined.
+    """
+    if ss_total <= 0.0:
+        return {column: float("nan") for column in EFFECT_SIZE_COLUMNS}
+    return {
+        "eta_sq": ss_effect / ss_total,
+        "partial_eta_sq": ss_effect / (ss_effect + ss_residual),
+        "omega_sq": (ss_effect - df_effect * ms_residual) / (ss_total + ms_residual),
+    }
+
+
 def run_two_way_anova(results: pd.DataFrame, alpha: float = DEFAULT_ALPHA) -> AnovaResult:
     """
     Fit `fpr ~ C(model) * C(workload)` and return the hypothesis table.
@@ -255,6 +283,14 @@ def run_two_way_anova(results: pd.DataFrame, alpha: float = DEFAULT_ALPHA) -> An
             warnings.simplefilter("ignore")
         fitted = ols(f"{RESPONSE} ~ C({EFFECT_MODEL}) * C({EFFECT_WORKLOAD})", data=frame).fit()
         table = anova_lm(fitted, typ=2)
+
+    residual = table.loc["Residual"]
+    residual_df = float(residual["df"])
+    residual_ss = float(residual["sum_sq"])
+    residual_ms = residual_ss / residual_df if residual_df else float("nan")
+    # The corrected total SS of the response: the textbook denominator for eta^2,
+    # valid for any SS type (Type II rows only partition it in a balanced design).
+    ss_total = float(fitted.centered_tss)
 
     rows = []
     significant: List[str] = []
@@ -283,12 +319,10 @@ def run_two_way_anova(results: pd.DataFrame, alpha: float = DEFAULT_ALPHA) -> An
                 "p_value": p_value,
                 "alpha": alpha,
                 "decision": decision,
+                **_effect_sizes(sum_sq, df, ss_total, residual_ss, residual_ms),
             }
         )
 
-    residual = table.loc["Residual"]
-    residual_df = float(residual["df"])
-    residual_ss = float(residual["sum_sq"])
     rows.append(
         {
             "hypothesis": "",
@@ -296,11 +330,12 @@ def run_two_way_anova(results: pd.DataFrame, alpha: float = DEFAULT_ALPHA) -> An
             "statement": "Within-cell (threshold replicate) variation",
             "df": residual_df,
             "sum_sq": residual_ss,
-            "mean_sq": residual_ss / residual_df if residual_df else float("nan"),
+            "mean_sq": residual_ms,
             "F": float("nan"),
             "p_value": float("nan"),
             "alpha": alpha,
             "decision": "",
+            **{column: float("nan") for column in EFFECT_SIZE_COLUMNS},
         }
     )
 
@@ -316,7 +351,7 @@ def run_two_way_anova(results: pd.DataFrame, alpha: float = DEFAULT_ALPHA) -> An
     diagnostics.update(_residual_diagnostics(np.asarray(fitted.resid, dtype=float), frame))
 
     return AnovaResult(
-        table=pd.DataFrame(rows, columns=ANOVA_COLUMNS),
+        table=pd.DataFrame(rows, columns=ANOVA_COLUMNS + EFFECT_SIZE_COLUMNS),
         alpha=alpha,
         significant_effects=significant,
         degenerate=degenerate,

@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-07T14:08:03+00:00",
+  "generated_at": "2026-09-19T12:14:49+00:00",
   "inputs": {
-    "harness_dir": "d3-results",
+    "harness_dir": "release/d3-results",
     "n_configurations": 30,
     "dataset_path_for_kappa": "data/ground_truth.full.csv",
     "harness_run_meta": {

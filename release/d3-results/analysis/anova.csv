@@ -1,5 +1,5 @@
-hypothesis,effect,statement,df,sum_sq,mean_sq,F,p_value,alpha,decision
-H0_1,model,No effect of embedding model on false positive rate,1,0.0001035723521,0.0001035723521,0.5525047465,0.4645108197,0.05,retain
-H0_2,workload,No effect of workload type on false positive rate,2,0.001766040359,0.0008830201797,4.710454388,0.01880684047,0.05,reject
-H0_3,model:workload,No interaction between embedding model and workload,2,5.026027707e-05,2.513013853e-05,0.134056247,0.8751911297,0.05,retain
-,Residual,Within-cell (threshold replicate) variation,24,0.004499031849,0.0001874596604,,,0.05,
+hypothesis,effect,statement,df,sum_sq,mean_sq,F,p_value,alpha,decision,eta_sq,partial_eta_sq,omega_sq
+H0_1,model,No effect of embedding model on false positive rate,1,0.0001035723521,0.0001035723521,0.5525047465,0.4645108197,0.05,retain,0.01613551762,0.02250298909,-0.01269795335
+H0_2,workload,No effect of workload type on false positive rate,2,0.001766040359,0.0008830201797,4.710454388,0.01880684047,0.05,reject,0.2751311017,0.2818866728,0.2105728558
+H0_3,model:workload,No interaction between embedding model and workload,2,5.026027707e-05,2.513013853e-05,0.134056247,0.8751911297,0.05,retain,0.007830039289,0.01104793354,-0.04914337436
+,Residual,Within-cell (threshold replicate) variation,24,0.004499031849,0.0001874596604,,,0.05,,,,
