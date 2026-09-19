@@ -1,0 +1,143 @@
+{
+  "generated_by": "scripts/measure_prevalence.py",
+  "generated_utc": "2026-09-19T18:06:13+00:00",
+  "sampling_sidecar": "data/ground_truth.ids.meta.json",
+  "pool_counts_source": "recomputed from raw corpora; not persisted in the sampling sidecar",
+  "definitions": {
+    "pool_size": "positive + negative + excluded",
+    "eligible": "positive + negative",
+    "prevalence_a": "positive / pool_size",
+    "prevalence_b": "positive / eligible",
+    "positive_negative": "candidates yielded by CorpusSource.iter_candidates() (native label mapped to a class, non-empty text)",
+    "excluded": "rows whose native label is in the adapter's domain but in neither class, counted before the empty-text filter",
+    "dropped_empty_text": "rows of the class in the native-label census minus candidates yielded"
+  },
+  "boundary": "pools of the source corpora as distributed, after adapter filtering; not deployed LLM traffic",
+  "workloads": {
+    "faq": {
+      "corpus": "quora-qqp",
+      "adapter": "QuoraQQPSource",
+      "adapter_options": {},
+      "sampling_seed": 42,
+      "label_mapping": {
+        "positive": [
+          1
+        ],
+        "negative": [
+          0
+        ],
+        "domain": [
+          0,
+          1
+        ]
+      },
+      "native_label_counts": {
+        "0": 255027,
+        "1": 149263
+      },
+      "files": [
+        {
+          "filename": "train.tsv",
+          "sha256": "2073b2c5f824f278ae388398846f0d10b3aedc1ade82ebec5c481be7fd92bf26"
+        }
+      ]
+    },
+    "code": {
+      "corpus": "sodd",
+      "adapter": "SODDSource",
+      "adapter_options": {
+        "hard_negatives": false,
+        "shards": [
+          "SODD_train.parquet.gzip",
+          "SODD_dev.parquet.gzip"
+        ],
+        "normalisation": "stdlib html.parser: tags dropped, text content kept (including inside <code>/<pre>), block-level tags emit one space, entities unescaped, whitespace runs collapsed to a single space, result stripped"
+      },
+      "sampling_seed": 8484,
+      "label_mapping": {
+        "positive": [
+          0
+        ],
+        "negative": [
+          3
+        ],
+        "domain": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "native_label_counts": {
+        "0": 222388,
+        "1": 614015,
+        "2": 599249,
+        "3": 629388,
+        "4": 73616
+      },
+      "files": [
+        {
+          "filename": "SODD_train.parquet.gzip",
+          "sha256": "74b68fb846ce4620b5cc2032cbb4c9104c82e50b890ed0227f0acaac4d28d643"
+        },
+        {
+          "filename": "SODD_dev.parquet.gzip",
+          "sha256": "5d9bae32bf817883d0d1e8c409479f90f6aba17dec7ccee9ea211bc8a75b8bda"
+        }
+      ]
+    },
+    "chat": {
+      "corpus": "twitter-pit2015",
+      "adapter": "TwitterPIT2015Source",
+      "adapter_options": {
+        "splits": [
+          "train",
+          "dev"
+        ]
+      },
+      "sampling_seed": 4242,
+      "label_mapping": {
+        "positive": [
+          3,
+          4,
+          5
+        ],
+        "negative": [
+          0,
+          1
+        ],
+        "domain": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "native_label_counts": {
+        "0": 6960,
+        "1": 3246,
+        "2": 2118,
+        "3": 1851,
+        "4": 1957,
+        "5": 1658
+      },
+      "files": [
+        {
+          "filename": "train.data",
+          "sha256": "c14111f8c864e13c826c3a19dabf449759acb1541ce9914d160b2eb1199cc93b"
+        },
+        {
+          "filename": "dev.data",
+          "sha256": "0169127ac96b8225b183b068e67f47999495ccbf83ad4a4d640694ff780a195d"
+        }
+      ]
+    }
+  },
+  "host": {
+    "platform": "macOS-27.0-arm64-arm-64bit",
+    "python_version": "3.10.19"
+  }
+}

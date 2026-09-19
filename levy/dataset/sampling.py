@@ -36,6 +36,7 @@ import os
 import random
 import re
 from abc import ABC, abstractmethod
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple, Union
@@ -128,6 +129,18 @@ class CorpusSource(ABC):
         """Raw files this adapter reads, in the order it reads them."""
         return []
 
+    def native_label_counts(self) -> Dict[int, int]:
+        """
+        Row count per native label value across every row of the raw files,
+        before class mapping and before the empty-text filter.
+
+        The default counts `iter_candidates()` by mapped label, which is right
+        for sources whose native labels already are 0/1; adapters whose native
+        label scale differs, or that skip rows, override it.
+        """
+        counts = Counter(candidate.label for candidate in self.iter_candidates())
+        return dict(sorted(counts.items()))
+
     def check_fields(self) -> List[str]:
         """
         Cheap pre-flight check of the raw files' field/column structure.
@@ -176,6 +189,32 @@ class QuoraQQPSource(CorpusSource):
         if missing:
             return [f"{self.path}: QQP TSV missing columns {missing}"]
         return []
+
+    def native_label_counts(self) -> Dict[int, int]:
+        mapping = self.label_mapping()
+        counts: Counter = Counter()
+        with self.path.open("r", newline="", encoding="utf-8") as fh:
+            reader = csv.DictReader(fh, delimiter="\t")
+            missing = set(self.REQUIRED_COLUMNS) - set(reader.fieldnames or [])
+            if missing:
+                raise CorpusSourceError(
+                    f"{self.path}: QQP TSV missing columns {sorted(missing)}"
+                )
+            for row_number, row in enumerate(reader, start=2):  # header is line 1
+                try:
+                    native = int(row["is_duplicate"])
+                except (TypeError, ValueError):
+                    raise CorpusSourceError(
+                        f"{self.path}:{row_number}: is_duplicate is not an integer: "
+                        f"{row['is_duplicate']!r}"
+                    ) from None
+                if not mapping.in_domain(native):
+                    raise CorpusSourceError(
+                        f"{self.path}:{row_number}: is_duplicate {native!r} outside the "
+                        f"declared domain {list(mapping.domain)}"
+                    )
+                counts[native] += 1
+        return dict(sorted(counts.items()))
 
     def iter_candidates(self) -> Iterator[RawCandidatePair]:
         mapping = self.label_mapping()
@@ -288,6 +327,30 @@ class SODDSource(CorpusSource):
             if missing:
                 problems.append(f"{path}: SODD parquet missing columns {missing}")
         return problems
+
+    def native_label_counts(self) -> Dict[int, int]:
+        import pyarrow.parquet as pq
+
+        mapping = self.label_mapping()
+        counts: Counter = Counter()
+        for path in self.paths:
+            try:
+                parquet_file = pq.ParquetFile(path)
+            except Exception as exc:  # noqa: BLE001
+                raise CorpusSourceError(f"{path}: cannot read SODD parquet: {exc}") from exc
+            if "label" not in parquet_file.schema_arrow.names:
+                raise CorpusSourceError(f"{path}: SODD parquet missing columns ['label']")
+            row_index = 0
+            for batch in parquet_file.iter_batches(batch_size=self.BATCH_SIZE, columns=["label"]):
+                for native in batch.column("label").to_pylist():
+                    index, row_index = row_index, row_index + 1
+                    if native is None or not mapping.in_domain(int(native)):
+                        raise CorpusSourceError(
+                            f"{path} row {index}: label {native!r} outside the declared "
+                            f"domain {list(mapping.domain)}"
+                        )
+                    counts[int(native)] += 1
+        return dict(sorted(counts.items()))
 
     def iter_candidates(self) -> Iterator[RawCandidatePair]:
         import pyarrow.parquet as pq
@@ -416,6 +479,30 @@ class TwitterPIT2015Source(CorpusSource):
                     "'(4, 1)' — this looks like the graded test split, which is rejected"
                 )
         return problems
+
+    def native_label_counts(self) -> Dict[int, int]:
+        mapping = self.label_mapping()
+        counts: Counter = Counter()
+        for path in self.paths:
+            with path.open("r", encoding="utf-8") as fh:
+                for line_number, line in enumerate(fh, start=1):
+                    line = line.rstrip("\n")
+                    if not line.strip():
+                        continue
+                    columns = line.split("\t")
+                    if len(columns) != self.N_COLUMNS:
+                        raise CorpusSourceError(
+                            f"{path}:{line_number}: expected {self.N_COLUMNS} tab-separated "
+                            f"columns, found {len(columns)}"
+                        )
+                    votes = self._parse_votes(columns[4], f"{path}:{line_number}")
+                    if not mapping.in_domain(votes):
+                        raise CorpusSourceError(
+                            f"{path}:{line_number}: vote count {votes!r} outside the declared "
+                            f"domain {list(mapping.domain)}"
+                        )
+                    counts[votes] += 1
+        return dict(sorted(counts.items()))
 
     def iter_candidates(self) -> Iterator[RawCandidatePair]:
         mapping = self.label_mapping()
