@@ -1,0 +1,267 @@
+{
+  "inputs": {
+    "decisions_csv": "release/d3-results/decisions.csv",
+    "decisions_csv_sha256": "f001dcb1f9b01b4c1acc91e204dc4e824276af0859aa3bdfd8f00c2ddcd46401",
+    "anova_csv": "release/d3-results/analysis/anova.csv",
+    "anova_csv_sha256": "e94e353fe7905332ab142767e7818e17c1110e8af7f88f33106d8b6df8965486",
+    "n_negative_observations": 5270,
+    "n_events": 43,
+    "n_pairs": 527
+  },
+  "response": "is_fp = (outcome == 'FP') over rows with label == 0",
+  "alpha": 0.05,
+  "reference_levels": {
+    "model": "all-MiniLM-L6-v2",
+    "workload": "chat",
+    "threshold": "0.70"
+  },
+  "verdict_rule": {
+    "H0_1": "AGREE when the method retains H0_1 (frozen ANOVA: retain)",
+    "H0_2": "AGREE when the method rejects H0_2 (frozen ANOVA: reject)",
+    "cluster_bootstrap_H0_1": "reject when the percentile CI of diff_mean_config_fpr excludes 0",
+    "cluster_bootstrap_H0_2": "reject when any Bonferroni-adjusted pairwise workload diff_pooled_fpr CI excludes 0",
+    "roles": "primary = the ticket's method 1; method = the ticket's methods 2-4; cross_check / sensitivity / diagnostic are not substituted for the primary",
+    "glmm": "no verdict unless both the full and reduced fits converged (optimizer success, max |gradient| < 1e-3, positive-definite Hessian)"
+  },
+  "permutation": {
+    "model_exact": {
+      "model_a": "all-MiniLM-L6-v2",
+      "model_b": "modernbert",
+      "n_strata": 15,
+      "events_a": 26,
+      "events_b": 17,
+      "n_per_model": 2635,
+      "mean_config_fpr_a": 0.010924129241304386,
+      "mean_config_fpr_b": 0.007208041668154881,
+      "diff_mean_config_fpr": 0.003716087573149503,
+      "p_mean_config": 0.18834769143414493,
+      "pooled_fpr_a": 0.009867172675521821,
+      "pooled_fpr_b": 0.0064516129032258064,
+      "diff_pooled_fpr": 0.003415559772296015,
+      "p_pooled": 0.21616909789721367
+    },
+    "workload_exact": {
+      "workloads": [
+        "chat",
+        "code",
+        "faq"
+      ],
+      "n_per_config": {
+        "chat": 157,
+        "code": 233,
+        "faq": 137
+      },
+      "n_strata": 10,
+      "events": {
+        "chat": 3,
+        "code": 13,
+        "faq": 27
+      },
+      "mean_config_fpr": {
+        "chat": 0.001910828025477707,
+        "code": 0.005579399141630901,
+        "faq": 0.01970802919708029
+      },
+      "statistic": 0.00017660565694017124,
+      "p_value": 9.551547118646726e-08
+    },
+    "model_monte_carlo": {
+      "n_perm": 20000,
+      "seed": 22,
+      "statistic": 0.003716087573149504,
+      "p_value": 0.18529073546322683
+    },
+    "workload_monte_carlo": {
+      "n_perm": 20000,
+      "seed": 23,
+      "statistic": 0.00017660565694017124,
+      "p_value": 4.999750012499375e-05
+    },
+    "model_cluster_signflip_exact": {
+      "discordant_pairs": 9,
+      "n_sign_patterns": 512,
+      "statistic": 0.0037160875731495034,
+      "p_value": 0.03125
+    },
+    "matched_unit_exact": {
+      "only_a": 10,
+      "only_b": 1,
+      "odds_ratio": 0.1,
+      "or_ci_low": 0.0023042696657500352,
+      "or_ci_high": 0.702939032451682,
+      "p_value": 0.01171875,
+      "model_a": "all-MiniLM-L6-v2",
+      "model_b": "modernbert"
+    },
+    "paired_config": {
+      "n_configuration_pairs": 15,
+      "n_nonzero_differences": 6,
+      "n_positive_differences": 6,
+      "n_negative_differences": 0,
+      "mean_difference": 0.0037160875731495043,
+      "t_statistic": 1.910580783574002,
+      "t_p_value": 0.0767567855904945,
+      "wilcoxon_statistic": 0.0,
+      "wilcoxon_p_value": 0.03125
+    },
+    "model_strata": "workload x threshold",
+    "workload_strata": "model x threshold"
+  },
+  "logistic": {
+    "formula_full": "C(model) * C(workload) + C(threshold)",
+    "formula_additive": "C(model) + C(workload) + C(threshold)",
+    "term_tests": {
+      "H0_1": {
+        "term": "C(model)",
+        "tested_in": "C(model) + C(workload) + C(threshold)"
+      },
+      "H0_2": {
+        "term": "C(workload)",
+        "tested_in": "C(model) + C(workload) + C(threshold)"
+      },
+      "H0_3": {
+        "term": "C(model):C(workload)",
+        "tested_in": "C(model) * C(workload) + C(threshold)"
+      },
+      "threshold": {
+        "term": "C(threshold)",
+        "tested_in": "C(model) + C(workload) + C(threshold)"
+      }
+    },
+    "firth_penalty": "Jeffreys prior, 0.5 * log det(X'WX); tests are penalised LR with term coefficients fixed at 0 and the penalty from the full design",
+    "fits": {
+      "C(model) * C(workload) + C(threshold)": {
+        "separation": {
+          "lp_status": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+          "lp_optimum": -0.0,
+          "separation": false,
+          "all_event_rows": 0,
+          "no_event_rows": 14
+        },
+        "ml": {
+          "converged": true,
+          "iterations": 10,
+          "warnings": [],
+          "max_abs_coef": 5.065341960209204,
+          "max_se": 1.3537803793241945,
+          "llf": -28.053671527479878
+        },
+        "firth": {
+          "converged": true,
+          "iterations": 15,
+          "penalised_llf": -208.15133575960056
+        }
+      },
+      "C(model) + C(workload) + C(threshold)": {
+        "separation": {
+          "lp_status": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+          "lp_optimum": -0.0,
+          "separation": false,
+          "all_event_rows": 0,
+          "no_event_rows": 14
+        },
+        "ml": {
+          "converged": true,
+          "iterations": 10,
+          "warnings": [],
+          "max_abs_coef": 5.15962655593387,
+          "max_se": 1.0252714450684344,
+          "llf": -28.086103509157503
+        },
+        "firth": {
+          "converged": true,
+          "iterations": 15,
+          "penalised_llf": -208.49458801593406
+        }
+      }
+    }
+  },
+  "glmm": {
+    "random_effect": "(1 | pair_id)",
+    "estimation": "maximum likelihood, adaptive Gauss-Hermite quadrature, 25 nodes, BFGS",
+    "fits": {
+      "C(model) * C(workload) + C(threshold)": {
+        "llf": -130.58755519343242,
+        "optimizer_success": false,
+        "optimizer_message": "Desired error not necessarily achieved due to precision loss.",
+        "iterations": 33,
+        "max_abs_gradient": 44.646241205863056,
+        "hessian_min_eigenvalue": -16721.694710421947,
+        "hessian_max_eigenvalue": 26.12317283836147,
+        "hessian_positive_definite": false,
+        "sigma": 1.9060947114239217,
+        "converged": false,
+        "warnings": []
+      },
+      "C(model) + C(workload) + C(threshold)": {
+        "llf": -128.75059226613936,
+        "optimizer_success": false,
+        "optimizer_message": "Desired error not necessarily achieved due to precision loss.",
+        "iterations": 32,
+        "max_abs_gradient": 42.455095409566354,
+        "hessian_min_eigenvalue": -134992485.09955654,
+        "hessian_max_eigenvalue": 367558003.49281186,
+        "hessian_positive_definite": false,
+        "sigma": 1.8964666215166737,
+        "converged": false,
+        "warnings": []
+      }
+    },
+    "reduced_fits": {
+      "H0_1": {
+        "llf": -129.70057782736205,
+        "optimizer_success": false,
+        "optimizer_message": "Desired error not necessarily achieved due to precision loss.",
+        "iterations": 13,
+        "max_abs_gradient": 56.40298956970282,
+        "hessian_min_eigenvalue": 0.042764974210114576,
+        "hessian_max_eigenvalue": 5256.275536117951,
+        "hessian_positive_definite": true,
+        "sigma": 1.9695598967206394,
+        "converged": false,
+        "warnings": []
+      },
+      "H0_2": {
+        "llf": -135.23030153481324,
+        "optimizer_success": false,
+        "optimizer_message": "Desired error not necessarily achieved due to precision loss.",
+        "iterations": 22,
+        "max_abs_gradient": 0.02853658997910111,
+        "hessian_min_eigenvalue": 0.32549186405642433,
+        "hessian_max_eigenvalue": 57952.40047829532,
+        "hessian_positive_definite": true,
+        "sigma": 1.9522656574693258,
+        "converged": false,
+        "warnings": []
+      },
+      "threshold": {
+        "llf": -158.17709757399467,
+        "optimizer_success": false,
+        "optimizer_message": "Desired error not necessarily achieved due to precision loss.",
+        "iterations": 21,
+        "max_abs_gradient": 0.004412271437222262,
+        "hessian_min_eigenvalue": 0.8076864538812754,
+        "hessian_max_eigenvalue": 8956.556440799537,
+        "hessian_positive_definite": true,
+        "sigma": 1.4571475785735553,
+        "converged": false,
+        "warnings": []
+      }
+    }
+  },
+  "bootstrap": {
+    "n_boot": 10000,
+    "seed": 22,
+    "resampling_unit": "pair_id",
+    "strata": "workload",
+    "interval": "percentile (linear interpolation; inverted CDF for odds ratios)"
+  },
+  "versions": {
+    "python": "3.10.19",
+    "numpy": "2.2.6",
+    "pandas": "2.3.3",
+    "scipy": "1.15.2",
+    "statsmodels": "0.14.6",
+    "patsy": "1.0.2"
+  }
+}

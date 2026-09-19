@@ -1,4 +1,4 @@
-557e219f1643e7eb75f0172b1297f5442f7e1a9a19969d453899c637a688096a  ./PROVENANCE.md
+f32e78cbec5943161d4418b2fe37a0e2349e35ed37cfd34fe45f2894b8d4fc2c  ./PROVENANCE.md
 411af59fadfc76f52758bfd488d13686bebd0d52ca2239daa3f780914c183f08  ./d3-results/analysis/analysis_meta.json
 e94e353fe7905332ab142767e7818e17c1110e8af7f88f33106d8b6df8965486  ./d3-results/analysis/anova.csv
 fe7c7f668efc3d9697c1c7e1727f96a2a5b169f717cb5cfbef501d59f85a158e  ./d3-results/analysis/curves_hit_rate.csv
@@ -17,6 +17,13 @@ b7772e3beebf302a811ba37fcdd6bc341abda4aeb5ca540c059a1a8e733f3f79  ./d3-results/r
 f5497003a1ec78fba473b9331faf44c0bdae8300f7136603e31f895a831ed044  ./d3-results/replication/cross-environment.results.csv
 86e2e80214944fa5ce7e39059ec22c3037164fe72440c9074edcb6173a547444  ./d3-results/replication/determinism.replication.json
 f5497003a1ec78fba473b9331faf44c0bdae8300f7136603e31f895a831ed044  ./d3-results/results.csv
+0f2d24aa1d83065b788408fbff6234e0583341f3fa111983dc4e10ff2f9b3af7  ./d3-results/robustness/bootstrap.csv
+6b75420f7dc0c7f34f6f9e2401248f6efd366445c4d93f65faabed0109d6c4bf  ./d3-results/robustness/coefficients.csv
+8477459638f7cd5cb1430fda672d29bfbd216009e749f91186d489d9ce0be5ac  ./d3-results/robustness/event_counts.csv
+e099099e59fe622a0337f271482f5279a48c214f623234d46243b891593cee0f  ./d3-results/robustness/model_discordance.csv
+a99778bc9bcf14e0c818ed43621e4b37288c5f3162c2f9d4bfa0505d860df657  ./d3-results/robustness/robustness_meta.json
+1d582bdf20da01993cb2c596680eb57a39eef58a5963822914bfc624e27dbdf2  ./d3-results/robustness/tests.csv
+bf7d7d32851976b7bb6327de7eb8df8fa61157a62233cdbd1e09193799ed95f1  ./d3-results/robustness/verdicts.csv
 1424a02e85528f22e88f81d2010dc1e24b3825d211f4d636d0f5ef76a4a0bb3f  ./d3-results/run_meta.json
 1c694bfabc6f424a3bfbf13d3d7a652c7ce0ba38fc942a66e709018ce0ee8216  ./latency/latency.csv
 b407b6fcbf32d010003bbcdef47419ce2bd6f46f3ca0f8e136dc53f252dcc4ba  ./latency/latency_meta.json
