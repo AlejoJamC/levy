@@ -4,10 +4,10 @@ Capability: HTTP interface to the caching engine — the chat-completions proxy 
 
 ## Purpose
 
-Expose the caching engine over HTTP per the frozen specification's intended interface: a chat-completions proxy endpoint that serves exact-cache, semantic-cache, and provider responses with a provider-shaped body and cache identity carried in response headers, per-request cache configuration resolved through a bounded engine pool, structured error responses instead of stack traces, one structured log record per request sufficient to replay a request sequence, and admin endpoints for cache statistics and cache clearing.
+Expose the caching engine over HTTP per the study design's intended interface: a chat-completions proxy endpoint that serves exact-cache, semantic-cache, and provider responses with a provider-shaped body and cache identity carried in response headers, per-request cache configuration resolved through a bounded engine pool, structured error responses instead of stack traces, one structured log record per request sufficient to replay a request sequence, and admin endpoints for cache statistics and cache clearing.
 
 ## Requirements
-### Requirement: Chat completions endpoint per the frozen contract
+### Requirement: Chat completions endpoint per the API contract
 The system SHALL expose `POST /v1/chat/completions` accepting a JSON body with `messages` (role/content list), optional `model`, and optional `cache_config` carrying `threshold` and/or `embedding_model`, and SHALL serve the response through the engine's production flow (exact cache → semantic cache → LLM provider).
 
 #### Scenario: Miss serves a fresh provider response

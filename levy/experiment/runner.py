@@ -64,7 +64,7 @@ def run_sweep(
     vector_index_backend: str = "auto",
 ) -> Tuple[List[EvaluationResult], Dict[str, dict]]:
     """
-    Run every configuration in `configs` (the full frozen grid by default),
+    Run every configuration in `configs` (the full study grid by default),
     sharing one `EmbeddingManager` per model across its configurations so
     LEV-1's `(model_key, sha256(text))` memoization isn't defeated by a
     sweep. Returns `(results, model_identities)` where `model_identities`

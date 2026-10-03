@@ -1,7 +1,7 @@
 """
 Tests for the +/-5% replication check (LEV-8 / 4.6).
 
-Frozen Success Criterion 3: headline precision and recall must replicate
+Success criterion 3: headline precision and recall must replicate
 within +/-5%. Under mock providers the harness is byte-deterministic, so a
 self-comparison must match exactly; a perturbed reference must fail with an
 itemized, auditable diff.
@@ -271,7 +271,7 @@ class TestVerdictFile(unittest.TestCase):
             verdict["config_ids"],
             sorted(config.config_id for config in _small_grid()),
         )
-        self.assertEqual(len(verdict["config_ids"]), 2)  # not the frozen 30
+        self.assertEqual(len(verdict["config_ids"]), 2)  # not the full 30
 
     def test_failing_run_is_recorded_as_failed_not_omitted(self):
         with tempfile.TemporaryDirectory() as tmp:

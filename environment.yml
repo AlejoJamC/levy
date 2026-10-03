@@ -11,6 +11,7 @@ dependencies:
   - statsmodels>=0.14  # LEV-8: two-way ANOVA (anova_lm) + Tukey HSD
   - matplotlib>=3.7  # LEV-8: threshold-selection figures
   - httpx>=0.24.0
+  - httpx2>=2.0  # Starlette's TestClient (API tests) uses httpx2; httpx alone is deprecated there
   - python-dotenv>=1.0.0
   - redis-py>=5.0.0  # conda-forge package name for the python client; "redis" is the server
   - faiss-cpu>=1.7  # install via conda-forge (pip wheel segfaults on Apple Silicon arm64)

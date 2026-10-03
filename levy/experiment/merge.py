@@ -22,7 +22,7 @@ complete:
   is stale, and silently keeping either would publish statistics nobody chose.
   The error names the cell and both files.
 - **Incomplete grid.** A merged set missing cells, or carrying cells outside the
-  frozen grid, is rejected here rather than in the middle of a two-way ANOVA
+  study grid, is rejected here rather than in the middle of a two-way ANOVA
   that assumes a balanced design.
 """
 
@@ -190,10 +190,10 @@ def merge_decisions(inputs: Sequence[MergeInput]) -> Optional[List[Dict[str, str
 
 def check_grid_coverage(rows: Sequence[Dict[str, str]]) -> None:
     """
-    Require the merged rows to be exactly the frozen 2 x 3 x 5 grid.
+    Require the merged rows to be exactly the 2 x 3 x 5 grid.
 
     Both directions matter: a missing cell breaks the balanced design the ANOVA
-    assumes, and an unexpected `config_id` means a run outside the frozen grid
+    assumes, and an unexpected `config_id` means a run outside the study grid
     was merged in, which would change what the analysis is a statement about.
     """
     expected = [config.config_id for config in full_grid()]
@@ -209,11 +209,11 @@ def check_grid_coverage(rows: Sequence[Dict[str, str]]) -> None:
         )
     if unexpected:
         problems.append(
-            f"{len(unexpected)} configuration(s) outside the frozen grid: {unexpected}"
+            f"{len(unexpected)} configuration(s) outside the study grid: {unexpected}"
         )
     if problems:
         raise ResultsMergeError(
-            "the merged result set does not cover the frozen grid "
+            "the merged result set does not cover the study grid "
             f"({len(expected)} configurations = 2 models x 3 workloads x 5 thresholds): "
             + "; ".join(problems)
             + ". Run the missing cells with `python scripts/run_experiments.py` and merge "

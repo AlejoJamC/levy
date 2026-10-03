@@ -140,14 +140,14 @@ class TestMergeLogic(unittest.TestCase):
             self.assertIn("10 of 30 configuration(s) missing", message)
             self.assertIn(WORKLOADS[2], message)
 
-    def test_configuration_outside_the_frozen_grid_is_rejected(self):
+    def test_configuration_outside_the_study_grid_is_rejected(self):
         with TemporaryDirectory() as tmp:
             dirs, _ = _per_workload_dirs(Path(tmp))
             merged = merge_results([load_input(d) for d in dirs])
             merged.append({**merged[0], "config_id": "some-other-model|faq|0.70"})
             with self.assertRaises(ResultsMergeError) as ctx:
                 check_grid_coverage(merged)
-            self.assertIn("outside the frozen grid", str(ctx.exception))
+            self.assertIn("outside the study grid", str(ctx.exception))
 
     def test_decisions_merge_and_a_missing_one_is_an_error(self):
         with TemporaryDirectory() as tmp:
@@ -374,7 +374,7 @@ class TestMergeCli(unittest.TestCase):
             out = root / "merged"
             result = _run_cli([dirs[0], "--out-dir", out])
             self.assertEqual(result.returncode, 1)
-            self.assertIn("does not cover the frozen grid", result.stdout)
+            self.assertIn("does not cover the study grid", result.stdout)
             self.assertFalse(out.exists())
 
     def test_allow_partial_writes_a_diagnostic_set(self):

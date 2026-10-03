@@ -1,5 +1,5 @@
 """
-Tests for the frozen experimental grid (LEV-4 / 4.1).
+Tests for the experimental grid (LEV-4 / 4.1).
 """
 
 import unittest
@@ -29,7 +29,7 @@ class TestFullGrid(unittest.TestCase):
         }
         self.assertEqual(identities, expected)
 
-    def test_frozen_models_and_workloads(self):
+    def test_study_models_and_workloads(self):
         self.assertEqual(EMBEDDING_MODELS, ("all-MiniLM-L6-v2", "modernbert"))
         self.assertEqual(set(WORKLOADS), {"faq", "code", "chat"})
 

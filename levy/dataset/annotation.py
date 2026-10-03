@@ -1,7 +1,7 @@
 """
 Blind re-annotation tooling for the ground-truth dataset (LEV-3 / D2).
 
-The frozen S&D Report requires "the author's blind re-annotations" of the
+The study requires the author's blind re-annotation of the
 900 sampled pairs, to be compared against the original corpus labels via
 Cohen's kappa (`levy.dataset.kappa`). "Blind" means the annotator must not
 see `original_label` (or `source_corpus` / `source_pair_id`, which could hint

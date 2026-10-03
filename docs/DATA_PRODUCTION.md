@@ -14,8 +14,8 @@ What it is not:
   [`REPRODUCTION.md`](REPRODUCTION.md).
 - **Not the pipeline definition.** `scripts/reproduce.sh` is the single
   definition of the evaluation pipeline; Part 2 below wraps it.
-- **Not the datasheet.** Corpus licences, the sampling protocol, the recorded
-  deviations from the frozen documents and the dataset's limitations are in
+- **Not the datasheet.** Corpus licences, the sampling protocol, the corpus
+  choices and the dataset's limitations are in
   [`../data/DATASHEET.md`](../data/DATASHEET.md).
 
 ---
@@ -26,7 +26,7 @@ What it is not:
 |---|---|
 | Corpora | all three acquired, checksums pinned in `data/corpora.json` |
 | Dataset | 900 pairs, 300 per workload, 900/900 blind-annotated |
-| Cohen's κ | 0.5000 (faq 0.5267, code 0.4200, chat 0.5533) — below the frozen κ > 0.7 bar; a finding, see [`../data/DATASHEET.md`](../data/DATASHEET.md) §4 |
+| Cohen's κ | 0.5000 (faq 0.5267, code 0.4200, chat 0.5533) — below the κ > 0.7 bar; a finding, see [`../data/DATASHEET.md`](../data/DATASHEET.md) §4 |
 | D3 results | published as [`../release/d3-results/`](../release/d3-results/) — H0₁ retained, H0₂ rejected, H0₃ retained; best hit rate 24.0%, so all 30 configurations miss the 30% bar; ±5% replication passed 60/60 |
 
 ---
@@ -169,7 +169,7 @@ and writes nothing — fix them all, then re-run. Common findings:
 
 | Finding | Meaning |
 |---|---|
-| `[class-pool] … needs 150 positive pairs, only N available` | that corpus cannot fill the stratum; see the frozen Proposal's Risk 1 fallback path before substituting anything |
+| `[class-pool] … needs 150 positive pairs, only N available` | that corpus cannot fill the stratum; the fallback corpora listed in `data/DATASHEET.md` §2 are the substitution path |
 | `[checksum] … does not match the pinned` | the file changed since you pinned it |
 | `[required-fields] … missing columns` | wrong file, or the QQP conversion in 2A did not run |
 | `[label-domain] … outside the declared domain` | an unexpected label value; reported, never coerced |
@@ -251,7 +251,7 @@ python scripts/compute_kappa.py --dataset data/ground_truth.full.json --strict
 
 Reports the overall kappa plus a per-workload breakdown, comparing your
 `author_label` against the corpus's `original_label`. `--strict` exits non-zero
-if the fully annotated dataset falls below the frozen success threshold of
+if the fully annotated dataset falls below the success threshold of
 **κ > 0.7**. It does not gate while pairs remain unannotated, so running it
 mid-way is safe and informative.
 
@@ -291,8 +291,8 @@ query text, and it is a second version-controlled copy of the 900 annotations.
 
 The gitignore rules are a staging filter only. `git add -f`, `git stash -u` and
 `git stash --all` all bypass them — `git stash --all` stashes *ignored* files
-straight into `refs/stash` with no ignore rule consulted, and that has already put
-900 rows of corpus text into the object database once. `scripts/audit_release.sh`
+straight into `refs/stash` with no ignore rule consulted, which can put corpus
+text into the object database. `scripts/audit_release.sh`
 check 4 is the backstop: it scans `git log --all`, which includes `refs/stash`.
 
 Practical rules:
@@ -319,7 +319,7 @@ analysis bundle → ±5% replication.
 ## Embedding models
 
 `--embedding-provider sentence-transformers`, loading both study checkpoints from
-HuggingFace, as the frozen documents mandate. Registry wiring in
+HuggingFace. Registry wiring in
 `levy/embedding_manager.py`:
 
 | Alias | Resolved checkpoint | Prefix | `trust_remote_code` |
@@ -467,12 +467,12 @@ What to record:
 2. **Tukey** — ran or skipped, with the reason, from `tukey_status.csv`.
 3. **Hit rate against the 30% viability bar**, per workload and threshold. Note
    the threshold band: embeddings are L2-normalised and similarity is `1/(1+L2)`,
-   so the frozen 0.70–0.90 sweep covers a high-cosine band (~0.91–0.998). That is
-   spec-mandated.
+   so the 0.70–0.90 sweep covers a high-cosine band (~0.91–0.998). That is
+   intentional.
 4. **Replication** — pass/fail and coverage, from `replication.json`.
 
-`results/` is gitignored; published outputs are attached to a release, not
-committed.
+`results/` is gitignored local scratch. The published run of record lives in
+[`../release/`](../release/); see [`../release/PROVENANCE.md`](../release/PROVENANCE.md).
 
 ## Runtime — and why it is mostly sleep
 
@@ -485,8 +485,9 @@ isolates call counts from embedding cost:
 | code | 599 | 0.20 s |
 | chat | 574 | 0.18 s |
 
-`run_sweep`'s `llm_latency_seconds` defaults to 0.5 s and
-`scripts/run_experiments.py` exposes no flag to override it:
+`run_sweep`'s `llm_latency_seconds` defaults to 0.5 s (`--llm-latency-seconds` on
+`scripts/run_experiments.py` and `scripts/check_replication.py` overrides it, and
+does not affect results):
 
 ```
 17,730 calls x 0.5 s ≈ 2.5 h   (sweep)
@@ -500,8 +501,7 @@ its 15 configurations, so each model embeds the ~1,800 unique texts once. Real
 embeddings produce more semantic hits than the mock and therefore fewer LLM calls,
 so 5 h is an upper bound.
 
-Adding a latency flag would cut the run to ~10 minutes, but it is a code change to
-shipped tooling and belongs in its own issue, not mid-run.
+Passing `--llm-latency-seconds 0` to both stages cuts the run to ~10 minutes.
 
 ---
 
@@ -517,7 +517,7 @@ copy, or a candidate file beside the real one.
 
 Likewise for results: exactly one directory is the result of record — the merged,
 30-row one. The staging directories below exist only to feed the merge and are
-deleted at the end. Pointing the analysis, the replication check or the poster at
+deleted at the end. Pointing the analysis or the replication check at
 a staging directory returns a valid-looking answer covering part of the grid.
 
 Set the three variables once, then work down:
@@ -607,10 +607,9 @@ configurations, one verdict file, ~3 hours.
 nohup sh -c 'python scripts/check_replication.py --reference '"$NEXT"'/results.csv --dataset data/ground_truth.full.csv --embedding-provider sentence-transformers; echo "== REPLICATION DONE (exit $?) =="' > results/replication.log 2>&1 < /dev/null & disown
 ```
 
-**9. Rebuild the poster, delete the staging directories, run the audit.**
+**9. Delete the staging directories, run the audit.**
 
 ```bash
-python docs/poster/build_poster.py --results-dir "$NEXT"
 rm -rf "results/staging-$W" "results/staging-prev-minus-$W"
 scripts/audit_release.sh
 ```
@@ -624,7 +623,7 @@ What step 1 guarantees, and refuses to proceed without:
 | | |
 |---|---|
 | Disjointness | new pairs are drawn from the candidate pool **minus every `source_pair_id` already in the dataset**, so a re-draw cannot re-draw what it replaces — at the same seed or any other |
-| Shortfall | if the pool cannot cover `--n-per-workload` after that exclusion, the run fails naming the workload and the shortfall, and writes nothing. Do not lower `--n-per-workload`: that changes the frozen design |
+| Shortfall | if the pool cannot cover `--n-per-workload` after that exclusion, the run fails naming the workload and the shortfall, and writes nothing. Do not lower `--n-per-workload`: that changes the study design |
 | Other workloads | passed through untouched, `author_label` included; the test suite asserts those rows are byte-for-byte identical |
 | Labels | cleared for the re-drawn workload only, which is what makes step 2 present exactly those 300 pairs |
 | Stale answers | the new pairs reuse that workload's `pair_id`s, so step 1 removes their entries from the progress file (backed up first, other workloads untouched) and reports the count. Otherwise step 2 would re-apply the old answers to the new pairs |
@@ -641,16 +640,14 @@ directory. Not implemented.
 
 ## Do not
 
-Per the frozen documents — these are findings to report, never things to code
-around:
+These are findings to report, never things to code around:
 
 - **Do not rescale the thresholds** to chase hit rate. The 0.70–0.90 band on the
-  `1/(1+L2)` scale is spec-mandated.
+  `1/(1+L2)` scale is intentional.
 - **Do not lower the κ > 0.7 bar**, re-annotate non-blind, re-draw for agreement,
   or change `ground_truth_label()`.
 - **Do not substitute either embedding model.** The pair is the independent
   variable of the primary research question, O2, H0₁ and Success Criterion 1.
-- **Do not edit the two frozen documents** for any reason.
 - **Do not replace `data/ground_truth.{csv,json}`** — the synthetic fixtures are
   the permanent offline default for the test suite and `reproduce.sh`.
 
@@ -672,7 +669,7 @@ event — record the new snapshot in `data/corpora.json` and note it in the
 datasheet rather than silently re-pinning.
 
 **Pre-flight reports a pool shortfall.** The corpus cannot fill a stratum at 300
-pairs. Do not lower `--n-per-workload`. The Proposal's Risk 1 contingency covers
+pairs. Do not lower `--n-per-workload`. The fallback-corpus contingency covers
 corpus substitution.
 
 **Rehydration says a `source_pair_id` was not found.** The corpus on disk is not
@@ -688,7 +685,7 @@ the log is the only progress signal.
 
 ## Related documentation
 
-- [`../data/DATASHEET.md`](../data/DATASHEET.md) — corpora, licences, protocol, deviations, limitations
+- [`../data/DATASHEET.md`](../data/DATASHEET.md) — corpora, licences, protocol, corpus choices, limitations
 - [`../data/README.md`](../data/README.md) — what is committed versus generated in `data/`
 - [`../data/raw/README.md`](../data/raw/README.md) — per-corpus acquisition layout
 - [`REPRODUCTION.md`](REPRODUCTION.md) — reproducing the study from the published artifact

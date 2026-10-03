@@ -28,7 +28,7 @@ class CacheConfigRequest(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    """`POST /v1/chat/completions` request body, per the frozen S&D contract."""
+    """`POST /v1/chat/completions` request body, per the API contract."""
 
     messages: List[ChatMessage] = Field(min_length=1)
     model: Optional[str] = None

@@ -118,7 +118,7 @@ class TestFigures(unittest.TestCase):
             written = write_curve_figures(hit_rate.copy(), precision.copy(), Path(tmp) / "again")
             self.assertTrue(all(path.stat().st_size > 0 for path in written))
 
-    def test_viability_reference_is_the_frozen_thirty_percent(self):
+    def test_viability_reference_is_thirty_percent(self):
         self.assertAlmostEqual(HIT_RATE_VIABILITY, 0.30, places=12)
 
 

@@ -11,7 +11,7 @@ similarity, so a miss can still show "closest was X at 0.62".
 
 The threshold is supplied per call rather than baked into the cache, so a
 UI can flip the decision by re-evaluating the same index -- no re-embedding
-of the dataset, matching the frozen `1/(1+L2)` scale used verbatim (never
+of the dataset, matching the `1/(1+L2)` scale used verbatim (never
 rescaled).
 """
 

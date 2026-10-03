@@ -1,6 +1,6 @@
 """
 Cohen's kappa between original corpus labels and the author's blind
-re-annotation (LEV-3 / D2; frozen S&D Report success criterion: kappa > 0.7,
+re-annotation (LEV-3 / D2; success criterion: kappa > 0.7,
 computed over the full 900-pair set).
 
 Implemented from the 2x2 contingency table with stdlib + numpy only (no

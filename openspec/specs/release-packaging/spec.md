@@ -4,7 +4,7 @@ Capability: the reproducibility surface of the public artefact — a literal rep
 
 ## Purpose
 
-Package the released system as a reproducible public artefact per the frozen specification's deliverables: a literal, verbatim-executable reproduction guide covering environment setup, dataset build, the 30-configuration harness sweep, the statistical analysis bundle, and the replication check — offline by default against the committed fixture dataset and mock providers, and dataset-agnostic so the real dataset drops in via a single argument change with no other steps or code changes; a one-command containerised path that runs the same pipeline end-to-end with no API key and no network, built from the repository's single dependency specification, alongside the pre-existing Redis service left intact; a single shared definition of the pipeline so the guide and the container entry point cannot silently diverge; user-facing architecture documentation that traces the shipped code back to the frozen specification's named components; release documentation, archived OpenSpec changes, and synced capability specs that describe only what has actually shipped, free of in-flight ticket scaffolding, validated end-to-end; a recorded, re-runnable release audit that checks licensing, tracked and historical secrets, and personal-data exposure and fails loudly on any finding; and honest handling of runnable examples and superseded documents, with the frozen specification documents left untouched.
+Package the released system as a reproducible public artefact per the study design's deliverables: a literal, verbatim-executable reproduction guide covering environment setup, dataset build, the 30-configuration harness sweep, the statistical analysis bundle, and the replication check — offline by default against the committed fixture dataset and mock providers, and dataset-agnostic so the real dataset drops in via a single argument change with no other steps or code changes; a one-command containerised path that runs the same pipeline end-to-end with no API key and no network, built from the repository's single dependency specification, alongside the pre-existing Redis service left intact; a single shared definition of the pipeline so the guide and the container entry point cannot silently diverge; user-facing architecture documentation that traces the shipped code back to the study design's named components; release documentation, archived OpenSpec changes, and synced capability specs that describe only what has actually shipped, free of in-flight ticket scaffolding, validated end-to-end; a recorded, re-runnable release audit that checks licensing, tracked and historical secrets, and personal-data exposure and fails loudly on any finding; and honest handling of runnable examples and superseded documents, with the study design documents left untouched.
 ## Requirements
 ### Requirement: Literal reproduction guide
 The repository SHALL contain a step-by-step reproduction guide covering environment setup, dataset build, the 30-configuration harness run, the analysis bundle, and the replication check, written as commands that can be executed verbatim, defaulting to the committed fixture dataset and mock providers so it requires no API key and no network.
@@ -47,11 +47,11 @@ The command sequence that constitutes the evaluation pipeline SHALL be defined o
 - **THEN** running the pipeline fails visibly rather than silently diverging from the documentation
 
 ### Requirement: User-facing architecture documentation
-The repository SHALL contain architecture documentation written for a reader of the public artefact, mapping the shipped code onto the frozen specification's named components and describing the request flow and the provider-abstraction pattern; agent-facing internal notes SHALL link to it rather than duplicate it.
+The repository SHALL contain architecture documentation written for a reader of the public artefact, mapping the shipped code onto the study design's named components and describing the request flow and the provider-abstraction pattern; agent-facing internal notes SHALL link to it rather than duplicate it.
 
 #### Scenario: Spec-to-code traceability
 - **WHEN** a reviewer reads the architecture document
-- **THEN** each component named in the frozen specification is traceable to the module that implements it
+- **THEN** each component named in the study design is traceable to the module that implements it
 
 ### Requirement: Release documentation reflects shipped code
 User-facing documentation SHALL describe the released system without intermediate work-in-progress scaffolding — in particular, no issue or ticket identifiers in user-facing section headings — while internal planning artefacts retain their identifiers.
@@ -91,13 +91,13 @@ The repository SHALL provide an executable audit that verifies the licence is pr
 - **THEN** the corpus-text check passes, because synthetic text carries no third-party licence
 
 ### Requirement: Examples and superseded documents handled honestly
-Runnable examples SHALL be verified as part of release review, any example that incurs real API cost SHALL be documented as opt-in and excluded from automated paths, and superseded or historical documents SHALL be flagged in place — frozen documents SHALL NOT be modified.
+Runnable examples SHALL be verified as part of release review, any example that incurs real API cost SHALL be documented as opt-in and excluded from automated paths, and superseded or historical documents SHALL be flagged in place — original study plan SHALL NOT be modified.
 
 #### Scenario: Billed example is fenced off
 - **WHEN** the examples are reviewed
 - **THEN** the real-API example is documented as billed and opt-in, and no automated path invokes it
 
-#### Scenario: Historical document flagged, frozen documents untouched
+#### Scenario: Historical document flagged, original study plan untouched
 - **WHEN** superseded documentation is identified
-- **THEN** it carries an in-place status note, and the frozen specification documents remain byte-identical
+- **THEN** it carries an in-place status note, and the study design documents remain byte-identical
 

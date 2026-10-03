@@ -1,6 +1,6 @@
 """
-Replication check against the frozen +/-5% criterion (LEV-8, Success
-Criterion 3 of the S&D Report: "replication within +/-5%").
+Replication check against the +/-5% criterion (LEV-8, Success
+Success Criterion 3: "replication within +/-5%").
 
 Compares the headline metrics -- precision and recall -- of a candidate
 harness run against a reference `results.csv`, configuration by
@@ -10,7 +10,7 @@ Tolerance rule (documented, auditable, applied uniformly):
 
     |candidate - reference| <= max(ABSOLUTE_FLOOR, RELATIVE_TOLERANCE * |reference|)
 
-The relative term is the frozen +/-5%. The absolute floor exists because a
+The relative term is the +/-5%. The absolute floor exists because a
 relative tolerance collapses to zero near a reference of 0.0, where it would
 demand bit-exact equality of a quantity the criterion never meant to pin
 that hard; the floor is stated in every report so the criterion stays
@@ -25,7 +25,7 @@ from typing import List, Tuple
 
 import pandas as pd
 
-#: Frozen criterion: headline metrics must replicate within +/-5%.
+#: criterion: headline metrics must replicate within +/-5%.
 RELATIVE_TOLERANCE = 0.05
 
 #: Absolute floor for near-zero reference values (5 percentage points of a
@@ -133,7 +133,7 @@ def compare_results(
 #: (LEV-4), so the only passing outcome is abs_diff == 0.0 everywhere, and
 #: this label makes that expectation explicit rather than implied by context.
 #: "cross-environment" is a re-run on a different host (e.g. the D7 container)
-#: against real embeddings, where the frozen +/-5% tolerance is what the
+#: against real embeddings, where the +/-5% tolerance is what the
 #: criterion actually exists to absorb (float embedding output is not
 #: bit-identical across environments).
 COMPARISON_TYPES: Tuple[str, ...] = ("determinism", "cross-environment")
@@ -169,7 +169,7 @@ def report_to_dict(
     `comparison_type` distinguishes a same-host, byte-deterministic
     self-comparison (every abs_diff expected to be exactly 0.0) from a
     cross-environment re-run (a different host and/or real embeddings, where
-    the frozen +/-5% tolerance is the actual criterion being exercised) — see
+    the +/-5% tolerance is the actual criterion being exercised) — see
     `COMPARISON_TYPES`. A `passed: true` on 60/60 zero diffs means something
     different depending on which one produced it, so the label is explicit
     rather than left to be inferred from where the file happens to sit.
@@ -183,7 +183,7 @@ def report_to_dict(
         "comparison_type": comparison_type,
         "environment": environment or {},
         "criterion": (
-            "S&D Report Success Criterion 3 / Proposal Criterion 3: released code and "
+            "Success Criterion 3: released code and "
             "data replicate headline precision and recall within +/-5%"
         ),
         "passed": bool(report.passed),
@@ -218,7 +218,7 @@ def format_report(report: ReplicationReport, show_all: bool = False, comparison_
     """
     Render the report for a terminal. On failure the per-configuration diff
     table names the configuration, the metric, both values, and the computed
-    deviation, per the frozen criterion's auditability requirement.
+    deviation, per the criterion's auditability requirement.
     """
     expectation = (
         "same host, every abs_diff expected to be exactly 0.0"

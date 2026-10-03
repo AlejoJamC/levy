@@ -1,7 +1,7 @@
 """
 Threshold-selection curves (LEV-8 / D3, evidence base for objective O3).
 
-For each of the 6 (embedding model, workload) pairs, the frozen grid sweeps
+For each of the 6 (embedding model, workload) pairs, the study grid sweeps
 5 similarity thresholds. This module turns `results.csv` into two tidy curve
 tables -- threshold vs hit rate and threshold vs precision -- and renders one
 figure per metric from those tables alone, so the figures are always
@@ -12,7 +12,7 @@ cell (e.g. precision over zero predicted positives, reported as 0.0) is
 visible in the table rather than silently reading as a real zero.
 
 Threshold-scale note: thresholds are on the `1/(1+L2)` similarity scale used
-by `SemanticCache`, carried verbatim from the frozen grid (see CLAUDE.md
+by `SemanticCache`, carried verbatim from the study grid (see CLAUDE.md
 known-gap #3). They are not cosine similarities and are not rescaled here.
 """
 
@@ -28,7 +28,7 @@ import pandas as pd  # noqa: E402
 
 PathLike = Union[str, Path]
 
-#: Frozen economic-viability bar: hit rate must exceed 30% (S&D Report).
+#: Economic-viability bar: hit rate must exceed 30%.
 HIT_RATE_VIABILITY = 0.30
 
 CURVE_COLUMNS = ["model", "workload", "threshold", "metric", "value", "zero_div", "n"]

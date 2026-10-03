@@ -31,8 +31,7 @@ dependencies = [
 dev = [
     "pytest",
     "pytest-cov",
-    "black",
-    "mypy"
+    "httpx2>=2.0",  # Starlette's TestClient (used by the API tests) requires httpx2
 ]
 dashboard = [
     "streamlit>=1.30",

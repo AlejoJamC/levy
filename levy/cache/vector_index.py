@@ -4,7 +4,7 @@ VectorIndex abstraction for the semantic cache (LEV-2).
 Two implementations:
 - BruteForceVectorIndex  — numpy exact k-NN by L2, offline default and correctness oracle.
 - FaissHNSWVectorIndex   — faiss.IndexHNSWFlat(dim, M) wrapped in IndexIDMap, as prescribed
-                           by the frozen S&D Report.
+                           by the design.
 
 Both implementations accept and return raw (un-normalised) vectors; normalisation is the
 caller's responsibility (SemanticCache normalises before calling add/search, per design.md D3).
@@ -187,7 +187,7 @@ class FaissHNSWVectorIndex(VectorIndex):
             k_eff = min(k, self._size)
             sq_distances, ids = self._index.search(q, k_eff)
         # Faiss IndexHNSWFlat returns squared L2 distances; take sqrt for consistency
-        # with BruteForceVectorIndex and the spec's "L2 distance" formula.
+        # with BruteForceVectorIndex and the "L2 distance" formula.
         return (
             [int(i) for i in ids[0] if i >= 0],
             [float(math.sqrt(max(d, 0.0))) for d, i in zip(sq_distances[0], ids[0]) if i >= 0],

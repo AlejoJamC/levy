@@ -1,7 +1,7 @@
 """
 FastAPI router exposing the Levy caching engine over HTTP (LEV-7).
 
-Endpoints (frozen S&D "Intended interface" + known-gap #1):
+Endpoints (intended interface + known-gap #1):
   POST /v1/chat/completions  -- cache-aware chat proxy, Anthropic-format body,
                                  X-Cache-Status / X-Cache-Similarity headers.
   GET  /admin/cache/stats    -- aggregated hit rate, index size, per-model breakdown.
@@ -10,7 +10,7 @@ Endpoints (frozen S&D "Intended interface" + known-gap #1):
 Design decision (recorded in design.md): endpoints are declared `def` (sync) so
 FastAPI runs them in its threadpool -- the whole call chain (engine, caches, the
 LEV-6 Anthropic client) is synchronous and blocking the event loop would
-serialize all requests. This satisfies the frozen "asynchronous wrapper" intent
+serialize all requests. This satisfies the "asynchronous wrapper" intent
 at the HTTP boundary without an AsyncAnthropic migration.
 
 Run with: uvicorn levy.api.app:app
@@ -46,7 +46,7 @@ DEFAULT_POOL_CAP = 8
 
 
 def _extract_prompt(messages: List[ChatMessage]) -> str:
-    """The frozen contract carries the conversation in `messages`; the engine's
+    """The API contract carries the conversation in `messages`; the engine's
     single-turn `generate(prompt)` surface takes the most recent message."""
     return messages[-1].content
 

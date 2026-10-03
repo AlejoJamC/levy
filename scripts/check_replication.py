@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Verify the frozen replication criterion (LEV-8; S&D Report Success Criterion
+Verify the replication criterion (LEV-8; Success Criterion
 3: headline results replicate within +/-5%).
 
 Re-runs the harness over exactly the grid recorded in a reference
@@ -64,7 +64,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dataset", type=Path, default=None, help="Dataset to re-run against (default: the dataset_path in the reference run's run_meta.json)")
     parser.add_argument("--embedding-provider", type=str, default=None, choices=["mock", "sentence-transformers", "ollama"], help="Embedding provider for the re-run (default: the provider recorded in run_meta.json, else mock)")
     parser.add_argument("--keep-dir", type=Path, default=None, help="Write the candidate run here instead of a discarded temp directory")
-    parser.add_argument("--relative-tolerance", type=float, default=RELATIVE_TOLERANCE, help=f"Relative tolerance (default: {RELATIVE_TOLERANCE}, the frozen +/-5%%)")
+    parser.add_argument("--relative-tolerance", type=float, default=RELATIVE_TOLERANCE, help=f"Relative tolerance (default: {RELATIVE_TOLERANCE}, the +/-5%%)")
     parser.add_argument("--absolute-floor", type=float, default=ABSOLUTE_FLOOR, help=f"Absolute floor for near-zero reference values (default: {ABSOLUTE_FLOOR})")
     parser.add_argument("--llm-latency-seconds", type=float, default=0.5, help="Mock LLM latency for the re-run; does not affect results (default: 0.5, matching a real run)")
     parser.add_argument("--comparison-type", type=str, default="determinism", choices=list(COMPARISON_TYPES), help="What this run is checking: 'determinism' (same host, expect every abs_diff==0.0) or 'cross-environment' (different host/embeddings, expect <=5%%) (default: determinism)")

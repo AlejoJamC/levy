@@ -17,7 +17,7 @@ The pipeline SHALL consume the harness output directory (`results.csv` with the 
 - **WHEN** `results.csv` lacks a required column
 - **THEN** the pipeline exits non-zero naming the missing column and writes no output tables
 
-### Requirement: Two-way ANOVA testing the three frozen hypotheses
+### Requirement: Two-way ANOVA testing the three study hypotheses
 The pipeline SHALL fit a two-way ANOVA on false positive rate with factors (embedding model, workload) including their interaction, and SHALL report, for H0₁ (no model main effect), H0₂ (no workload main effect), and H0₃ (no interaction): degrees of freedom, sum of squares, F-statistic, p-value, and an explicit reject/retain statement at α = 0.05, as a machine-readable table. The same table SHALL report, for each of the three terms, the effect sizes η² = SS_effect / SS_total, partial η² = SS_effect / (SS_effect + SS_residual), and ω² = (SS_effect − df_effect × MS_residual) / (SS_total + MS_residual), computed from the fitted sums of squares. ω² SHALL be reported unclamped, including negative values. The Residual row SHALL carry no effect size, and a degenerate response (zero variance in false positive rate) SHALL report every effect size as undefined rather than as a number.
 
 #### Scenario: Constructed model effect is detected
@@ -56,7 +56,7 @@ The pipeline SHALL run Tukey HSD comparisons for significant effects (over the 6
 - **THEN** the output records that Tukey HSD was not run and for which effects
 
 ### Requirement: Threshold-selection curves as tables and figures
-The pipeline SHALL emit, per (model, workload), threshold-vs-hit-rate and threshold-vs-precision as machine-readable tables carrying the harness zero-division flags, and SHALL render corresponding figures to files, including the frozen 30% hit-rate viability reference on the hit-rate figure.
+The pipeline SHALL emit, per (model, workload), threshold-vs-hit-rate and threshold-vs-precision as machine-readable tables carrying the harness zero-division flags, and SHALL render corresponding figures to files, including the 30% hit-rate viability reference on the hit-rate figure.
 
 #### Scenario: Curve tables cover the grid
 - **WHEN** the full 30-configuration results load

@@ -1,13 +1,13 @@
 """
 Hypothesis testing on false positive rate (LEV-8 / D3).
 
-Implements the frozen S&D Report's statistical analysis plan literally:
+Implements the statistical analysis plan literally:
 
   * Two-way ANOVA on false positive rate with factors (embedding model,
     workload) *including their interaction*, over the 30 per-configuration
     FPR values. The 5 thresholds within each (model, workload) cell are the
-    replicates the frozen grid provides.
-  * The three frozen hypotheses, each explicitly rejected or retained at
+    replicates the study grid provides.
+  * The three study hypotheses, each explicitly rejected or retained at
     alpha = 0.05:
         H0_1  no embedding-model main effect on FPR
         H0_2  no workload main effect on FPR
@@ -16,7 +16,7 @@ Implements the frozen S&D Report's statistical analysis plan literally:
     significant (over the 6 model x workload cells when the interaction is
     significant), always accompanied by a ran/skipped statement.
 
-No test is added beyond the frozen plan: no multiplicity corrections across
+No test is added beyond the specified plan: no multiplicity corrections across
 the three hypotheses, no auto-"correction" when residual diagnostics look
 poor. The diagnostics are reported so the author can interpret them in the
 dissertation; interpreting them is not code's job. Effect sizes (eta^2,
@@ -38,7 +38,7 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 DEFAULT_ALPHA = 0.05
 
-#: The dependent variable prescribed by the frozen plan.
+#: The dependent variable prescribed by the analysis plan.
 RESPONSE = "fpr"
 
 EFFECT_MODEL = "model"
@@ -96,7 +96,7 @@ TUKEY_COLUMNS = [
 
 class AnovaDesignError(ValueError):
     """
-    Raised when the supplied results cannot support the frozen two-way design
+    Raised when the supplied results cannot support the two-way design
     with interaction (a factor with fewer than two levels, an empty cell, or
     no within-cell replication).
     """
@@ -204,7 +204,7 @@ def _residual_diagnostics(residuals: np.ndarray, frame: pd.DataFrame) -> Dict[st
         "residual_std": float(np.std(residuals, ddof=1)) if residuals.size > 1 else None,
         "note": (
             "Diagnostics are reported for the author's interpretation; the pipeline "
-            "does not modify the frozen analysis plan in response to them."
+            "does not modify the analysis plan in response to them."
         ),
     }
 
@@ -261,7 +261,7 @@ def run_two_way_anova(results: pd.DataFrame, alpha: float = DEFAULT_ALPHA) -> An
     """
     Fit `fpr ~ C(model) * C(workload)` and return the hypothesis table.
 
-    Type II sums of squares are used. The frozen grid is balanced (5
+    Type II sums of squares are used. The study grid is balanced (5
     thresholds in every model x workload cell), and for a balanced design
     Types I, II and III coincide -- the choice is documented for the methods
     section rather than being load-bearing.
@@ -385,7 +385,7 @@ def run_tukey_hsd(
     """
     Run Tukey HSD for each effect the ANOVA found significant.
 
-    Grouping follows the frozen wording: the model main effect compares the
+    Grouping follows the design wording: the model main effect compares the
     2 models, the workload main effect the 3 workloads, and a significant
     interaction compares the 6 (model, workload) cells. Effects that were not
     significant are recorded as skipped, with the reason, in `per_effect`.
