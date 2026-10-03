@@ -45,7 +45,7 @@ The system has three headline components:
 | FastAPI Router | [`levy/api/app.py`](../levy/api/app.py) | The three documented endpoints; errors map to structured JSON, never stack traces. |
 | Cache Orchestrator | [`levy/engine.py`](../levy/engine.py) (`LevyEngine`) | Owns the lookup flow, the hit/miss decision, and metric recording. The router adds one structured JSON log record per request, sufficient to replay a request sequence. |
 | Embedding Manager | [`levy/embedding_manager.py`](../levy/embedding_manager.py) | Resolves study-model aliases through a registry, lazily loads one client per checkpoint, memoizes by `(model_key, sha256(text))`, applies each model's symmetric task prefix. |
-| Vector Store (Faiss) | [`levy/cache/vector_index.py`](../levy/cache/vector_index.py), [`levy/cache/semantic_cache.py`](../levy/cache/semantic_cache.py) | HNSW index over L2 distance, plus a monotonic id → `CacheEntry` map — the spec's "separate metadata dictionary". |
+| Vector Store (Faiss) | [`levy/cache/vector_index.py`](../levy/cache/vector_index.py), [`levy/cache/semantic_cache.py`](../levy/cache/semantic_cache.py) | HNSW index over L2 distance, plus a monotonic id → `CacheEntry` map — a separate metadata dictionary. |
 | LLM Connector | [`levy/llm_client.py`](../levy/llm_client.py) | `LLMClient` ABC with mock, OpenAI-compatible, Ollama, and Anthropic implementations. |
 
 **Design note — synchronous connector.** The engine, caches, and harness are
@@ -63,11 +63,12 @@ These support the empirical work rather than the serving path:
 
 | Layer | Module | Role |
 |---|---|---|
-| Dataset platform | [`levy/dataset/`](../levy/dataset/) | `schema.py` (`QueryPair`, workload constants, `ground_truth_label()`), `io.py` (CSV/JSON, round-trip identical), `sampling.py` (corpus adapters + seeded stratified sampling), `annotation.py` (blind, resumable re-annotation), `kappa.py` (Cohen's kappa). |
+| Dataset platform | [`levy/dataset/`](../levy/dataset/) | `schema.py` (`QueryPair`, workload constants, `ground_truth_label()`), `io.py` (CSV/JSON, round-trip identical), `sampling.py` (corpus adapters + seeded stratified sampling), `corpora.py` + `validation.py` (provenance registry, pre-flight checks), `annotation.py` (blind, resumable re-annotation), `kappa.py` (Cohen's kappa), `prevalence.py` (duplicate prevalence of the source pools). |
 | Replay harness | [`levy/experiment/`](../levy/experiment/) | `config.py` (the study grid), `replay.py` (replay through the *production* lookup path), `metrics.py` (precision, recall, F₀.₅, FPR, hit rate + sanity checks), `runner.py` (sweep + deterministic output files). |
-| Analysis pipeline | [`levy/analysis/`](../levy/analysis/) | `io.py` (harness-contract reader), `hypothesis.py` (two-way ANOVA + conditional Tukey HSD), `curves.py` (threshold-selection tables and figures), `replication.py` (±5% criterion), `report.py` (bundle assembly). |
+| Analysis pipeline | [`levy/analysis/`](../levy/analysis/) | `io.py` (harness-contract reader), `hypothesis.py` (two-way ANOVA + conditional Tukey HSD), `curves.py` (threshold-selection tables and figures), `replication.py` (±5% criterion), `robustness.py` (re-analysis of the three hypotheses on the per-decision binary outcome: permutation, logistic, mixed-effects and bootstrap methods), `report.py` (bundle assembly). |
+| Latency measurement | [`levy/latency/`](../levy/latency/) | `timing.py` (opt-in segment timing of the lookup path), `benchmark.py` (cold/warm embedding, index search, exact lookup, total), `corpus.py` + `population.py` (recorded real provider responses), `report.py` (`latency.csv` and sidecars). Offline half reproducible; provider half is model- and moment-specific. |
 | Results dashboard (D6, desirable) | [`levy/dashboard/`](../levy/dashboard/), [`scripts/dashboard.py`](../scripts/dashboard.py) | `bundle.py` (loads/validates an analysis bundle, columns sourced from `levy.analysis` itself), `curves.py` (selection helpers), `query.py` (live query decision via a real `SemanticCache`, same `1/(1+L2)` formula). The Streamlit shell in `scripts/` is a thin viewer with no logic of its own; it never recomputes a statistic. Lowest-priority deliverable — safe to drop, not on the `reproduce.sh` path. |
-| CLIs | [`scripts/`](../scripts/) | Thin argparse wrappers: dataset sampling/annotation/kappa/export, experiment sweep, analysis bundle, replication check, plus `reproduce.sh` (whole pipeline), `audit_release.sh` (release audit), and `dashboard.py` (Streamlit UI shell, D6). |
+| CLIs | [`scripts/`](../scripts/) | Thin argparse wrappers: dataset acquisition/sampling/annotation/kappa/export/prevalence, experiment sweep and merge, analysis bundle, robustness, replication check, latency, throughput, plus `reproduce.sh` (whole pipeline), `audit_release.sh` (release audit), and `dashboard.py` (Streamlit UI shell, D6). |
 
 ---
 
@@ -117,7 +118,7 @@ embedding models and results are comparable between them.
 
 For unit vectors, `distance = √(2 − 2·cosine)`. The threshold sweep
 0.70–0.90 therefore corresponds to a high-cosine band of roughly 0.91–0.998.
-This is intentional and spec-mandated; the thresholds are carried verbatim and
+This is intentional; the thresholds are carried verbatim and
 never rescaled.
 
 ### 3.2 The engine pool

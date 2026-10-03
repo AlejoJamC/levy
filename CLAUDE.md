@@ -320,7 +320,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   only. Use it when the grid ran in pieces (`--workloads chat` = 10 of 30 rows, a
   re-sampled workload re-run on its own) instead of re-running cells that were fine.
 - `tests/test_experiment_config.py`, `test_experiment_metrics.py`,
-  `test_experiment_replay.py`, `test_experiment_runner.py` — 32 unit tests for
+  `test_experiment_replay.py`, `test_experiment_runner.py` — 37 unit tests for
   `levy/experiment/`: grid enumeration/uniqueness, hand-computed metrics + zero-division
   + sanity-check violations, replay outcomes (TP/FP/TN/FN via a scripted embedding
   manager, exact-duplicate via the exact cache, cross-pair cache accumulation, fresh
@@ -405,7 +405,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   verified with a planted secret. `docs/ARCHITECTURE.md` is the user-facing
   architecture doc (see the documentation map).
 - `tests/test_analysis_io.py`, `test_analysis_hypothesis.py`, `test_analysis_curves.py`,
-  `test_analysis_report.py`, `test_analysis_replication.py` — 75 unit tests for
+  `test_analysis_report.py`, `test_analysis_replication.py` — 88 unit tests for
   `levy/analysis/` sharing `tests/analysis_fixtures.py` (hand-crafted 30-row harness
   outputs whose ANOVA outcome is known in advance). ANOVA expectations are
   **double-sourced**: the balanced-design sums of squares are computed by hand in the
@@ -464,8 +464,8 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   ten FAQ configurations); **the prompt text is never stored**, only its hash and
   the model's own output; `CorpusLLMClient` serves it back to the replay.
   `population.py` — the billed call loop, a library function taking an injected
-  client *because* the spec demands both that it be tested offline and that no
-  test invoke the billed script; resume-skip, refusal-skip and a clean
+  client *because* it must be testable offline and no
+  test may invoke the billed script; resume-skip, refusal-skip and a clean
   budget-guard stop that leaves valid JSONL. `report.py` — `latency.csv`,
   `latency_meta.json` (host, versions, protocol, the explicit
   reproducibility-boundary statement, the savings figure) and `llm_calls.json`
@@ -500,10 +500,23 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   metrics and provider clients. Counts per file drift; `pytest --co -q` is the
   authority.
 
+- **Later measurement and analysis tooling (LEV-17, LEV-18, LEV-21, LEV-22).**
+  `scripts/run_throughput.py` serves `levy.api.app.create_app()` under `uvicorn` and
+  drives it at 1/4/16/64 concurrent requests in an all-hit and an all-miss arm
+  (mock LLM at the real measured latency, or live Anthropic calls); one directory
+  per model in `release/throughput/`. `scripts/measure_prevalence.py` +
+  `levy/dataset/prevalence.py` count the positive/negative/excluded pools of the three
+  source corpora (`release/prevalence/`). `levy/analysis/robustness.py` +
+  `scripts/run_robustness.py` re-analyse H0₁–H0₃ on the per-decision binary outcome
+  (exact stratified permutation, cluster sign-flip, matched-unit, logistic ML/Firth,
+  mixed effects, cluster bootstrap) and write a method-by-method AGREE/DISAGREE
+  verdict against the ANOVA to `release/d3-results/robustness/`; the ANOVA outputs
+  are read-only inputs. `run_meta.json` records the resolved vector index backend.
+
 ### Known gaps: current code vs original design
 
 Track these when building toward the experimental phase — they are the backlog
-implied by the spec, not bugs:
+implied by the original design, not bugs:
 
 1. ~~**No FastAPI router**~~ — **Resolved (LEV-7).** `levy/api/` exposes
    `POST /v1/chat/completions` (`X-Cache-Status` / `X-Cache-Similarity`
@@ -537,7 +550,7 @@ implied by the spec, not bugs:
    all embeddings are L2-normalised before indexing so the distance scale is
    identical across models. For unit vectors, `distance = sqrt(2 − 2·cosine)` and
    `similarity = 1/(1+distance)`. The study's sweep 0.70–0.90 therefore covers a
-   high-cosine band (~0.91–0.998). This is intentional and spec-mandated; do NOT
+   high-cosine band (~0.91–0.998). This is intentional; do NOT
    rescale thresholds or revert to cosine.
 4. ~~**No experiment harness**~~ — **Resolved (LEV-4).** `levy/experiment/` implements
    `run_experiment`/`full_grid`/30-configuration replay, TP/FP/TN/FN accounting against
@@ -581,9 +594,9 @@ implied by the spec, not bugs:
    revert `ground_truth_label()`. Breakdown and alternatives considered: `data/DATASHEET.md`
    §4. The synthetic fixtures in `data/ground_truth.{csv,json}` are **not** replaced —
    they stay as the permanent offline default; the real dataset lives in the gitignored
-   `.full.` files, rebuilt by `scripts/rehydrate_dataset.py`. **Still open, and now
-   tracked in LEV-13, not LEV-11:** the D3 production run (harness → analysis →
-   replication on the real 900). LEV-11 closes on D2 alone.
+   `.full.` files, rebuilt by `scripts/rehydrate_dataset.py`. The D3
+   production run on the real 900 (harness → analysis → replication) was tracked
+   separately in LEV-13 and is complete; LEV-11 closes on D2 alone.
 7. ~~**pytest declared but not installed**~~ — **Resolved (LEV-5).** `pytest` and
    `pytest-cov` are installed in the `levy` conda env (`environment.yml`, conda-forge)
    and mirrored in `pyproject.toml` `[dev]` extras. pytest is the canonical runner;
@@ -593,7 +606,7 @@ implied by the spec, not bugs:
    (OpenAI/Ollama LLM clients, Ollama/SentenceTransformer embedding clients) excluded
    via inline `# pragma: no cover` markers. `MockLLMClient` latency is now injectable
    (`latency_seconds`, default 0.5 unchanged); tests inject 0, so the suite runs in
-   ~2s instead of the previous ~81s.
+   the suite is not dominated by sleeps (the full suite, 666 tests, takes about 2 minutes).
 
 ## Commands
 
@@ -730,9 +743,9 @@ edits:
   `add-results-dashboard`, `add-corpus-acquisition` (2026-08-04),
   `add-ground-truth-dataset` (2026-08-05), `add-latency-measurement` (2026-08-07),
   `add-anova-effect-sizes` (2026-09-19). **No changes are in flight** —
-  `openspec list` reports none. The remaining D3 work (LEV-13) is a production run of
-  already-shipped tooling, so it produces result artifacts rather than capability
-  changes and correctly has no OpenSpec change of its own.
+  `openspec list` reports none. The production runs (LEV-13, LEV-17, LEV-21, LEV-22)
+  use already-shipped tooling and produce result artifacts rather than capability
+  changes, so they have no OpenSpec change of their own.
 - `openspec/config.yaml` — project context injected into artifact generation.
 - Slash commands (in `.claude/commands/opsx/`): `/opsx:propose` (create change +
   artifacts), `/opsx:apply` (implement tasks), `/opsx:archive` (finish + update
@@ -784,12 +797,13 @@ and keep the issue status in sync.
 ### D3 production run — results (2026-08-07)
 
 Full grid over the real 900-pair dataset with `sentence-transformers` embeddings.
-The `chat` cells come from a separate run over the re-sampled workload, merged in
-with `scripts/merge_results.py`; faq and code are the 2026-08-06 run, unchanged.
+The faq and chat cells (20 of 30) come from an earlier merged run; the `code` cells come
+from a separate run over the re-drawn code workload, merged in with
+`scripts/merge_results.py` (see `merged_from` in `release/d3-results/run_meta.json`).
 **Published as `release/d3-results/`** — that is the copy of record, and the one to
 replicate or build against. Beware the merge inputs a partial re-run produces: each
-covers only part of the grid, so pointing the analysis, `check_replication.py` or
-the poster at one returns a valid-looking answer over a subset. Always consolidate
+covers only part of the grid, so pointing the analysis or `check_replication.py`
+at one returns a valid-looking answer over a subset. Always consolidate
 first, and build only against the consolidated set. The full re-run-one-workload procedure,
 including which directories are scratch, is `docs/DATA_PRODUCTION.md`
 §"Re-drawing one workload".

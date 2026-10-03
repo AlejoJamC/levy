@@ -226,7 +226,7 @@ To use Redis for persistence:
 
 ## HTTP API
 
-`levy/api/` exposes the engine over HTTP as an HTTP interface, plus admin observability/maintenance.
+`levy/api/` exposes the engine over HTTP, plus admin observability and maintenance endpoints.
 
 ```bash
 uvicorn levy.api.app:app --reload
@@ -407,6 +407,9 @@ python scripts/compute_kappa.py --dataset data/ground_truth.json --strict
 python scripts/export_dataset.py --in data/ground_truth.json --out /tmp/dataset.csv
 ```
 
+The author's production procedure for the real 900 pairs is in
+[`docs/DATA_PRODUCTION.md`](docs/DATA_PRODUCTION.md).
+
 `QueryPair.ground_truth_label()` (author label if annotated, else the
 original corpus label) is the contract the experiment harness replays
 against.
@@ -524,6 +527,31 @@ The verdict is also written to `replication.json` beside the reference, so it
 can be read rather than inferred from an exit code. It records which
 configurations it covers, so a run over part of the grid cannot be mistaken for
 one covering all of it.
+
+## Published results
+
+The study's results are committed under [`release/`](release/), with checksums
+and a file-by-file description in [`release/PROVENANCE.md`](release/PROVENANCE.md):
+the 30-configuration grid (`d3-results/`), the ANOVA/Tukey analysis and a
+robustness re-analysis, lookup-latency and throughput measurements, and the
+duplicate prevalence of the source corpora. Headline findings:
+
+- **Embedding model has no measurable effect on false positive rate** (H0₁
+  retained, p = 0.465); **workload does** (H0₂ rejected, p = 0.0188); no
+  interaction (H0₃ retained, p = 0.875).
+- **Hit rate never reaches the 30 % viability bar.** The best cell is FAQ with
+  `all-MiniLM-L6-v2` at threshold 0.70, at 24.0 %.
+- **±5 % replication passes** for all 30 configurations.
+- **A lookup costs about 10 ms against about 3.4 s for the provider call it
+  avoids** (FAQ workload, `claude-haiku-4-5-20251001`). Provider latency is
+  specific to that model and does not replicate; lookup overhead does.
+- **Annotator agreement is below the bar:** Cohen's κ = 0.5000 against a target
+  of 0.7 (see [`data/DATASHEET.md`](data/DATASHEET.md) §4).
+
+Robustness re-analysis of the model effect on the per-decision outcome is
+produced by `scripts/run_robustness.py`; its method-by-method verdicts, including
+the pair-clustered tests that reject H0₁ where the ANOVA retains it, are in
+`release/d3-results/robustness/verdicts.csv`.
 
 ## Results dashboard (D6, desirable)
 
