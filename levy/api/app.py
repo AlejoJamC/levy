@@ -25,6 +25,7 @@ from typing import List, Optional
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
+from levy import __version__
 from levy.api.pool import EnginePool, PoolCapExceededError
 from levy.api.schemas import (
     ChatCompletionRequest,
@@ -129,7 +130,7 @@ def create_app(
             "on hits, `X-Cache-Similarity`. `GET/POST /admin/cache/*` expose "
             "observability and maintenance."
         ),
-        version="0.1.0",
+        version=__version__,
     )
     app.state.pool = pool
 

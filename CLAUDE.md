@@ -5,8 +5,7 @@ Guidance for Claude Code when working in this repository.
 ## What Levy is
 
 Levy is a **semantic caching engine for LLM APIs**, built as the IT artefact of an
-MSc Artificial Intelligence capstone project (University of Liverpool, author:
-John Alejandro Mantilla Celis). It sits between an application and an LLM provider
+MSc Artificial Intelligence capstone project (University of Liverpool). It sits between an application and an LLM provider
 and reuses responses for exact or semantically similar prompts, in order to measure
 cost, latency, and — centrally — **false positive rates** of semantic caching across
 workloads, embedding models, and similarity thresholds.
