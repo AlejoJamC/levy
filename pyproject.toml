@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "levy"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Semantic caching engine for LLM APIs – experimental core for cost optimisation"
-authors = [{name = "AlejoJamC", email = "alejojamc7@gmail.com"}]
+authors = [{name = "John Alejandro Mantilla Celis", email = "J.Mantilla-Celis@liverpool.ac.uk"}]
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -36,6 +36,12 @@ dev = [
 dashboard = [
     "streamlit>=1.30",
 ]
+
+[tool.setuptools.packages.find]
+include = ["levy*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "levy.__version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
