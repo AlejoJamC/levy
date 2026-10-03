@@ -16,7 +16,7 @@ _CFG = ExperimentConfig(model="all-MiniLM-L6-v2", workload="faq", threshold=0.85
 
 
 class TestKnownCounts(unittest.TestCase):
-    """Hand-computed case from the frozen spec: TP=8, FP=2, TN=7, FN=3."""
+    """Hand-computed case from the study design: TP=8, FP=2, TN=7, FN=3."""
 
     def setUp(self):
         self.result = evaluate_confusion(_CFG, tp=8, fp=2, tn=7, fn=3, n=20)

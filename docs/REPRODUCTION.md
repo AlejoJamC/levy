@@ -198,7 +198,7 @@ scripts/reproduce.sh
 ```
 
 Defaults: dataset `data/ground_truth.csv`, output directory
-`results/reproduce`, embedding provider `mock`, the full frozen grid. Override
+`results/reproduce`, embedding provider `mock`, the full study grid. Override
 positionally or by environment variable:
 
 ```bash
@@ -219,7 +219,7 @@ scripts/reproduce.sh data/ground_truth.csv results/study-run
 These are exactly the commands `scripts/reproduce.sh` runs. Use them when you
 want to inspect or rerun one stage.
 
-**3a. Experiment sweep** — the frozen grid: 2 embedding models × 3 workloads ×
+**3a. Experiment sweep** — the study grid: 2 embedding models × 3 workloads ×
 5 similarity thresholds = **30 configurations**.
 
 ```bash
@@ -272,7 +272,7 @@ Writes to `results/reproduce/analysis/`:
 Exit is non-zero on a harness-contract or design violation, and no partial
 bundle is written.
 
-**3c. Replication check (±5%)** — frozen Success Criterion 3.
+**3c. Replication check (±5%)** — Success Criterion 3.
 
 ```bash
 python scripts/check_replication.py \
@@ -381,7 +381,7 @@ python scripts/compute_kappa.py --dataset data/ground_truth.full.json --strict
 overall: kappa=0.5000  (faq 0.5267, code 0.4200, chat 0.5533)
 ```
 
-`--strict` **exits non-zero**, because the frozen success criterion is κ > 0.7.
+`--strict` **exits non-zero**, because the success criterion is κ > 0.7.
 That is the real, recorded outcome, not a setup error on your side — the earlier
 `0.722 (FIXTURE ONLY)` figure in [Expected output](#expected-output) comes from
 the 15 synthetic fixture pairs and is not comparable.
@@ -403,7 +403,7 @@ give materially different figures on the 225 pairs where the two disagree.
 
 ## Latency: what a lookup costs, and what a hit avoids
 
-The Project Proposal assesses economic viability on hit rate **and** latency —
+The study assesses economic viability on hit rate **and** latency —
 "cache lookup overhead vs LLM call savings". The two halves are measured
 separately because only one of them replicates.
 
@@ -463,8 +463,8 @@ streamlit run scripts/dashboard.py -- --bundle results/reproduce/analysis
 ```
 
 Threshold-vs-metric curves, the ANOVA/Tukey/κ summary, and a live query box
-are all read from the bundle — nothing is recomputed. This is the frozen
-plan's lowest-priority, desirable-only deliverable (D6): it is not part of
+are all read from the bundle — nothing is recomputed. This is the
+lowest-priority, desirable-only deliverable (D6): it is not part of
 `scripts/reproduce.sh` and not required to reproduce any result above. See the
 [README](../README.md#results-dashboard-d6-desirable) for the offline story
 and the `--dataset` option.
@@ -541,15 +541,6 @@ scripts/reproduce.sh
 
 Non-zero exit from any stage fails the whole script (`set -euo pipefail`).
 
-### Frozen documents
-
-`docs/Project_Proposal.md` and `docs/Specification_and_Design_Report.md` are the
-university submissions and are never modified. Confirm at any time:
-
-```bash
-git log --oneline -- docs/Project_Proposal.md docs/Specification_and_Design_Report.md
-```
-
 ---
 
 ## Troubleshooting
@@ -568,4 +559,3 @@ git log --oneline -- docs/Project_Proposal.md docs/Specification_and_Design_Repo
 - [ARCHITECTURE.md](ARCHITECTURE.md) — component map, request flow, provider abstractions
 - [README.md](../README.md) — installation, configuration, HTTP API reference
 - [data/DATASHEET.md](../data/DATASHEET.md) — dataset provenance, sampling, annotation protocol
-- [docs/Project_Proposal.md](Project_Proposal.md), [docs/Specification_and_Design_Report.md](Specification_and_Design_Report.md) — the frozen research and design baseline

@@ -23,7 +23,7 @@ declares, alongside its parsing:
 - `check_fields()`: a cheap, read-the-header-only check that
   `levy.dataset.validation` runs before any sampling happens.
 
-Fallback corpora named in the frozen risk plan (Project_Proposal.md Risk 1) if
+Fallback corpora if
 a primary corpus is unavailable or too small: MS MARCO (FAQ/QA fallback),
 CodeSearchNet (code fallback), DailyDialog (chat fallback). Adapters for those
 follow the same `CorpusSource` interface; they are not implemented here

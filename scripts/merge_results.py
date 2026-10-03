@@ -14,7 +14,7 @@ file that looks complete:
 
   * a `config_id` present in more than one run — one of them is stale, and the
     merge does not get to pick a winner;
-  * a merged set that is not exactly the frozen grid (2 models x 3 workloads x
+  * a merged set that is not exactly the study grid (2 models x 3 workloads x
     5 thresholds) — reported before the ANOVA assumes a balanced design.
 
 List every input directory, including the one you are merging into. `--out-dir`

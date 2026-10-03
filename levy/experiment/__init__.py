@@ -1,6 +1,6 @@
 """
 Experiment harness (LEV-4 / D3): offline replay of annotated query pairs
-across the frozen 30-configuration grid, confusion-matrix accounting
+across the 30-configuration grid, confusion-matrix accounting
 against ground-truth labels, per-configuration metric computation, and
 deterministic machine-readable outputs consumed by LEV-8's statistical
 analysis.

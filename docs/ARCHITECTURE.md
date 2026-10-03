@@ -1,10 +1,8 @@
 # Levy — Architecture
 
 This document describes the architecture of the released artefact for someone
-reading or extending the public repository. It is traceable to the frozen
-specification: [`docs/Specification_and_Design_Report.md`](Specification_and_Design_Report.md)
-names five component responsibilities and three headline components, and every
-one of them maps to a module below.
+reading or extending the public repository. Every component responsibility
+below maps to a module.
 
 For running the system, see [REPRODUCTION.md](REPRODUCTION.md). For usage and
 configuration, see the [README](../README.md).
@@ -23,7 +21,7 @@ provider. For each prompt it tries, in order:
    semantic cache is enabled) is then stored.
 
 Around that engine sits the research apparatus: a ground-truth dataset platform,
-an offline replay harness over the frozen experimental grid, and a statistical
+an offline replay harness over the experimental grid, and a statistical
 analysis pipeline that turns harness output into the evidence bundle.
 
 ---
@@ -32,10 +30,10 @@ analysis pipeline that turns harness output into the evidence bundle.
 
 ### 2.1 The three headline components
 
-The frozen specification's deliverable D1 names three components. All three
+The study design's deliverable D1 names three components. All three
 ship:
 
-| Frozen spec component | Module | Notes |
+| Design component | Module | Notes |
 |---|---|---|
 | **FastAPI router** | [`levy/api/`](../levy/api/) | `app.py` (endpoints + exception handlers), `schemas.py` (Pydantic v2 request/response models), `pool.py` (`EnginePool`). Exposes `POST /v1/chat/completions`, `GET /admin/cache/stats`, `POST /admin/cache/clear`. |
 | **Embedding manager + Faiss HNSW index** | [`levy/embedding_manager.py`](../levy/embedding_manager.py), [`levy/cache/vector_index.py`](../levy/cache/vector_index.py) | Study-model registry and memoization; `IndexHNSWFlat` wrapped in `IndexIDMap`, with a brute-force numpy index as correctness oracle and offline fallback. |
@@ -43,7 +41,7 @@ ship:
 
 ### 2.2 The five component responsibilities
 
-| Frozen spec responsibility | Module | Implementation |
+| Design responsibility | Module | Implementation |
 |---|---|---|
 | FastAPI Router | [`levy/api/app.py`](../levy/api/app.py) | The three documented endpoints; errors map to structured JSON, never stack traces. |
 | Cache Orchestrator | [`levy/engine.py`](../levy/engine.py) (`LevyEngine`) | Owns the lookup flow, the hit/miss decision, and metric recording. The router adds one structured JSON log record per request, sufficient to replay a request sequence. |
@@ -51,7 +49,7 @@ ship:
 | Vector Store (Faiss) | [`levy/cache/vector_index.py`](../levy/cache/vector_index.py), [`levy/cache/semantic_cache.py`](../levy/cache/semantic_cache.py) | HNSW index over L2 distance, plus a monotonic id → `CacheEntry` map — the spec's "separate metadata dictionary". |
 | LLM Connector | [`levy/llm_client.py`](../levy/llm_client.py) | `LLMClient` ABC with mock, OpenAI-compatible, Ollama, and Anthropic implementations. |
 
-**Recorded deviation — synchronous connector.** The frozen spec describes the
+**Recorded deviation — synchronous connector.** The study design describes the
 LLM connector as an "asynchronous wrapper". The engine, caches, and harness are
 synchronous throughout, so the connector implements the synchronous `LLMClient`
 ABC and concurrency is handled at the HTTP boundary instead: the router's
@@ -68,7 +66,7 @@ These support the empirical work rather than the serving path:
 | Layer | Module | Role |
 |---|---|---|
 | Dataset platform | [`levy/dataset/`](../levy/dataset/) | `schema.py` (`QueryPair`, workload constants, `ground_truth_label()`), `io.py` (CSV/JSON, round-trip identical), `sampling.py` (corpus adapters + seeded stratified sampling), `annotation.py` (blind, resumable re-annotation), `kappa.py` (Cohen's kappa). |
-| Replay harness | [`levy/experiment/`](../levy/experiment/) | `config.py` (the frozen grid), `replay.py` (replay through the *production* lookup path), `metrics.py` (precision, recall, F₀.₅, FPR, hit rate + sanity checks), `runner.py` (sweep + deterministic output files). |
+| Replay harness | [`levy/experiment/`](../levy/experiment/) | `config.py` (the study grid), `replay.py` (replay through the *production* lookup path), `metrics.py` (precision, recall, F₀.₅, FPR, hit rate + sanity checks), `runner.py` (sweep + deterministic output files). |
 | Analysis pipeline | [`levy/analysis/`](../levy/analysis/) | `io.py` (harness-contract reader), `hypothesis.py` (two-way ANOVA + conditional Tukey HSD), `curves.py` (threshold-selection tables and figures), `replication.py` (±5% criterion), `report.py` (bundle assembly). |
 | Results dashboard (D6, desirable) | [`levy/dashboard/`](../levy/dashboard/), [`scripts/dashboard.py`](../scripts/dashboard.py) | `bundle.py` (loads/validates an analysis bundle, columns sourced from `levy.analysis` itself), `curves.py` (selection helpers), `query.py` (live query decision via a real `SemanticCache`, same `1/(1+L2)` formula). The Streamlit shell in `scripts/` is a thin viewer with no logic of its own; it never recomputes a statistic. Lowest-priority deliverable — safe to drop, not on the `reproduce.sh` path. |
 | CLIs | [`scripts/`](../scripts/) | Thin argparse wrappers: dataset sampling/annotation/kappa/export, experiment sweep, analysis bundle, replication check, plus `reproduce.sh` (whole pipeline), `audit_release.sh` (release audit), and `dashboard.py` (Streamlit UI shell, D6). |
@@ -114,12 +112,12 @@ client cannot accidentally depend on hit-vs-miss body differences.
 
 ### 3.1 The similarity scale
 
-Per Algorithm 1 of the frozen specification, similarity is derived from L2
+Per Algorithm 1 of the study design, similarity is derived from L2
 distance as `similarity = 1 / (1 + distance)`. All embeddings are L2-normalised
 before indexing and querying, so the distance scale is identical across
 embedding models and results are comparable between them.
 
-For unit vectors, `distance = √(2 − 2·cosine)`. The frozen threshold sweep
+For unit vectors, `distance = √(2 − 2·cosine)`. The threshold sweep
 0.70–0.90 therefore corresponds to a high-cosine band of roughly 0.91–0.998.
 This is intentional and spec-mandated; the thresholds are carried verbatim and
 never rescaled.
@@ -231,4 +229,3 @@ automatically.
 | Reproduce the experiments | [REPRODUCTION.md](REPRODUCTION.md), [`scripts/reproduce.sh`](../scripts/reproduce.sh) |
 | Explore results interactively (D6) | [`levy/dashboard/`](../levy/dashboard/), [`scripts/dashboard.py`](../scripts/dashboard.py) |
 | Understand the dataset and its provenance | [`data/DATASHEET.md`](../data/DATASHEET.md), [`levy/dataset/`](../levy/dataset/) |
-| Check the research definition | [`docs/Project_Proposal.md`](Project_Proposal.md), [`docs/Specification_and_Design_Report.md`](Specification_and_Design_Report.md) (both frozen) |

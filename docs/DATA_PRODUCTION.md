@@ -15,7 +15,7 @@ What it is not:
 - **Not the pipeline definition.** `scripts/reproduce.sh` is the single
   definition of the evaluation pipeline; Part 2 below wraps it.
 - **Not the datasheet.** Corpus licences, the sampling protocol, the recorded
-  deviations from the frozen documents and the dataset's limitations are in
+  deviations from the original study plan and the dataset's limitations are in
   [`../data/DATASHEET.md`](../data/DATASHEET.md).
 
 ---
@@ -26,7 +26,7 @@ What it is not:
 |---|---|
 | Corpora | all three acquired, checksums pinned in `data/corpora.json` |
 | Dataset | 900 pairs, 300 per workload, 900/900 blind-annotated |
-| Cohen's κ | 0.5000 (faq 0.5267, code 0.4200, chat 0.5533) — below the frozen κ > 0.7 bar; a finding, see [`../data/DATASHEET.md`](../data/DATASHEET.md) §4 |
+| Cohen's κ | 0.5000 (faq 0.5267, code 0.4200, chat 0.5533) — below the κ > 0.7 bar; a finding, see [`../data/DATASHEET.md`](../data/DATASHEET.md) §4 |
 | D3 results | published as [`../release/d3-results/`](../release/d3-results/) — H0₁ retained, H0₂ rejected, H0₃ retained; best hit rate 24.0%, so all 30 configurations miss the 30% bar; ±5% replication passed 60/60 |
 
 ---
@@ -169,7 +169,7 @@ and writes nothing — fix them all, then re-run. Common findings:
 
 | Finding | Meaning |
 |---|---|
-| `[class-pool] … needs 150 positive pairs, only N available` | that corpus cannot fill the stratum; see the frozen Proposal's Risk 1 fallback path before substituting anything |
+| `[class-pool] … needs 150 positive pairs, only N available` | that corpus cannot fill the stratum; see the study plan's Risk 1 fallback path before substituting anything |
 | `[checksum] … does not match the pinned` | the file changed since you pinned it |
 | `[required-fields] … missing columns` | wrong file, or the QQP conversion in 2A did not run |
 | `[label-domain] … outside the declared domain` | an unexpected label value; reported, never coerced |
@@ -251,7 +251,7 @@ python scripts/compute_kappa.py --dataset data/ground_truth.full.json --strict
 
 Reports the overall kappa plus a per-workload breakdown, comparing your
 `author_label` against the corpus's `original_label`. `--strict` exits non-zero
-if the fully annotated dataset falls below the frozen success threshold of
+if the fully annotated dataset falls below the success threshold of
 **κ > 0.7**. It does not gate while pairs remain unannotated, so running it
 mid-way is safe and informative.
 
@@ -319,7 +319,7 @@ analysis bundle → ±5% replication.
 ## Embedding models
 
 `--embedding-provider sentence-transformers`, loading both study checkpoints from
-HuggingFace, as the frozen documents mandate. Registry wiring in
+HuggingFace, as the original study plan mandate. Registry wiring in
 `levy/embedding_manager.py`:
 
 | Alias | Resolved checkpoint | Prefix | `trust_remote_code` |
@@ -467,7 +467,7 @@ What to record:
 2. **Tukey** — ran or skipped, with the reason, from `tukey_status.csv`.
 3. **Hit rate against the 30% viability bar**, per workload and threshold. Note
    the threshold band: embeddings are L2-normalised and similarity is `1/(1+L2)`,
-   so the frozen 0.70–0.90 sweep covers a high-cosine band (~0.91–0.998). That is
+   so the 0.70–0.90 sweep covers a high-cosine band (~0.91–0.998). That is
    spec-mandated.
 4. **Replication** — pass/fail and coverage, from `replication.json`.
 
@@ -624,7 +624,7 @@ What step 1 guarantees, and refuses to proceed without:
 | | |
 |---|---|
 | Disjointness | new pairs are drawn from the candidate pool **minus every `source_pair_id` already in the dataset**, so a re-draw cannot re-draw what it replaces — at the same seed or any other |
-| Shortfall | if the pool cannot cover `--n-per-workload` after that exclusion, the run fails naming the workload and the shortfall, and writes nothing. Do not lower `--n-per-workload`: that changes the frozen design |
+| Shortfall | if the pool cannot cover `--n-per-workload` after that exclusion, the run fails naming the workload and the shortfall, and writes nothing. Do not lower `--n-per-workload`: that changes the study design |
 | Other workloads | passed through untouched, `author_label` included; the test suite asserts those rows are byte-for-byte identical |
 | Labels | cleared for the re-drawn workload only, which is what makes step 2 present exactly those 300 pairs |
 | Stale answers | the new pairs reuse that workload's `pair_id`s, so step 1 removes their entries from the progress file (backed up first, other workloads untouched) and reports the count. Otherwise step 2 would re-apply the old answers to the new pairs |
@@ -641,7 +641,7 @@ directory. Not implemented.
 
 ## Do not
 
-Per the frozen documents — these are findings to report, never things to code
+Per the original study plan — these are findings to report, never things to code
 around:
 
 - **Do not rescale the thresholds** to chase hit rate. The 0.70–0.90 band on the
@@ -650,7 +650,7 @@ around:
   or change `ground_truth_label()`.
 - **Do not substitute either embedding model.** The pair is the independent
   variable of the primary research question, O2, H0₁ and Success Criterion 1.
-- **Do not edit the two frozen documents** for any reason.
+- **Do not edit the two original study plan** for any reason.
 - **Do not replace `data/ground_truth.{csv,json}`** — the synthetic fixtures are
   the permanent offline default for the test suite and `reproduce.sh`.
 
@@ -672,7 +672,7 @@ event — record the new snapshot in `data/corpora.json` and note it in the
 datasheet rather than silently re-pinning.
 
 **Pre-flight reports a pool shortfall.** The corpus cannot fill a stratum at 300
-pairs. Do not lower `--n-per-workload`. The Proposal's Risk 1 contingency covers
+pairs. Do not lower `--n-per-workload`. The fallback-corpus contingency covers
 corpus substitution.
 
 **Rehydration says a `source_pair_id` was not found.** The corpus on disk is not

@@ -3,7 +3,7 @@
 This directory holds the ground-truth dataset for the Levy capstone study
 (Deliverable D2 — 900 annotated query pairs across 3 workloads).
 
-## ~~Current contents are placeholders~~ The fixtures are permanent, not placeholders
+## The fixtures are permanent, not placeholders
 
 > **Update 2026-08-04.** The heading above is struck through, not removed: it
 > was written before the real dataset existed, and "placeholder" implied the
@@ -20,7 +20,7 @@ This directory holds the ground-truth dataset for the Levy capstone study
 > `ground_truth.ids.csv` is populated for all 900 rows — so the published
 > artifact carries the blind re-annotation, and a replicator's
 > `ground_truth_label()` uses it rather than falling back to `original_label`.
-> Cohen's κ = 0.3267, **below the frozen κ > 0.7 criterion**; that is escalated
+> Cohen's κ = 0.3267, **below the κ > 0.7 criterion**; that is escalated
 > as a research finding, not worked around — see `DATASHEET.md` §4.
 >
 > **Update 2026-08-07.** The `chat` workload was re-drawn (seed 4242) and
@@ -107,7 +107,7 @@ are in [`docs/DATA_PRODUCTION.md`](../docs/DATA_PRODUCTION.md)
 §"Re-sampling one workload after the fact".
 
 See `data/DATASHEET.md` for corpus licences, the sampling protocol, the three
-recorded deviations from the frozen documents, and known limitations. The
+recorded deviations from the original study plan, and known limitations. The
 experiment harness reads the rehydrated dataset through the existing
 `--dataset` flag; the fixture defaults are untouched, so the offline pipeline
 keeps working unchanged.

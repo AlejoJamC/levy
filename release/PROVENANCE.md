@@ -53,7 +53,7 @@ neither is anything else here.
 
 ## Contents
 
-Organised by deliverable, per `docs/Specification_and_Design_Report.md:282-296`
+Organised by deliverable
 (D3 = the evaluation results and their analysis; the latency pilot is not
 itself one of the named D1-D7 deliverables, so it is kept in its own folder
 rather than under a D-number it doesn't have).

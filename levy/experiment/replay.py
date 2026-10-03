@@ -1,5 +1,5 @@
 """
-Offline replay protocol, Algorithm 2 of the frozen S&D Report (LEV-4 / D3).
+Offline replay protocol, Algorithm 2 of the study design (LEV-4 / D3).
 
 Per configuration: start from a fresh, empty cache (a new `LevyEngine`),
 then for each `QueryPair` of the configuration's workload, in dataset

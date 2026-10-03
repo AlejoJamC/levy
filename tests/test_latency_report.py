@@ -56,7 +56,7 @@ from levy.models import LLMRequest  # noqa: E402
 
 FIXTURE = REPO_ROOT / "data" / "ground_truth.csv"
 
-# The ten FAQ configurations of the frozen grid: 2 models x 5 thresholds.
+# The ten FAQ configurations of the study grid: 2 models x 5 thresholds.
 FAQ_CONFIGS = [
     ExperimentConfig(model=model, workload="faq", threshold=threshold)
     for model in ("all-MiniLM-L6-v2", "modernbert")

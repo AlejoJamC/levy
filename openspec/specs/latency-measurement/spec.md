@@ -1,10 +1,10 @@
 # latency-measurement Specification
 
-Capability: the second half of the Proposal's economic-viability test — decomposed measurement of what a cache lookup costs (offline, reproducible) and of what a cache hit avoids (real provider, not reproducible), their artefact contract, and their isolation from the deterministic D3 result set.
+Capability: the second half of the study's economic-viability test — decomposed measurement of what a cache lookup costs (offline, reproducible) and of what a cache hit avoids (real provider, not reproducible), their artefact contract, and their isolation from the deterministic D3 result set.
 
 ## Purpose
 
-Hit rate alone does not settle economic viability. The frozen Project Proposal
+Hit rate alone does not settle economic viability. The study plan
 assesses it on hit rate **and** "latency measurements (cache lookup overhead vs
 LLM call savings)", and before this capability existed the second half was
 measured nowhere: every timing the repository could produce came from

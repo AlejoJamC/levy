@@ -8,7 +8,7 @@
 # file breaks loudly rather than leaving the documentation quietly stale.
 #
 # Stages:
-#   1. scripts/run_experiments.py    — the frozen grid sweep (harness outputs)
+#   1. scripts/run_experiments.py    — the study grid sweep (harness outputs)
 #   2. scripts/run_analysis.py       — the statistical analysis bundle
 #   3. scripts/check_replication.py  — the +/-5% replication criterion
 #
@@ -23,7 +23,7 @@
 #   LEVY_DATASET             dataset file, .csv or .json   (default data/ground_truth.csv)
 #   LEVY_OUT_DIR             output directory               (default results/reproduce)
 #   LEVY_EMBEDDING_PROVIDER  mock | sentence-transformers | ollama (default mock)
-#   LEVY_MODELS              comma-separated model subset   (default: full frozen grid)
+#   LEVY_MODELS              comma-separated model subset   (default: full study grid)
 #   LEVY_WORKLOADS           comma-separated workload subset (default: faq,code,chat)
 #   LEVY_THRESHOLDS          comma-separated threshold subset (default: 0.70..0.90)
 #
@@ -42,7 +42,7 @@ cd "$REPO_ROOT"
 
 ANALYSIS_DIR="${OUT_DIR}/analysis"
 
-# Optional grid subsets — omitted entirely when unset, so the frozen
+# Optional grid subsets — omitted entirely when unset, so the full
 # 2 models x 3 workloads x 5 thresholds = 30 configurations run by default.
 GRID_ARGS=()
 [ -n "${LEVY_MODELS:-}" ] && GRID_ARGS+=(--models "$LEVY_MODELS")
@@ -58,7 +58,7 @@ echo "  embedding provider : ${EMBEDDING_PROVIDER}"
 if [ ${#GRID_ARGS[@]} -gt 0 ]; then
   echo "  grid subset        : ${GRID_ARGS[*]}"
 else
-  echo "  grid               : full frozen grid (30 configurations)"
+  echo "  grid               : full study grid (30 configurations)"
 fi
 echo "=============================================================="
 

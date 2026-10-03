@@ -10,7 +10,7 @@ Run (the `--` separator is a Streamlit requirement so args reach this script):
 
     streamlit run scripts/dashboard.py -- --bundle results/reproduce/analysis
 
-D6 is the frozen plan's lowest-priority, desirable-only deliverable (see
+D6 is the study plan's lowest-priority, desirable-only deliverable (see
 `openspec/changes/add-results-dashboard/proposal.md`): it is not part of
 `scripts/reproduce.sh` and not required for any essential deliverable.
 """

@@ -2,7 +2,7 @@
 Engine pool for the Levy API (LEV-7 design.md decision 2).
 
 The engine binds `embedding_model` and `similarity_threshold` at construction,
-while the frozen contract makes both per-request via `cache_config`. This pool
+while the API contract makes both per-request via `cache_config`. This pool
 resolves the mismatch: one `LevyEngine` per distinct (embedding_model, threshold)
 pair, built from a base `LevyConfig` with those two fields overridden. Instances
 are reused across requests with the same pair (their caches accumulate); a

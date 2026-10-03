@@ -1,7 +1,7 @@
 """
 Latency measurement for the cache lookup path (LEV-14 / D1 economic viability).
 
-The frozen Project Proposal defines economic viability by hit rate **and**
+The study plan defines economic viability by hit rate **and**
 "latency measurements (cache lookup overhead vs LLM call savings)". This
 package supplies the second half: a decomposed measurement of what a lookup
 costs, and the artefact contract that reports it.

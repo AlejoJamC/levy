@@ -11,26 +11,7 @@ and reuses responses for exact or semantically similar prompts, in order to meas
 cost, latency, and — centrally — **false positive rates** of semantic caching across
 workloads, embedding models, and similarity thresholds.
 
-## Source of truth — READ FIRST, NEVER MODIFY
-
-These two documents were submitted to the university. They are **FROZEN**:
-do not edit, rename, move, reformat, or "fix typos" in them under any circumstance.
-They are the authoritative definition of the research questions, methodology,
-metrics, and deliverables. When any other file (including this one, the README,
-or code) contradicts them, the frozen documents win for *research scope*;
-flag the conflict instead of silently resolving it.
-
-| Document | Role |
-|---|---|
-| `docs/Project_Proposal.md` | **IMMUTABLE.** Aims, objectives (O1–O4), research questions, deliverables (D1–D3), phase plan (Weeks 12–40), risks, budget. |
-| `docs/Specification_and_Design_Report.md` | **IMMUTABLE.** Full specification and design: hypotheses (H0₁–H0₃), component architecture, algorithms (cache lookup, replay harness), API contract, statistical analysis plan, deliverables D1–D7. |
-
-Everything else in the repo — all code, tests, examples, configs, and the remaining
-docs — **is open to change**. The project now has new goals, schedule, and
-deliverables built *on top of* the frozen baseline, so working docs and code evolve
-freely as long as they don't rewrite the submitted documents.
-
-## Key research parameters (from the frozen docs)
+## Key research parameters
 
 - **Primary question:** does embedding model selection meaningfully impact false
   positive rates in semantic caching across production LLM workloads?
@@ -45,7 +26,7 @@ freely as long as they don't rewrite the submitted documents.
 - **Dataset:** 900 query pairs (300 per workload) from public human-annotated
   corpora with the author's blind re-annotation. **Produced 2026-08-04.** The
   corpora actually used are Quora Question Pairs, **SODD** and **Twitter
-  PIT-2015** — the frozen docs name Stack Overflow duplicates and ConvAI2; both
+  PIT-2015** — replacing the originally planned Stack Overflow duplicates and ConvAI2; both
   substitutions are recorded as deviations in `data/DATASHEET.md` §2. Published as
   `data/ground_truth.ids.csv` (identifiers + labels, no query text — licence
   constraint); the query text is never committed and is rebuilt locally by
@@ -58,17 +39,11 @@ freely as long as they don't rewrite the submitted documents.
 
 | File | Status | Content |
 |---|---|---|
-| `docs/Project_Proposal.md` | FROZEN | Research baseline (see above). |
-| `docs/Specification_and_Design_Report.md` | FROZEN | Design baseline (see above). |
-| `docs/ARCHITECTURE.md` | Living, **user-facing** | The released system's architecture: component map traced to the frozen spec's named components, request flow, experiment flow, ABC+mock provider pattern. **This file (CLAUDE.md) links to it and must not duplicate it** — CLAUDE.md is the agent-facing orientation, ARCHITECTURE.md is what a third party reads. |
+| `docs/ARCHITECTURE.md` | Living, **user-facing** | The released system's architecture: component map, request flow, experiment flow, ABC+mock provider pattern. **This file (CLAUDE.md) links to it and must not duplicate it** — CLAUDE.md is the agent-facing orientation, ARCHITECTURE.md is what a third party reads. |
 | `docs/REPRODUCTION.md` | Living, **user-facing** | D5 reproduction guide: Docker one-command path and the conda step-by-step path, expected outputs, the "swap in the real dataset" section (changes only `--dataset`), and the release checklist. Its commands come from `scripts/reproduce.sh`. |
 | `docs/DATA_PRODUCTION.md` | Living, **author-facing** | The D2 production runbook: the ordered acquire → pin → sample → rehydrate → annotate → kappa → commit procedure, including the two manual corpus downloads (Kaggle QQP, SODD's Drive folder) and the QQP CSV→TSV conversion. **The single place this sequence is written down** — `data/README.md` and `docs/REPRODUCTION.md` link to it rather than restating it. Procedure only; licences, protocol rationale and deviations live in `data/DATASHEET.md`. |
-| `docs/RESEARCH_OVERVIEW.md` | Historical (flagged in place) | Early research framing (CSCK508 module). Predates the proposal; its 12-week timeline and RAG workload were superseded by the frozen docs. Editable. |
-| `docs/LITERATURE_REVIEW.md` | Working skeleton (flagged in place) | Paper list + research-gaps matrix. Editable, expand as needed. |
-| `docs/PLANNING_HIERARCHY.md` | Working note (flagged in place) | Vision → Epic → Feature → Story → Task hierarchy used to plan work. |
-| `docs/epics/EPIC-001-client-proxy-layer.md` | Historical planning (flagged in place) | Pre-implementation epic for the client/proxy layer, which shipped as `levy/api/`. Kept for provenance; `docs/ARCHITECTURE.md` and the code are authoritative. Pattern for future epics (`EPIC-00X-*.md`). |
 | `README.md` | Living | User-facing install/usage docs. Keep in sync with code. **No ticket identifiers in user-facing headings** — identifiers belong in CLAUDE.md, OpenSpec, and git history. |
-| `data/README.md`, `data/DATASHEET.md`, `data/raw/README.md` | Living | What is committed vs. generated in `data/`, the acquire→sample→rehydrate sequence, the full D2 datasheet (corpora, licences, the three recorded frozen-doc deviations, ids-only distribution), and the per-corpus acquisition layout. `data/corpora.json` is the machine-readable provenance registry those docs point at — **read by code, so do not restate its URLs, filenames or checksums elsewhere**. |
+| `data/README.md`, `data/DATASHEET.md`, `data/raw/README.md` | Living | What is committed vs. generated in `data/`, the acquire→sample→rehydrate sequence, the full D2 datasheet (corpora, licences, the three recorded deviations from the original plan, ids-only distribution), and the per-corpus acquisition layout. `data/corpora.json` is the machine-readable provenance registry those docs point at — **read by code, so do not restate its URLs, filenames or checksums elsewhere**. |
 | `openspec/` | Living | OpenSpec spec-driven workflow: capability specs + change proposals (see "Spec-driven workflow" below). |
 | `CLAUDE.md` (this file) | Living | Orientation + ground rules for every session. |
 
@@ -94,7 +69,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   (sum) and `metadata` (split + model + stop_reason). A per-instance `_BudgetGuard`
   accumulates request count and estimated cost (tokens × configurable per-MTok
   prices) and raises `BudgetExceededError` before sending once the estimate
-  reaches `anthropic_budget_cap_usd` (default 200.0, the frozen cap). A
+  reaches `anthropic_budget_cap_usd` (default 200.0, the budget cap). A
   `stop_reason: "refusal"` response raises `AnthropicRefusalError` instead of
   being cached. Missing `ANTHROPIC_API_KEY` fails at construction. Fully
   offline-testable via an injectable `http_client` (`anthropic.DefaultHttpxClient`
@@ -118,7 +93,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   `make_vector_index()` factory honours `vector_index_backend` config;
   `semantic_cache.py` (LEV-2) — owns a `VectorIndex` + monotonic id→`CacheEntry`
   map; retrieval uses `similarity = 1/(1+L2_distance)` per Algorithm 1 of the
-  frozen S&D; all embeddings L2-normalised before indexing/querying for
+  the original design; all embeddings L2-normalised before indexing/querying for
   cross-model comparability; `reset()` empties index + map for per-config sweeps;
   `store.py` (`InMemoryStore`, FIFO eviction), `redis_store.py`
   (JSON-serialized entries, duck-types `InMemoryStore`; `KEYS *` + `MGET` scan for
@@ -132,16 +107,18 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   non-retryable propagation, refusal handling (incl. engine end-to-end — nothing
   cached), budget-guard halt + spend visibility, engine wiring end-to-end. Fully
   offline via `httpx.MockTransport` injected as the SDK's `http_client`.
-- `tests/test_embedding_manager.py` — 27 unit tests for `EmbeddingManager`: runtime
+- `tests/test_embedding_manager.py` — 30 unit tests for `EmbeddingManager`: runtime
   model switching, alias resolution, memoization, dimension/identity exposure, prefix
   handling, and default config validation. All offline (injected mock clients).
-- `tests/test_vector_index.py` — 27 unit tests for `VectorIndex` + `SemanticCache`:
+- `tests/test_vector_index.py` — 30 unit tests for `VectorIndex` + `SemanticCache`:
   add/search/reset/size, L2 normalization, zero-vector guard, similarity transform +
   threshold decisions, id→entry resolution, Faiss↔brute-force agreement (skipped
   when Faiss absent), engine end-to-end semantic cache hit/miss.
 - `examples/simple_replay.py` — replays a prompt list under no-cache / exact /
-  exact+semantic configs. `examples/ollama_demo.py` — end-to-end with local Ollama
-  (`qwen3` LLM + `nomic-embed-text` embeddings). `examples/anthropic_smoke_check.py`
+  exact+semantic configs. `examples/ollama_demo.py` — optional side demo of the
+  Ollama provider (`qwen3` + `nomic-embed-text`); **not used in the study** — the
+  real models are `all-MiniLM-L6-v2` / `modernbert` embeddings, a mock LLM in the
+  D3 grid, and Claude Haiku/Sonnet/Opus for latency and throughput. `examples/anthropic_smoke_check.py`
   — one-shot real-API smoke check for the Anthropic connector (billed, requires a
   real `ANTHROPIC_API_KEY`; not collected by pytest — lives outside `tests/`).
 - `levy/dataset/` (LEV-3, extended by LEV-12) — ground-truth dataset **platform
@@ -262,7 +239,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   are the rehydrated working dataset and are gitignored. `data/README.md` documents
   what is committed vs. generated and the acquire→sample→rehydrate sequence;
   `data/DATASHEET.md` is the D2 datasheet (corpora + licences, sampling protocol,
-  the three recorded deviations from the frozen docs, ids-only distribution model,
+  the three recorded deviations from the original study plan, ids-only distribution model,
   limitations) with `TODO (post data-production)` markers only where the real
   sampling/annotation run is required.
 - `tests/test_dataset.py` — 93 unit tests for `levy/dataset/`: schema validation
@@ -273,7 +250,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   factory, sampling determinism/stratification, blind annotation (blindness, resume,
   no-overwrite), Cohen's kappa (perfect/chance/worked/degenerate cases), and CLI smoke
   tests against the `data/` fixtures. All offline.
-- `tests/test_corpus_acquisition.py` (LEV-12) — 79 unit tests: provenance-registry
+- `tests/test_corpus_acquisition.py` (LEV-12) — 80 unit tests: provenance-registry
   reader (every malformed-registry path), checksum pinning, the validation report
   (two simultaneous problems both reported, pool shortfall across all three workloads
   at once, cross-workload overlap, out-of-domain label, checksum mismatch, nothing
@@ -285,7 +262,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   All offline, driven by `tests/fixtures/corpora/` — real column structure, synthetic
   content, laid out as a valid `--raw-dir` (regenerate the parquet shards with
   `python tests/fixtures/corpora/make_sodd_fixture.py`).
-- `tests/test_workload_resample.py` (2026-08-06) — 55 unit tests for backups +
+- `tests/test_workload_resample.py` (2026-08-06) — 56 unit tests for backups +
   per-workload re-sampling: backup naming/UTC/same-second collision/unusable
   directory, splice identity preservation and length changes, exclusion and
   post-exclusion pool counting, ids-alignment drift, and the `--workload` CLI
@@ -308,8 +285,8 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   disagreement, grid-order sorting, backup-before-write, **the merged 30-row set
   byte-identical to a single full sweep's `results.csv`/`decisions.csv`**, and the
   merged bundle feeding `scripts/run_analysis.py` end-to-end.
-- `levy/experiment/` (LEV-4) — offline replay harness per S&D Report Algorithm 2:
-  `config.py` (`ExperimentConfig` + `full_grid()`, the frozen 2 models × 3 workloads ×
+- `levy/experiment/` (LEV-4) — offline replay harness:
+  `config.py` (`ExperimentConfig` + `full_grid()`, the 2 models × 3 workloads ×
   5 thresholds = 30 configurations, thresholds carried verbatim on the `1/(1+L2)` scale);
   `metrics.py` (`EvaluationResult`/`DecisionRecord`, precision/recall/F0.5/FPR/hit-rate
   formulas, zero-division reported as `0.0` + flag never NaN, `check_sanity()` raising
@@ -351,8 +328,8 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   manager, exact-duplicate via the exact cache, cross-pair cache accumulation, fresh
   cache per `run_experiment` call), sweep determinism (byte-identical re-runs), and
   output-contract shape. All offline (mock LLM + mock/scripted embeddings).
-- `levy/api/` (LEV-7) — FastAPI router exposing the engine over HTTP per the frozen
-  S&D "Intended interface": `app.py` (`create_app(config, max_engines)` factory +
+- `levy/api/` (LEV-7) — FastAPI router exposing the engine over HTTP per the
+  intended interface: `app.py` (`create_app(config, max_engines)` factory +
   module-level `app`; `POST /v1/chat/completions`, `GET /admin/cache/stats`,
   `POST /admin/cache/clear`; sync `def` endpoints run in FastAPI's threadpool —
   the async-at-boundary decision recorded in known-gap #1 above); `schemas.py`
@@ -460,12 +437,12 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   needing a first-run download). A missing/incomplete bundle renders the
   typed error's message and stops cleanly, never a traceback; provenance
   (fixture-only labelling, providers) is a visible banner. `tests/
-  test_dashboard.py` — 17 unit tests, fully offline, headless (no Streamlit
+  test_dashboard.py` — 19 unit tests, fully offline, headless (no Streamlit
   process): bundle load/validation (valid bundle, missing file, missing
   column), curve selection, query decision (near-duplicate hit, unrelated
   miss, threshold-flip-without-re-embedding via a counting embedding-manager
   double), and semantics parity against a direct `SemanticCache` query.
-- `levy/latency/` (LEV-14, D1's second half — the Proposal's "latency
+- `levy/latency/` (LEV-14, D1's second half — the study plan's "latency
   measurements (cache lookup overhead vs LLM call savings)", which nothing
   measured before): `timing.py` (`TimingCollector` — named segments on
   `time.perf_counter`, plus `segment()`/`mark()`/`since_ms()` helpers used at
@@ -518,7 +495,14 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   resume-skip and budget-stop through `httpx.MockTransport`, and the reference
   result directory byte-identical after a full driver run.
 
-### Known gaps: current code vs frozen spec
+- `tests/test_analysis_robustness.py` (11, LEV-22) and `tests/test_prevalence.py` (23,
+  LEV-21) — offline tests for `levy/analysis/robustness.py` and
+  `scripts/measure_prevalence.py`. `tests/test_cache.py` (17), `test_engine.py` (9),
+  `test_metrics.py` (12) and `test_providers.py` (9) cover the core engine, caches,
+  metrics and provider clients. Counts per file drift; `pytest --co -q` is the
+  authority.
+
+### Known gaps: current code vs original design
 
 Track these when building toward the experimental phase — they are the backlog
 implied by the spec, not bugs:
@@ -529,21 +513,21 @@ implied by the spec, not bugs:
    /admin/cache/stats`, and `POST /admin/cache/clear`. **Async decision:**
    endpoints are declared `def` (sync), so FastAPI runs them in its
    threadpool — the whole call chain (engine, caches, the LEV-6 Anthropic
-   client) stays synchronous; this satisfies the frozen "asynchronous
+   client) stays synchronous; this satisfies the original "asynchronous
    wrapper" intent at the HTTP boundary (concurrent request handling)
    without an `AsyncAnthropic` migration. Recorded resolution, not silent
    drift — see `openspec/changes/add-fastapi-router/design.md`.
 2. ~~**No Anthropic LLM connector**~~ — **Resolved (LEV-6).** `AnthropicLLMClient`
    wraps the official `anthropic` SDK behind the existing synchronous `LLMClient`
-   ABC, selected via `llm_provider="anthropic"`. **Sync-now decision:** the frozen
-   S&D calls for an "asynchronous wrapper", but the whole core engine (caches,
+   ABC, selected via `llm_provider="anthropic"`. **Sync-now decision:** the original
+   design calls for an "asynchronous wrapper", but the whole core engine (caches,
    harness) is synchronous; this change implements the connector synchronously
    against the existing ABC and defers async to the FastAPI router (LEV-7), where
    the SDK's `AsyncAnthropic` client fits naturally — recorded as a documented
    resolution, not silent drift (see `openspec/changes/add-anthropic-connector/design.md`).
-   **Model default drift:** the frozen S&D's example model string
+   **Model default drift:** the original design's example model string
    (`claude-3-sonnet-20240229`) is retired; the connector defaults to a current
-   model instead — flagged here per the frozen-docs rule, not silently resolved.
+   model instead — flagged here, not silently resolved.
    Since LEV-14 that default is **`claude-haiku-4-5-20251001` at $1/$5 per MTok**,
    the model the latency pilot actually calls: `anthropic_model` and the two
    price fields are one triple describing one model, and the previous
@@ -554,7 +538,7 @@ implied by the spec, not bugs:
    1/(1+L2_distance)` per Algorithm 1. **Threshold-scale flag for LEV-4/LEV-8:**
    all embeddings are L2-normalised before indexing so the distance scale is
    identical across models. For unit vectors, `distance = sqrt(2 − 2·cosine)` and
-   `similarity = 1/(1+distance)`. The frozen sweep 0.70–0.90 therefore covers a
+   `similarity = 1/(1+distance)`. The study's sweep 0.70–0.90 therefore covers a
    high-cosine band (~0.91–0.998). This is intentional and spec-mandated; do NOT
    rescale thresholds or revert to cosine.
 4. ~~**No experiment harness**~~ — **Resolved (LEV-4).** `levy/experiment/` implements
@@ -573,7 +557,7 @@ implied by the spec, not bugs:
    implement the schema, CSV/JSON loader (the LEV-4 contract), the ids-only
    distribution format, the corpus provenance registry, seeded stratified sampling,
    pre-flight validation, one-command acquisition, rehydration, blind re-annotation,
-   and Cohen's kappa. **Corpus deviations from the frozen docs, flagged not silently
+   and Cohen's kappa. **Corpus deviations from the original plan, flagged not silently
    resolved** (rationale in `data/DATASHEET.md` §2): code workload
    "Stack Overflow duplicate questions" → **SODD** (same
    duplicate-closure source, published pre-processed release); chat workload
@@ -587,7 +571,7 @@ implied by the spec, not bugs:
    class per workload); rehydration verified byte-identical on the real 900; the
    author's blind re-annotation finished 900/900 and published in
    `data/ground_truth.ids.csv`'s `author_label` column. **Cohen's kappa = 0.5000
-   (faq 0.5267, code 0.4200, chat 0.5533) — below the frozen κ > 0.7 criterion.**
+   (faq 0.5267, code 0.4200, chat 0.5533) — below the κ > 0.7 criterion.**
    (0.3267 at first publication; `chat` was re-drawn 2026-08-06 at seed 4242 and
    `code` 2026-08-07 at seed 8484, each re-annotated blind — `data/DATASHEET.md`
    §3–§4. Those two workloads' 300 pairs are different draws from the ones first
@@ -669,7 +653,7 @@ python scripts/annotate_dataset.py \
 
 # Demos
 python examples/simple_replay.py     # mock LLM; uses sentence-transformers if installed
-python examples/ollama_demo.py       # requires `ollama serve` + qwen3 + nomic-embed-text
+python examples/ollama_demo.py       # optional, not part of the study; needs `ollama serve` + qwen3 + nomic-embed-text
 python examples/anthropic_smoke_check.py  # one real, billed call; requires ANTHROPIC_API_KEY in .env
 
 # HTTP API (LEV-7) — reads .env for the configured provider's credentials
@@ -730,12 +714,12 @@ and tracking changes. New features should go through this flow instead of ad-hoc
 edits:
 
 - `openspec/specs/` — living capability specs (the working spec layer, built *on
-  top of* the frozen university docs; they must never contradict the frozen
-  research scope). Currently **11 capabilities**, one per shipped capability:
+  top of* the study design; they must never contradict the
+  research scope). Currently **12 capabilities**, one per shipped capability:
   `embedding-management`, `vector-store`, `ground-truth-dataset`,
   `experiment-harness`, `test-infrastructure`, `anthropic-connector`,
   `api-router`, `statistical-analysis`, `release-packaging`,
-  `results-dashboard`, `corpus-acquisition`.
+  `results-dashboard`, `corpus-acquisition`, `latency-measurement`.
   **Main specs use main-spec structure** — `# <name> Specification`, a
   `Capability:` line, `## Purpose`, `## Requirements` — *never* delta headers
   (`## ADDED Requirements`) and never a `TBD` Purpose. `openspec archive` creates
@@ -747,7 +731,8 @@ edits:
   `add-experiment-harness`, `add-test-infrastructure`, `add-anthropic-connector`,
   `add-fastapi-router`, `add-statistical-analysis`, `add-release-packaging`,
   `add-results-dashboard`, `add-corpus-acquisition` (2026-08-04),
-  `add-ground-truth-dataset` (2026-08-05), `add-anova-effect-sizes` (2026-09-19). **No changes are in flight** —
+  `add-ground-truth-dataset` (2026-08-05), `add-latency-measurement` (2026-08-07),
+  `add-anova-effect-sizes` (2026-09-19). **No changes are in flight** —
   `openspec list` reports none. The remaining D3 work (LEV-13) is a production run of
   already-shipped tooling, so it produces result artifacts rather than capability
   changes and correctly has no OpenSpec change of its own.
@@ -782,7 +767,14 @@ Release (2026-11-02).
 | LEV-11 | — (D2 data production: real dataset + published D2 artifact) | Urgent | **complete** — 900 pairs published as ids + labels; κ = 0.5000 after the chat (2026-08-06) and code (2026-08-07) re-samples, 0.3267 at first publication; below the 0.7 bar, recorded as a finding |
 | LEV-12 | `add-corpus-acquisition` | High | archived (2026-08-04) |
 | LEV-13 | — (D3 production run: 30 configurations + analysis + ±5% replication) | Urgent | **run complete 2026-08-07**, published as `release/d3-results/` — see the results note below |
-| LEV-14 | `add-latency-measurement` | Urgent | **implemented + run 2026-08-07**, published as `release/latency/` — see the latency note below |
+| LEV-14 | `add-latency-measurement` | Urgent | archived (2026-08-07); run published as `release/latency/` — see the latency note below |
+| LEV-15 | — (publish D3 results of record) | Urgent | published as `release/d3-results/` |
+| LEV-16 | — (cross-environment replication check; `release/` reorganised by deliverable) | High | done; recorded in `release/PROVENANCE.md` |
+| LEV-17 | — (throughput under concurrent load, `scripts/run_throughput.py`) | High | run; one directory per model in `release/throughput/` (`claude-haiku-4-5-20251001` via mock at its measured latency, `claude-sonnet-4-6` and `claude-opus-5` live) |
+| LEV-18 | — (record the resolved vector index backend in `run_meta.json`) | High | done; the D3 run of record used `faiss_hnsw`, re-run on `brute_force` gave byte-identical `results.csv` (`release/PROVENANCE.md`) |
+| LEV-19 | — (concurrency fixes in `EmbeddingManager` and the cache/vector-index layer) | High | done |
+| LEV-21 | — (duplicate prevalence in the source pools, `scripts/measure_prevalence.py`) | High | done; `release/prevalence/` (positive share of eligible pairs: faq 36.9 %, code 26.1 %, chat 34.9 %) |
+| LEV-22 | — (robustness re-analysis of H0 on the binary per-decision outcome, `levy/analysis/robustness.py`, `scripts/run_robustness.py`) | High | done; `release/d3-results/robustness/`. Model effect: the primary exact permutation and ML/Firth logistic retain H0₁ and reject H0₂, agreeing with the ANOVA; the pair-clustered tests (sign-flip, matched-unit, bootstrap) reject H0₁ and are recorded as DISAGREE — see `verdicts.csv` |
 | LEV-20 | `add-anova-effect-sizes` | High | archived (2026-09-19) — η², partial η², ω² per ANOVA term, published in `release/d3-results/analysis/anova.csv` |
 
 Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 → LEV-11 (D2)
@@ -808,7 +800,7 @@ including which directories are scratch, is `docs/DATA_PRODUCTION.md`
 - **H0₁ (model) retained**, p = 0.465. **H0₂ (workload) rejected**, p = 0.0188,
   Tukey ran on it. **H0₃ (interaction) retained**, p = 0.875. So: no measurable
   embedding-model effect on FPR; workload dominates.
-- **Hit rate never reaches the frozen 30% viability bar.** Best cell is
+- **Hit rate never reaches the 30% viability bar.** Best cell is
   faq / all-MiniLM-L6-v2 at threshold 0.70 = 24.0%. All 30 configurations fail
   the criterion.
 - **±5% replication passed**, 60/60 (configuration, metric) comparisons over all
@@ -830,7 +822,7 @@ real calls, 0 refusals, no budget halt.
 - **Median lookup overhead 10.16 ms vs median provider latency 3407 ms →
   ~3397 ms avoided per cache hit; the overhead is 0.30 % of the call it
   avoids.** The cache's own cost is not what makes it uneconomic here — the
-  hit rate is (24.0 % best cell, below the frozen 30 % bar). Those two findings
+  hit rate is (24.0 % best cell, below the 30 % bar). Those two findings
   belong together: a hit is worth ~340× what consulting the cache costs, and
   the D3 grid produces one less than a quarter of the time.
 - **Embedding dominates the lookup**, and it is the only segment where the two
@@ -853,13 +845,11 @@ real calls, 0 refusals, no budget halt.
 
 ## Conventions
 
-- Python ≥ 3.10, dataclasses over Pydantic in the core package (EPIC-001 plans
-  Pydantic for the API layer), synchronous code so far.
+- Python ≥ 3.10, dataclasses over Pydantic in the core package (Pydantic only in
+  the API layer), synchronous code so far.
 - Provider abstraction: every external dependency (LLM, embeddings, store) has an
   ABC plus a mock implementation, so tests and demos run with zero external
   services. Keep this pattern when adding Anthropic/Faiss/FastAPI.
 - The mock-first design is deliberate: experiments must be reproducible offline.
-- Work is planned as Epics → Features → Stories (see `docs/PLANNING_HIERARCHY.md`);
-  new epics go in `docs/epics/`.
 - Licence is Apache 2.0; the code and dataset will be released publicly, so keep
   the repo free of personal/sensitive data.

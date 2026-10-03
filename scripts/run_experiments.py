@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Run the frozen experimental grid end-to-end (LEV-4 / D3).
+Run the experimental grid end-to-end (LEV-4 / D3).
 
 Loads a ground-truth dataset via `levy.dataset.load_dataset`, replays it
 through the offline harness (Algorithm 2) for every (model, workload,
@@ -42,7 +42,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dataset", type=Path, default=Path("data/ground_truth.csv"), help="Dataset file (.csv or .json); default: data/ground_truth.csv")
     parser.add_argument("--out-dir", type=Path, required=True, help="Output directory for results.csv, decisions.csv, run_meta.json")
-    parser.add_argument("--models", type=str, default=None, help="Comma-separated model subset (default: full frozen grid, e.g. all-MiniLM-L6-v2,modernbert)")
+    parser.add_argument("--models", type=str, default=None, help="Comma-separated model subset (default: full study grid, e.g. all-MiniLM-L6-v2,modernbert)")
     parser.add_argument("--workloads", type=str, default=None, help="Comma-separated workload subset (default: faq,code,chat)")
     parser.add_argument("--thresholds", type=str, default=None, help="Comma-separated threshold subset (default: 0.70,0.75,0.80,0.85,0.90)")
     parser.add_argument("--embedding-provider", type=str, default="mock", choices=["mock", "sentence-transformers", "ollama"], help="Embedding provider for the sweep (default: mock, fully offline)")

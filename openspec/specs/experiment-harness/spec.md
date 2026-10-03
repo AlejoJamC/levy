@@ -1,18 +1,18 @@
 # experiment-harness Specification
 
-Capability: offline replay of annotated query pairs across the frozen 30-configuration experimental grid — per-configuration confusion-matrix accounting against ground-truth labels, metric computation, and deterministic machine-readable outputs consumed by the statistical analysis.
+Capability: offline replay of annotated query pairs across the 30-configuration experimental grid — per-configuration confusion-matrix accounting against ground-truth labels, metric computation, and deterministic machine-readable outputs consumed by the statistical analysis.
 
 ## Purpose
 
-Replay annotated query pairs through the production cache lookup path across the frozen experimental grid (2 embedding models x 3 workloads x 5 similarity thresholds = 30 configurations), account for true/false positives and negatives per configuration against each pair's ground-truth label, compute precision, recall, F-score with beta=0.5, false positive rate, and hit rate, and write deterministic machine-readable outputs that the statistical analysis capability consumes.
+Replay annotated query pairs through the production cache lookup path across the experimental grid (2 embedding models x 3 workloads x 5 similarity thresholds = 30 configurations), account for true/false positives and negatives per configuration against each pair's ground-truth label, compute precision, recall, F-score with beta=0.5, false positive rate, and hit rate, and write deterministic machine-readable outputs that the statistical analysis capability consumes.
 
 ## Requirements
-### Requirement: Experiment configuration and frozen grid enumeration
-The system SHALL define an `ExperimentConfig` carrying an embedding model, a workload, and a similarity threshold, and SHALL enumerate the frozen experimental grid: 2 embedding models (`all-MiniLM-L6-v2`, `modernbert`) × 3 workloads (`faq`, `code`, `chat`) × 5 thresholds (0.70, 0.75, 0.80, 0.85, 0.90) = 30 configurations. Thresholds SHALL be applied exactly as configured on the `1/(1+L2_distance)` similarity scale, with no rescaling or transformation.
+### Requirement: Experiment configuration and study grid enumeration
+The system SHALL define an `ExperimentConfig` carrying an embedding model, a workload, and a similarity threshold, and SHALL enumerate the experimental grid: 2 embedding models (`all-MiniLM-L6-v2`, `modernbert`) × 3 workloads (`faq`, `code`, `chat`) × 5 thresholds (0.70, 0.75, 0.80, 0.85, 0.90) = 30 configurations. Thresholds SHALL be applied exactly as configured on the `1/(1+L2_distance)` similarity scale, with no rescaling or transformation.
 
 #### Scenario: Grid enumeration
 - **WHEN** the full grid is enumerated
-- **THEN** exactly 30 distinct configurations are produced covering every (model, workload, threshold) combination of the frozen study
+- **THEN** exactly 30 distinct configurations are produced covering every (model, workload, threshold) combination of the study
 
 #### Scenario: Threshold passed through unmodified
 - **WHEN** a configuration with threshold 0.80 is run

@@ -1,7 +1,7 @@
 """
 SemanticCache — Faiss-backed (or brute-force) semantic cache.
 
-Retrieval follows Algorithm 1 from the frozen S&D Report exactly:
+Retrieval follows Algorithm 1 from the study design exactly:
   embed query → L2-normalise → k=1 ANN search → distance → similarity = 1/(1+distance)
   → hit iff similarity >= threshold.
 

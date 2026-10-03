@@ -35,7 +35,6 @@ htmlcov/
 # are copied explicitly by the Dockerfile.
 docs/
 openspec/
-memory/
 docker-compose.yml
 Dockerfile
 .dockerignore

@@ -20,8 +20,8 @@ class LevyConfig:
 
     # Anthropic settings (LEV-6)
     anthropic_api_key: Optional[str] = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY"))
-    # S&D Report's example model (claude-3-sonnet-20240229) is retired; defaulting to the
-    # current recommended model is intentional frozen-doc drift, not silent resolution.
+    # study design's example model (claude-3-sonnet-20240229) is retired; defaulting to the
+    # current recommended model is an intentional change, not silent drift.
     #
     # LEV-14: this triple is set to the model a run actually uses, together. The
     # previous default (claude-opus-4-8 at $5/$25 per MTok) described a model no
@@ -30,7 +30,7 @@ class LevyConfig:
     # that is what these describe; escalating the model means changing all three.
     anthropic_model: str = "claude-haiku-4-5-20251001"
     anthropic_max_retries: int = 2
-    anthropic_budget_cap_usd: float = 200.0  # frozen budget hard cap (~$50 expected spend)
+    anthropic_budget_cap_usd: float = 200.0  # budget hard cap (~$50 expected spend)
     anthropic_input_price_per_mtok: float = 1.0  # USD per 1M input tokens, claude-haiku-4-5
     anthropic_output_price_per_mtok: float = 5.0  # USD per 1M output tokens, claude-haiku-4-5
     

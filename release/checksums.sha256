@@ -1,5 +1,5 @@
-da1fcacc1ba86ea7173e4a2a66297c74fdb404070dc6b516c9232ba72f2516cd  ./PROVENANCE.md
-411af59fadfc76f52758bfd488d13686bebd0d52ca2239daa3f780914c183f08  ./d3-results/analysis/analysis_meta.json
+cecff6a4f0f48d40a31e5086209820be3f2101b47bef0394e5fdeea74fee88d8  ./PROVENANCE.md
+e6e2f442e1b0bd95f3a21730bc64d3e50d710f6ae23e531986a4efb05d0e70db  ./d3-results/analysis/analysis_meta.json
 e94e353fe7905332ab142767e7818e17c1110e8af7f88f33106d8b6df8965486  ./d3-results/analysis/anova.csv
 fe7c7f668efc3d9697c1c7e1727f96a2a5b169f717cb5cfbef501d59f85a158e  ./d3-results/analysis/curves_hit_rate.csv
 13141c575a39b5c0658700cc302c7a8078abe5092b5c2e6991366535fcb3b375  ./d3-results/analysis/curves_precision.csv
@@ -15,9 +15,9 @@ d16f0776330d8be19f78904ad3e8415002d26cbc952a44f2bd3f02a227046939  ./d3-results/a
 f001dcb1f9b01b4c1acc91e204dc4e824276af0859aa3bdfd8f00c2ddcd46401  ./d3-results/decisions.csv
 f5497003a1ec78fba473b9331faf44c0bdae8300f7136603e31f895a831ed044  ./d3-results/replication/brute-force.results.csv
 25402b50508b2eb851a0e93e61af1707a665546974117c7cd1ac476579d3d65f  ./d3-results/replication/brute-force.run_meta.json
-b7772e3beebf302a811ba37fcdd6bc341abda4aeb5ca540c059a1a8e733f3f79  ./d3-results/replication/cross-environment.replication.json
+134afc599e722b97aea0cd95c575c5475274783363d0217cd99adfcec3c48acf  ./d3-results/replication/cross-environment.replication.json
 f5497003a1ec78fba473b9331faf44c0bdae8300f7136603e31f895a831ed044  ./d3-results/replication/cross-environment.results.csv
-86e2e80214944fa5ce7e39059ec22c3037164fe72440c9074edcb6173a547444  ./d3-results/replication/determinism.replication.json
+96618314c47c2b365c7bd9926dcc7c43cc55106a8fe96382ea4c3fa19f8646b1  ./d3-results/replication/determinism.replication.json
 f5497003a1ec78fba473b9331faf44c0bdae8300f7136603e31f895a831ed044  ./d3-results/results.csv
 0f2d24aa1d83065b788408fbff6234e0583341f3fa111983dc4e10ff2f9b3af7  ./d3-results/robustness/bootstrap.csv
 6b75420f7dc0c7f34f6f9e2401248f6efd366445c4d93f65faabed0109d6c4bf  ./d3-results/robustness/coefficients.csv

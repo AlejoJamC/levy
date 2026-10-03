@@ -43,7 +43,7 @@ from levy.dataset.kappa import KappaResult, kappa_report
 
 PathLike = Union[str, Path]
 
-#: Frozen annotation-validity bar (S&D Report): Cohen's kappa > 0.7.
+#: Annotation-validity bar (study design): Cohen's kappa > 0.7.
 KAPPA_THRESHOLD = 0.7
 
 FIGURES_DIRNAME = "figures"

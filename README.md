@@ -2,14 +2,14 @@
 
 **Levy** is a semantic caching engine for LLM APIs, built as the IT artefact of an MSc Artificial Intelligence capstone project (University of Liverpool). It sits between your application and an LLM provider (Mock, OpenAI-compatible, Ollama, or Anthropic) to optimize costs and latency by reusing responses for identical or semantically similar prompts.
 
-The research behind Levy benchmarks false positive rates of semantic caching across embedding models (all-MiniLM vs ModernBERT), workloads (FAQ, code, chat), and similarity thresholds. The authoritative project definition lives in [docs/Project_Proposal.md](docs/Project_Proposal.md) and [docs/Specification_and_Design_Report.md](docs/Specification_and_Design_Report.md) (university submissions — do not modify).
+The research behind Levy benchmarks false positive rates of semantic caching across embedding models (all-MiniLM vs ModernBERT), workloads (FAQ, code, chat), and similarity thresholds.
 
 ## Documentation
 
 | Document | What it covers |
 |---|---|
 | [docs/REPRODUCTION.md](docs/REPRODUCTION.md) | Run the full evaluation pipeline from a fresh checkout — one Docker command, or step by step with conda. Fully offline. |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Component map traced to the frozen specification, request flow, experiment flow, provider-abstraction patterns. |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Component map, request flow, experiment flow, provider-abstraction patterns. |
 | [data/DATASHEET.md](data/DATASHEET.md) | Dataset provenance: source corpora and licences, sampling protocol, annotation guidelines, annotator-agreement result. |
 | [data/README.md](data/README.md) | What is committed in `data/` and what you generate locally. |
 
@@ -32,7 +32,8 @@ docker compose run --rm pipeline
 levy/
 ├── levy/                    # Core package
 │   ├── api/                 # FastAPI router: app, Pydantic schemas, engine pool
-│   ├── cache/               # Cache logic (Exact, Semantic, InMemory/Redis stores)
+│   ├── cache/               # Exact + semantic cache, vector index (Faiss HNSW /
+│   │                        #   brute-force), InMemory/Redis stores
 │   ├── llm_client.py        # LLM interaction (Mock, OpenAI, Ollama, Anthropic)
 │   ├── embeddings.py        # EmbeddingClient ABC + Mock, SentenceTransformer, Ollama
 │   ├── embedding_manager.py # EmbeddingManager: study-model registry, runtime switching,
@@ -41,19 +42,31 @@ levy/
 │   ├── config.py            # LevyConfig (providers, thresholds, store)
 │   ├── metrics.py           # Hit/miss/latency/token-savings tracking
 │   ├── models.py            # Data classes
-│   ├── dataset/             # Ground-truth dataset platform: schema, CSV/JSON
-│   │                        #   I/O, seeded sampling, blind re-annotation, Cohen's kappa
-│   ├── experiment/          # Experiment harness: grid, replay, metrics, sweep runner
-│   ├── analysis/            # Statistical analysis: ANOVA/Tukey, curves, kappa
-│   │                        #   section, replication check, bundle assembly
+│   ├── dataset/             # Ground-truth dataset platform: corpus acquisition and
+│   │                        #   validation, schema, CSV/JSON I/O, seeded sampling,
+│   │                        #   blind re-annotation, Cohen's kappa, duplicate prevalence
+│   ├── experiment/          # Experiment harness: grid, replay, metrics, sweep runner,
+│   │                        #   partial-run merge
+│   ├── analysis/            # Statistical analysis: ANOVA/Tukey + effect sizes, curves,
+│   │                        #   kappa section, replication check, robustness
+│   │                        #   re-analysis, bundle assembly
+│   ├── latency/             # Lookup-overhead and provider-latency measurement
 │   └── dashboard/           # Results dashboard core (D6, desirable): bundle
 │                            #   loading, curve selection, live query decision
-├── scripts/                 # CLIs over levy/dataset + levy/experiment + levy/analysis
-│                            #   + dashboard.py (Streamlit UI shell)
-├── data/                    # Ground-truth dataset (currently synthetic fixtures + datasheet)
-├── docs/                    # Research docs (proposal & S&D report are frozen)
+├── scripts/                 # CLIs over the packages above: sampling, annotation,
+│                            #   experiments, analysis, latency, throughput, prevalence,
+│                            #   robustness, reproduce.sh, dashboard.py (Streamlit shell)
+├── data/                    # Dataset: published ids + labels, corpus registry, datasheet,
+│                            #   synthetic fixtures (query text is never committed)
+├── release/                 # Published results: D3 grid, latency, throughput,
+│                            #   prevalence, figures, provenance + checksums
+├── docs/                    # Architecture, reproduction and data-production docs
 ├── examples/                # Demo scripts
-└── tests/                   # Unit tests
+├── tests/                   # Unit tests (offline)
+├── openspec/                # Capability specs and archived change proposals
+├── Dockerfile               # One-command reproduction image
+├── docker-compose.yml       # `pipeline` service (+ optional Redis)
+└── environment.yml          # Conda environment (single dependency source)
 ```
 
 ## Installation
@@ -110,7 +123,7 @@ print(result2.source) # 'exact_cache'
 | Example | Requirements | Cost |
 |---|---|---|
 | `examples/simple_replay.py` | None for the mock path. Uses `sentence-transformers` for the semantic configuration when importable, which downloads model weights on first run (needs network); falls back to mock embeddings otherwise. | Free |
-| `examples/ollama_demo.py` | A **local Ollama service** (`ollama serve`) with the `qwen3` and `nomic-embed-text` models pulled. | Free (local models) |
+| `examples/ollama_demo.py` | Optional side demo of the Ollama provider; **not used in the study**. Needs a local Ollama service with the models pulled (see below). | Free (local models) |
 | `examples/anthropic_smoke_check.py` | A real `ANTHROPIC_API_KEY`. | **Billed** — makes one real API call |
 
 #### Cache-behaviour replay
@@ -123,10 +136,15 @@ Runs a sequence of prompts through three configurations — no cache, exact cach
 only, and exact + semantic cache — and prints per-request source, latency, and a
 metrics summary.
 
-#### Ollama (local models)
+#### Ollama (optional local demo)
+
+The Ollama provider is kept as an example of the provider abstraction. The
+study itself never used it: no test, result, or release artefact involves an
+Ollama model (see [Models used in the study](#models-used-in-the-study)).
 
 1. Install and run [Ollama](https://ollama.com/).
-2. Pull required models:
+2. Pull the demo models (`qwen3` for generation; `nomic-embed-text` for
+   embeddings — unrelated to the study's `nomic-ai/modernbert-embed-base`):
    ```bash
    ollama pull qwen3
    ollama pull nomic-embed-text
@@ -152,7 +170,7 @@ config = LevyConfig(
     # anthropic_api_key defaults to the ANTHROPIC_API_KEY env var (.env)
     anthropic_model="claude-haiku-4-5-20251001",  # default; override per config
     anthropic_max_retries=2,                 # SDK's own exponential backoff
-    anthropic_budget_cap_usd=200.0,          # hard stop (frozen budget cap)
+    anthropic_budget_cap_usd=200.0,          # hard stop (budget cap)
     anthropic_input_price_per_mtok=1.0,      # USD / 1M input tokens
     anthropic_output_price_per_mtok=5.0,     # USD / 1M output tokens
 )
@@ -179,9 +197,7 @@ result = engine.generate("Hello")
 - **Refusals:** if the API returns a successful response whose `stop_reason`
   is a refusal, the client raises `AnthropicRefusalError` instead of
   returning (and thereby caching) empty content.
-- **Model default drift (documented, not silently resolved):** the frozen
-  S&D Report's example model string (`claude-3-sonnet-20240229`) is retired.
-  `anthropic_model` defaults to a current model instead —
+- **Model default:** `anthropic_model` defaults to a current model —
   `claude-haiku-4-5-20251001`, the model the latency measurement calls. The
   model id and the two per-MTok prices are one triple describing one model:
   change them together, or the budget guard costs a model you are not running.
@@ -210,8 +226,7 @@ To use Redis for persistence:
 
 ## HTTP API
 
-`levy/api/` exposes the engine over HTTP per the frozen S&D "Intended
-interface" contract, plus admin observability/maintenance.
+`levy/api/` exposes the engine over HTTP as an HTTP interface, plus admin observability/maintenance.
 
 ```bash
 uvicorn levy.api.app:app --reload
@@ -308,7 +323,7 @@ identical cache configuration.
 
 ### Async decision (recorded, not a gap)
 
-The frozen S&D calls for an "asynchronous wrapper"; endpoints here are
+The design calls for an "asynchronous wrapper"; endpoints here are
 declared `async`-free (`def`) so FastAPI runs them in its threadpool instead —
 the whole call chain (engine, caches, the Anthropic client) is
 synchronous, and blocking the event loop directly would serialize every
@@ -338,6 +353,16 @@ config = LevyConfig(
 > conda install -c conda-forge faiss-cpu
 > ```
 > If Faiss is absent the engine falls back to a brute-force numpy index automatically.
+
+### Models used in the study
+
+| Role | Model | Where recorded |
+|---|---|---|
+| Embeddings, baseline | `sentence-transformers/all-MiniLM-L6-v2` (384-dim) | `release/d3-results/run_meta.json` |
+| Embeddings, comparison | `nomic-ai/modernbert-embed-base` (768-dim) | `release/d3-results/run_meta.json` |
+| LLM, D3 grid (30 configurations) | `mock` — the grid replays labelled pairs, no real LLM call | `release/d3-results/run_meta.json` |
+| LLM, latency measurement | `claude-haiku-4-5-20251001` (600 billed calls) | `release/latency/` |
+| LLM, throughput measurement | `claude-haiku-4-5-20251001` (mock replay at its measured latency), `claude-sonnet-4-6` and `claude-opus-5` (live calls) | `release/throughput/<model-id>/` |
 
 ### Switching embedding models at runtime
 
@@ -389,10 +414,10 @@ against.
 ## Experiment harness
 
 `levy/experiment/` replays annotated query pairs through the production
-cache lookup path (`LevyEngine.generate()`) across the frozen 30-configuration
+cache lookup path (`LevyEngine.generate()`) across the 30-configuration
 grid — 2 embedding models × 3 workloads × 5 similarity thresholds
 (0.70–0.90) — and accounts for TP/FP/TN/FN against each pair's ground-truth
-label per Algorithm 2 of the S&D Report.
+label per the replay-harness algorithm.
 
 ```bash
 # Full 30-configuration sweep on the committed synthetic fixture (offline, mock providers):
@@ -458,7 +483,7 @@ Outputs written to `--out-dir`:
 | `tukey_status.csv` | Whether post-hoc ran for each effect **and why** — always written, including when Tukey was skipped. |
 | `curves_hit_rate.csv`, `curves_precision.csv` | Tidy threshold-vs-metric tables, 5 thresholds × 6 (model, workload) pairs, carrying the harness zero-division flags so degenerate cells stay visible. |
 | `kappa.json` | Cohen's kappa **sourced from the dataset tooling** (`levy.dataset.kappa`, not reimplemented), with the 2×2 contingency, the 0.7 bar, and a provenance block that labels fixture-derived values `FIXTURE ONLY`. |
-| `figures/` | `curve_hit_rate.{png,pdf}`, `curve_precision.{png,pdf}` — regenerable from the curve tables alone; the hit-rate figure carries the frozen 30% economic-viability reference line. |
+| `figures/` | `curve_hit_rate.{png,pdf}`, `curve_precision.{png,pdf}` — regenerable from the curve tables alone; the hit-rate figure carries the 30% economic-viability reference line. |
 | `analysis_meta.json` | Input paths, ANOVA diagnostics (design balance, Shapiro-Wilk, Levene), and library versions. The **only** place versions and a timestamp appear. |
 
 Every CSV is timestamp-free and byte-identical across re-runs on identical
@@ -472,7 +497,7 @@ occur — the F-tests are undefined, and the three hypotheses are reported as
 
 ### Replication check (±5%)
 
-Frozen Success Criterion 3: headline results replicate within ±5%.
+Success criterion: headline results replicate within ±5%.
 `scripts/check_replication.py` re-runs the harness over exactly the grid
 recorded in a reference `results.csv`, then compares precision and recall per
 configuration:
@@ -507,7 +532,7 @@ analysis bundle (the output of `scripts/run_analysis.py`): threshold-vs-metric
 curves per (model, workload) with degenerate points flagged, the ANOVA/Tukey/κ
 summary, and a live query box that reports the cache decision for your own
 text. It **never recomputes a statistic** — everything shown is read from the
-bundle. D6 is the frozen plan's lowest-priority, desirable-only deliverable
+bundle. D6 is the lowest-priority, desirable-only deliverable
 (see `openspec/changes/add-results-dashboard/proposal.md`); it is not part of
 `scripts/reproduce.sh` and nothing else depends on it.
 

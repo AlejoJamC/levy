@@ -341,4 +341,4 @@ data/backups/
 # of corpus text into refs/stash. `scripts/audit_release.sh` check 4 is the
 # backstop: it scans `git log --all`, which includes refs/stash.
 
-docs/poster
+results/poster

@@ -1,7 +1,7 @@
 {
   "generated_by": "scripts/check_replication.py",
   "generated_at_utc": "20260807T163746Z",
-  "criterion": "S&D Report Success Criterion 3 / Proposal Criterion 3: released code and data replicate headline precision and recall within +/-5%",
+  "criterion": "Success Criterion 3: released code and data replicate headline precision and recall within +/-5%",
   "passed": true,
   "rule": "|candidate - reference| <= max(0.01, 5% * |reference|) per configuration, for precision and recall",
   "relative_tolerance": 0.05,

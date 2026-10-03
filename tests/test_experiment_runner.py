@@ -85,7 +85,7 @@ class TestDeterminism(unittest.TestCase):
 
 class TestDefaultGrid(unittest.TestCase):
 
-    def test_run_sweep_without_configs_uses_full_frozen_grid(self):
+    def test_run_sweep_without_configs_uses_full_grid(self):
         pairs = load_dataset(FIXTURE)
         results, _ = run_sweep(pairs, embedding_provider="mock", llm_latency_seconds=0)
         self.assertEqual(len(results), 30)  # 2 models x 3 workloads x 5 thresholds

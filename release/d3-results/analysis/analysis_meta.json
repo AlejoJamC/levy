@@ -802,7 +802,7 @@
       "n_observations": 30,
       "residual_mean": -1.7347234759768072e-19,
       "residual_std": 0.012455481896296325,
-      "note": "Diagnostics are reported for the author's interpretation; the pipeline does not modify the frozen analysis plan in response to them.",
+      "note": "Diagnostics are reported for the author's interpretation; the pipeline does not modify the analysis plan in response to them.",
       "shapiro_wilk": {
         "W": 0.8726633867832454,
         "p_value": 0.0019212667891201321

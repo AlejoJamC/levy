@@ -1,7 +1,7 @@
 """
-Experiment configuration and the frozen 30-configuration grid (LEV-4 / D3).
+Experiment configuration and the 30-configuration grid (LEV-4 / D3).
 
-The S&D Report's experimental grid is fixed: 2 embedding models
+The study design's experimental grid is fixed: 2 embedding models
 (`all-MiniLM-L6-v2`, `modernbert`) x 3 workloads (`faq`, `code`, `chat`) x
 5 similarity thresholds (0.70-0.90, step 0.05) = 30 configurations.
 Thresholds are carried verbatim on the `1/(1+L2)` similarity scale used by
@@ -13,16 +13,16 @@ from typing import List, Tuple
 
 from levy.dataset.schema import WORKLOADS
 
-# Frozen study models (registry keys in levy.embedding_manager._REGISTRY).
+# Study models (registry keys in levy.embedding_manager._REGISTRY).
 EMBEDDING_MODELS: Tuple[str, ...] = ("all-MiniLM-L6-v2", "modernbert")
 
-# Frozen sweep: 0.70-0.90 step 0.05, thresholds carried verbatim.
+# Study sweep: 0.70-0.90 step 0.05, thresholds carried verbatim.
 THRESHOLDS: Tuple[float, ...] = tuple(round(0.70 + 0.05 * i, 2) for i in range(5))
 
 
 @dataclass(frozen=True)
 class ExperimentConfig:
-    """One cell of the frozen experimental grid."""
+    """One cell of the experimental grid."""
 
     model: str
     workload: str
@@ -35,7 +35,7 @@ class ExperimentConfig:
 
 def full_grid() -> List[ExperimentConfig]:
     """
-    Enumerate the frozen 30-configuration grid: model-major order so a sweep
+    Enumerate the 30-configuration grid: model-major order so a sweep
     runner can share one EmbeddingManager per model across its 15 configs.
     """
     return [

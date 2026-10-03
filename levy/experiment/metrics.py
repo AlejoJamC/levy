@@ -1,7 +1,7 @@
 """
 Per-configuration confusion-matrix accounting and metrics (LEV-4 / D3).
 
-Formulas (frozen S&D Report, precision-weighted F-beta with beta=0.5):
+Formulas (study design, precision-weighted F-beta with beta=0.5):
     precision = TP / (TP + FP)
     recall    = TP / (TP + FN)
     F0.5      = 1.25 * P * R / (0.25 * P + R)

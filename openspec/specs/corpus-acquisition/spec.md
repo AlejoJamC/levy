@@ -23,7 +23,7 @@ and citations, read by code rather than merely documented. It forces the
 released artifact to be identifiers and labels rather than pairs, as a type
 distinct from the replayable pair whose non-empty-text invariant the experiment
 harness depends on. And it forces that artifact to be losslessly rehydratable,
-because the frozen specification's ±5% replication criterion has to survive a
+because the study design's ±5% replication criterion has to survive a
 distribution model in which no two parties ever exchange the query text — it is
 preserved instead through checksums of the raw inputs plus a run manifest
 recording the seed, the target positive ratio and every adapter option that

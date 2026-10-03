@@ -2,10 +2,9 @@
 
 Follows the spirit of Gebru et al. (2021), "Datasheets for Datasets,"
 adapted to this capstone's scope. This datasheet describes the **intended**
-900-pair dataset defined by the frozen `docs/Specification_and_Design_Report.md`
-(§A "Data required", §C Deliverable D2). Sections describing the sampling
+900-pair dataset (deliverable D2). Sections describing the sampling
 protocol, label definitions, and licences are filled in now, because they are
-fixed by the frozen research design. Sections that depend on actually running
+fixed by the research design. Sections that depend on actually running
 the sampling and annotation (final counts, final kappa, final file hashes)
 are marked `TODO (post data-production)` — see `data/README.md` for what
 currently ships in `data/ground_truth.{csv,json}` instead (15 synthetic
@@ -24,9 +23,9 @@ fixture pairs, not real data).
 > | Sample | 900 pairs, `positive_ratio` 0.5, 150/150 per class per workload; faq and code seed 42, chat seed 4242 (§3) |
 > | Rehydration round-trip | verified byte-identical on the real 900 |
 > | Blind re-annotation | 900 / 900 |
-> | **Cohen's kappa (overall)** | **κ = 0.5000 — below the frozen κ > 0.7 threshold** (faq 0.5267, code 0.4200, chat 0.5533) |
+> | **Cohen's kappa (overall)** | **κ = 0.5000 — below the κ > 0.7 threshold** (faq 0.5267, code 0.4200, chat 0.5533) |
 >
-> A research-scope finding, escalated per `docs/Project_Proposal.md` Risk 1, not
+> A research-scope finding, recorded as a finding, not
 > coded around. Breakdown and contingency options: §4.
 >
 > Superseded by this run and struck through in place: §7's expectation that the
@@ -41,7 +40,7 @@ ModernBERT) meaningfully affects false-positive rates in semantic caching for
 LLM APIs, across three workload types (FAQ, code generation, conversational
 chat). The dataset supplies ground-truth duplicate/non-duplicate labels so
 that a cache's hit/miss decision on `query_2` (after `query_1` has populated
-the cache) can be scored as TP/FP/TN/FN per Algorithm 2 of the S&D Report.
+the cache) can be scored as TP/FP/TN/FN per Algorithm 2 of the study design.
 
 **Who created it?**
 
@@ -97,16 +96,14 @@ second source of truth.
 | Code | SODD — Stack Overflow Duplicity Dataset, released with MQDD (Pasek et al., RANLP 2023) | CC BY-NC-SA 4.0 | `label == 0` (`duplicates`) | Stack Overflow duplicate closures, derived from the archive.org SO dump of June 2020. Native classes: 0 duplicates, 1 similar (fulltext), 2 similar (tags), 3 different, 4 accepted answer. Negatives are class 3 by default; classes 1/2 are available as adversarially hard negatives behind an explicit option. Posts are HTML and are normalised deterministically (`levy/dataset/normalize.py`). |
 | Chat | Twitter PIT-2015 (SemEval-2015 Task 1, Xu et al.) | SemEval-2015 shared-task release, research use | 3–5 of 5 crowdsourced yes-votes | Binary paraphrase judgment crowdsourced via Amazon Mechanical Turk. Only the train and dev splits are used: the test split carries a single expert 0–5 grade instead of a vote count, and the adapter rejects it rather than coercing one scale onto the other. Pairs at 2-of-5 votes are "debatable" by the task's own guidance and are excluded. |
 
-**Deviations from the frozen documents.** Recorded here as decisions with their
-rationale, per the project rule that a conflict with `docs/Project_Proposal.md`
-or `docs/Specification_and_Design_Report.md` is surfaced rather than silently
-resolved.
+**Deviations from the original study plan.** Recorded here as decisions with
+their rationale rather than silently resolved.
 
 1. **Code workload corpus: "Stack Overflow duplicate questions" → SODD.** The
    same underlying source (Stack Overflow's community duplicate-closure
    process), taken from a published, pre-processed release rather than from a
    fresh Stack Exchange dump, given the current dump access situation. The
-   label semantics the frozen design relies on are unchanged.
+   label semantics the study design relies on are unchanged.
 2. **Chat workload corpus: ConvAI2 → Twitter PIT-2015.** ConvAI2 ships
    multi-turn dialogues, not pair-level human same-intent labels. It therefore
    cannot supply the *original human label* that the Cohen's kappa criterion
@@ -114,14 +111,14 @@ resolved.
    labels would mean the author annotating both sides, which is not an
    independent comparison. PIT-2015 supplies a genuine crowdsourced pair label.
 3. **D2 release format: query text → identifiers plus labels plus a
-   rehydration script.** The frozen design calls for the dataset to be released
+   rehydration script.** The study design calls for the dataset to be released
    in CSV and JSON carrying the pairs. Quora Question Pairs grants no
    redistribution right and SODD is non-commercial share-alike, so publishing
    the text from an Apache-2.0 repository is not available. This is the same
    approach Google takes for PAWS-QQP. §6 describes the mechanism; the ±5%
    replication criterion is preserved through checksums of the raw inputs.
 4. **Real-model response population: FAQ only (2026-08-07, LEV-14).** The
-   latency measurement the Project Proposal requires — "cache lookup overhead
+   latency measurement the study requires — "cache lookup overhead
    vs LLM call savings" — needs real provider responses to measure what a hit
    avoids. Those were obtained for the **FAQ workload only**; `chat` and `code`
    remain mock-populated, as every run to date has been.
@@ -130,7 +127,7 @@ resolved.
    cache measurably operates. Its best cell reaches a 24.0 % hit rate, against
    2.3 % (chat) and 2.0 % (code), so on the other two workloads a real-response
    run would characterise a path taken fewer than once in forty lookups, at
-   full price. The frozen documents impose no per-workload requirement on
+   full price. The original study plan impose no per-workload requirement on
    provider calls: the experimental procedure and the harness pseudo-code
    contain no LLM call at all, and the budget line is an estimate rather than a
    commitment to a call volume.
@@ -147,8 +144,8 @@ resolved.
    and the response corpus is not part of the released dataset (it is
    gitignored, for the same licence reason as `data/ground_truth.full.*`).
 
-**Fallback corpora** (per `docs/Project_Proposal.md` Risk 1 — "primary
-corpus unavailable or insufficient in size/quality"): if a primary corpus
+**Fallback corpora** (used when a primary
+corpus is unavailable or insufficient in size/quality): if a primary corpus
 cannot be used or does not yield enough qualifying pairs for a workload, the
 author substitutes:
 
@@ -294,7 +291,7 @@ retained in §4.
 
 Computed by `levy/dataset/kappa.cohen_kappa` / `scripts/compute_kappa.py`
 over the full 900-pair set, comparing `original_label` vs. `author_label`.
-Success threshold (frozen S&D Report): **kappa > 0.7**.
+Success threshold (study design): **kappa > 0.7**.
 
 `TODO (post data-production): record the final overall kappa, the per-
 workload kappa breakdown, and the confusion matrix, once the author has
@@ -339,14 +336,13 @@ python scripts/compute_kappa.py --dataset data/ground_truth.json --strict
 > answer* would satisfy the second query. So κ measures construct alignment
 > between each corpus's label and the study's, not annotator reliability.
 >
-> **Contingency (supervisor's call), in order of least disruption to the frozen
-> design:**
+> **Contingency options, in order of least disruption to the study design:**
 >
 > 1. Report κ as a finding and proceed with `author_label` as ground truth —
 >    already what `ground_truth_label()` returns. Recommended: the primary
 >    question (does model choice affect FPR) is unaffected by which of two
 >    defensible label sets is used, provided the choice is declared.
-> 2. Invoke Proposal Risk 1 substitution for `code`/`chat` (CodeSearchNet,
+> 2. Substitute fallback corpora for `code`/`chat` (CodeSearchNet,
 >    DailyDialog). Costs a second 900-pair annotation pass and need not raise κ.
 > 3. Restrict the SODD positive class — changes the sampling protocol above.
 >
@@ -378,7 +374,7 @@ Overall confusion (`original` × `author`): TP 299, FP 74, FN 151, TN 376.
 | code | 85 of 150 | 2 |
 | chat | 37 | 30 |
 
-κ = 0.5000 does not meet the frozen κ > 0.7 criterion. The contingency options
+κ = 0.5000 does not meet the κ > 0.7 criterion. The contingency options
 above are unchanged; option 1 remains the recommendation.
 
 ## 5. Uses
@@ -445,8 +441,7 @@ populated `data/raw/`.
 
 Maintained by the author as part of the capstone repository. ~~Once the real
 900-pair dataset is committed, `data/ground_truth.csv` /
-`data/ground_truth.json` are treated as a frozen research artifact (like
-`docs/Project_Proposal.md`)~~ — subsequent corrections should be additive
+`data/ground_truth.json` are treated as a fixed research artifact~~ — subsequent corrections should be additive
 (e.g. a documented erratum) rather than silent edits, to preserve
 reproducibility of any published results.
 
@@ -455,10 +450,10 @@ reproducibility of any published results.
 > is never committed and `data/ground_truth.{csv,json}` are never replaced by it
 > — that would put QQP and CC BY-NC-SA SODD text into a public Apache-2.0 repo.
 >
-> The frozen artifact is `data/ground_truth.ids.csv` plus
+> The fixed artifact is `data/ground_truth.ids.csv` plus
 > `data/ground_truth.ids.meta.json`; corrections additive only.
 > `data/ground_truth.{csv,json}` remain the 15 synthetic fixtures — not research
-> data, not frozen.
+> data.
 
 ## 8. Known limitations
 
@@ -515,7 +510,7 @@ length per workload, prevalence of near-duplicate-but-not-duplicate pairs).`
 >   truncate at their own token limits, so the `code` workload is systematically
 >   more truncated than the other two. Some `code` differences may therefore be
 >   invisible to the encoder — a confound between workload and truncation that
->   the frozen design does not control for, and that plausibly inflates false
+>   the study design does not control for, and that plausibly inflates false
 >   positives for `code` independently of embedding-model choice.
 > - **`chat` is short, informal and topic-clustered.** PIT-2015 pairs are drawn
 >   from trending-topic tweets, so many negatives share heavy lexical overlap
