@@ -328,7 +328,7 @@ declared `async`-free (`def`) so FastAPI runs them in its threadpool instead —
 the whole call chain (engine, caches, the Anthropic client) is
 synchronous, and blocking the event loop directly would serialize every
 request. This satisfies the intent (concurrent request handling) without an
-`AsyncAnthropic` migration; see `openspec/changes/add-fastapi-router/design.md`.
+`AsyncAnthropic` migration; see `openspec/changes/archive/2026-07-25-add-fastapi-router/design.md`.
 
 ## Configuration
 
@@ -533,7 +533,7 @@ curves per (model, workload) with degenerate points flagged, the ANOVA/Tukey/κ
 summary, and a live query box that reports the cache decision for your own
 text. It **never recomputes a statistic** — everything shown is read from the
 bundle. D6 is the lowest-priority, desirable-only deliverable
-(see `openspec/changes/add-results-dashboard/proposal.md`); it is not part of
+(see `openspec/changes/archive/2026-07-26-add-results-dashboard/proposal.md`); it is not part of
 `scripts/reproduce.sh` and nothing else depends on it.
 
 ```bash

@@ -20,7 +20,7 @@ class LevyConfig:
 
     # Anthropic settings (LEV-6)
     anthropic_api_key: Optional[str] = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY"))
-    # study design's example model (claude-3-sonnet-20240229) is retired; defaulting to the
+    # the original example model (claude-3-sonnet-20240229) is retired; defaulting to the
     # current recommended model is an intentional change, not silent drift.
     #
     # LEV-14: this triple is set to the model a run actually uses, together. The

@@ -27,7 +27,7 @@ workloads, embedding models, and similarity thresholds.
   corpora with the author's blind re-annotation. **Produced 2026-08-04.** The
   corpora actually used are Quora Question Pairs, **SODD** and **Twitter
   PIT-2015** — replacing the originally planned Stack Overflow duplicates and ConvAI2; both
-  substitutions are recorded as deviations in `data/DATASHEET.md` §2. Published as
+  substitutions are recorded in `data/DATASHEET.md` §2. Published as
   `data/ground_truth.ids.csv` (identifiers + labels, no query text — licence
   constraint); the query text is never committed and is rebuilt locally by
   `scripts/rehydrate_dataset.py`.
@@ -43,7 +43,7 @@ workloads, embedding models, and similarity thresholds.
 | `docs/REPRODUCTION.md` | Living, **user-facing** | D5 reproduction guide: Docker one-command path and the conda step-by-step path, expected outputs, the "swap in the real dataset" section (changes only `--dataset`), and the release checklist. Its commands come from `scripts/reproduce.sh`. |
 | `docs/DATA_PRODUCTION.md` | Living, **author-facing** | The D2 production runbook: the ordered acquire → pin → sample → rehydrate → annotate → kappa → commit procedure, including the two manual corpus downloads (Kaggle QQP, SODD's Drive folder) and the QQP CSV→TSV conversion. **The single place this sequence is written down** — `data/README.md` and `docs/REPRODUCTION.md` link to it rather than restating it. Procedure only; licences, protocol rationale and deviations live in `data/DATASHEET.md`. |
 | `README.md` | Living | User-facing install/usage docs. Keep in sync with code. **No ticket identifiers in user-facing headings** — identifiers belong in CLAUDE.md, OpenSpec, and git history. |
-| `data/README.md`, `data/DATASHEET.md`, `data/raw/README.md` | Living | What is committed vs. generated in `data/`, the acquire→sample→rehydrate sequence, the full D2 datasheet (corpora, licences, the three recorded deviations from the original plan, ids-only distribution), and the per-corpus acquisition layout. `data/corpora.json` is the machine-readable provenance registry those docs point at — **read by code, so do not restate its URLs, filenames or checksums elsewhere**. |
+| `data/README.md`, `data/DATASHEET.md`, `data/raw/README.md` | Living | What is committed vs. generated in `data/`, the acquire→sample→rehydrate sequence, the full D2 datasheet (corpora, licences, the corpus choices, ids-only distribution), and the per-corpus acquisition layout. `data/corpora.json` is the machine-readable provenance registry those docs point at — **read by code, so do not restate its URLs, filenames or checksums elsewhere**. |
 | `openspec/` | Living | OpenSpec spec-driven workflow: capability specs + change proposals (see "Spec-driven workflow" below). |
 | `CLAUDE.md` (this file) | Living | Orientation + ground rules for every session. |
 
@@ -239,9 +239,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   are the rehydrated working dataset and are gitignored. `data/README.md` documents
   what is committed vs. generated and the acquire→sample→rehydrate sequence;
   `data/DATASHEET.md` is the D2 datasheet (corpora + licences, sampling protocol,
-  the three recorded deviations from the original study plan, ids-only distribution model,
-  limitations) with `TODO (post data-production)` markers only where the real
-  sampling/annotation run is required.
+  corpus choices, κ breakdown, ids-only distribution model, limitations).
 - `tests/test_dataset.py` — 93 unit tests for `levy/dataset/`: schema validation
   (including a test that pins `QueryPair`'s non-empty-text invariant against future
   relaxation), CSV/JSON round-trip + cross-format equality, the three corpus adapters
@@ -442,7 +440,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   column), curve selection, query decision (near-duplicate hit, unrelated
   miss, threshold-flip-without-re-embedding via a counting embedding-manager
   double), and semantics parity against a direct `SemanticCache` query.
-- `levy/latency/` (LEV-14, D1's second half — the study plan's "latency
+- `levy/latency/` (LEV-14, D1's second half — "latency
   measurements (cache lookup overhead vs LLM call savings)", which nothing
   measured before): `timing.py` (`TimingCollector` — named segments on
   `time.perf_counter`, plus `segment()`/`mark()`/`since_ms()` helpers used at
@@ -516,7 +514,7 @@ implied by the spec, not bugs:
    client) stays synchronous; this satisfies the original "asynchronous
    wrapper" intent at the HTTP boundary (concurrent request handling)
    without an `AsyncAnthropic` migration. Recorded resolution, not silent
-   drift — see `openspec/changes/add-fastapi-router/design.md`.
+   drift — see `openspec/changes/archive/2026-07-25-add-fastapi-router/design.md`.
 2. ~~**No Anthropic LLM connector**~~ — **Resolved (LEV-6).** `AnthropicLLMClient`
    wraps the official `anthropic` SDK behind the existing synchronous `LLMClient`
    ABC, selected via `llm_provider="anthropic"`. **Sync-now decision:** the original
@@ -524,7 +522,7 @@ implied by the spec, not bugs:
    harness) is synchronous; this change implements the connector synchronously
    against the existing ABC and defers async to the FastAPI router (LEV-7), where
    the SDK's `AsyncAnthropic` client fits naturally — recorded as a documented
-   resolution, not silent drift (see `openspec/changes/add-anthropic-connector/design.md`).
+   resolution, not silent drift (see `openspec/changes/archive/2026-07-25-add-anthropic-connector/design.md`).
    **Model default drift:** the original design's example model string
    (`claude-3-sonnet-20240229`) is retired; the connector defaults to a current
    model instead — flagged here, not silently resolved.
@@ -557,7 +555,7 @@ implied by the spec, not bugs:
    implement the schema, CSV/JSON loader (the LEV-4 contract), the ids-only
    distribution format, the corpus provenance registry, seeded stratified sampling,
    pre-flight validation, one-command acquisition, rehydration, blind re-annotation,
-   and Cohen's kappa. **Corpus deviations from the original plan, flagged not silently
+   and Cohen's kappa. **Corpus choices, recorded not silently
    resolved** (rationale in `data/DATASHEET.md` §2): code workload
    "Stack Overflow duplicate questions" → **SODD** (same
    duplicate-closure source, published pre-processed release); chat workload
@@ -580,7 +578,7 @@ implied by the spec, not bugs:
    corpora's positive classes ("closed as a duplicate", "3+ of 5 crowdworkers called
    it a paraphrase") are looser than the study's cache-substitutability label. Do
    **not** lower the threshold, re-annotate non-blind, re-sample for agreement, or
-   revert `ground_truth_label()`. Breakdown and contingency options: `data/DATASHEET.md`
+   revert `ground_truth_label()`. Breakdown and alternatives considered: `data/DATASHEET.md`
    §4. The synthetic fixtures in `data/ground_truth.{csv,json}` are **not** replaced —
    they stay as the permanent offline default; the real dataset lives in the gitignored
    `.full.` files, rebuilt by `scripts/rehydrate_dataset.py`. **Still open, and now
@@ -713,9 +711,8 @@ via Homebrew at `/opt/homebrew/bin/openspec`, scaffold initialized) for planning
 and tracking changes. New features should go through this flow instead of ad-hoc
 edits:
 
-- `openspec/specs/` — living capability specs (the working spec layer, built *on
-  top of* the study design; they must never contradict the
-  research scope). Currently **12 capabilities**, one per shipped capability:
+- `openspec/specs/` — living capability specs (the working spec layer; they must not contradict the
+  research scope above). Currently **12 capabilities**, one per shipped capability:
   `embedding-management`, `vector-store`, `ground-truth-dataset`,
   `experiment-harness`, `test-infrastructure`, `anthropic-connector`,
   `api-router`, `statistical-analysis`, `release-packaging`,

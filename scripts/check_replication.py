@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Verify the replication criterion (LEV-8; study design Success Criterion
+Verify the replication criterion (LEV-8; Success Criterion
 3: headline results replicate within +/-5%).
 
 Re-runs the harness over exactly the grid recorded in a reference

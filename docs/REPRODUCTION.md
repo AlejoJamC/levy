@@ -29,13 +29,13 @@ quietly stale.
 > dataset changes exactly one argument — see
 > [Swapping in the real dataset](#swapping-in-the-real-dataset).
 
-> **Where the results of record live.** The published D3 study run —
-> `results.csv`, `decisions.csv`, `latency.csv`, the analysis bundle, and
-> `responses.jsonl` — is committed at [`release/`](../release/) in this
-> repository, produced by commit `fc1b5c2` (recorded in
-> [`release/PROVENANCE.md`](../release/PROVENANCE.md)). To compare a fresh
-> run against it: `python scripts/check_replication.py --reference
-> release/results.csv --no-json`.
+> **Where the results of record live.** The published study run — `results.csv`,
+> `decisions.csv`, the analysis bundle and robustness re-analysis, the latency
+> and throughput measurements and the prevalence measurement — is committed at
+> [`release/`](../release/), with checksums and provenance in
+> [`release/PROVENANCE.md`](../release/PROVENANCE.md). To compare a fresh run
+> against the grid: `python scripts/check_replication.py --reference
+> release/d3-results/results.csv --no-json`.
 
 ---
 
@@ -390,7 +390,7 @@ The shortfall is a property of the corpora rather than of the annotation: their
 positive classes ("closed as a duplicate on Stack Overflow", "3 or more of 5
 crowdworkers called it a paraphrase") are looser than the study's question of
 whether one cached answer would serve both queries. The full breakdown,
-confusion matrix and the contingency options are in
+confusion matrix and the alternatives considered are in
 [`data/DATASHEET.md`](../data/DATASHEET.md) §4.
 
 Consequence for reading D3: every precision, false-positive rate and ANOVA

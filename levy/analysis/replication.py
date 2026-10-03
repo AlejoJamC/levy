@@ -1,6 +1,6 @@
 """
 Replication check against the +/-5% criterion (LEV-8, Success
-Criterion 3 of the study design: "replication within +/-5%").
+Success Criterion 3: "replication within +/-5%").
 
 Compares the headline metrics -- precision and recall -- of a candidate
 harness run against a reference `results.csv`, configuration by

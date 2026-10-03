@@ -2,9 +2,8 @@
 Ground-truth dataset schema (LEV-3 / D2).
 
 Defines the workload vocabulary and the `QueryPair` record that is the unit
-of the 900-pair ground-truth dataset described in the study design
-("900 query pairs (300 per workload) ... Each pair retains the original
-human label and the author's blind re-annotation").
+of the 900-pair ground-truth dataset (300 per workload). Each pair retains the
+original human label and the author's blind re-annotation.
 
 This is the contract LEV-4 (experiment harness) replays against:
 for each pair, `query_1` is submitted first (always a miss, populates the
@@ -44,7 +43,7 @@ class QueryPair:
             placeholder data), for traceability back to the source dataset.
         source_pair_id: identifier of this pair within `source_corpus`, so the
             sampling can be audited/reproduced against the raw corpus file.
-        query_1: first query in the pair. Per Algorithm 1 (study design), this is
+        query_1: first query in the pair. Per the lookup algorithm, this is
             the query submitted first during replay (always a cache miss).
         query_2: second query in the pair; the cache's hit/miss decision on
             this query is compared against the ground-truth label.

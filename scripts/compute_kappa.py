@@ -3,7 +3,7 @@
 Compute Cohen's kappa between original corpus labels and the author's blind
 re-annotation over a ground-truth dataset (LEV-3 / D2).
 
-Success criterion (study design): kappa > 0.7 computed over the full
+Success criterion: kappa > 0.7 computed over the full
 900-pair set. This script reports overall kappa plus a per-workload
 breakdown, and (with `--strict`) exits non-zero if overall kappa falls below
 `--threshold` -- but only once every pair has an `author_label`; a partially
@@ -28,7 +28,7 @@ from levy.dataset.kappa import KappaResult, kappa_report
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dataset", type=Path, required=True, help="Dataset file (.csv or .json)")
-    parser.add_argument("--threshold", type=float, default=0.7, help="Kappa success threshold (default: 0.7, per study design)")
+    parser.add_argument("--threshold", type=float, default=0.7, help="Kappa success threshold (default: 0.7)")
     parser.add_argument("--strict", action="store_true", help="Exit non-zero if the fully annotated dataset's overall kappa is below --threshold")
     parser.add_argument("--out-json", type=Path, default=None, help="Optional path to also write the report as JSON")
     return parser

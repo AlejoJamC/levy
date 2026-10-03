@@ -26,14 +26,13 @@ analysis pipeline that turns harness output into the evidence bundle.
 
 ---
 
-## 2. Component map (spec → code)
+## 2. Component map
 
 ### 2.1 The three headline components
 
-The study design's deliverable D1 names three components. All three
-ship:
+The system has three headline components:
 
-| Design component | Module | Notes |
+| Component | Module | Notes |
 |---|---|---|
 | **FastAPI router** | [`levy/api/`](../levy/api/) | `app.py` (endpoints + exception handlers), `schemas.py` (Pydantic v2 request/response models), `pool.py` (`EnginePool`). Exposes `POST /v1/chat/completions`, `GET /admin/cache/stats`, `POST /admin/cache/clear`. |
 | **Embedding manager + Faiss HNSW index** | [`levy/embedding_manager.py`](../levy/embedding_manager.py), [`levy/cache/vector_index.py`](../levy/cache/vector_index.py) | Study-model registry and memoization; `IndexHNSWFlat` wrapped in `IndexIDMap`, with a brute-force numpy index as correctness oracle and offline fallback. |
@@ -41,7 +40,7 @@ ship:
 
 ### 2.2 The five component responsibilities
 
-| Design responsibility | Module | Implementation |
+| Responsibility | Module | Implementation |
 |---|---|---|
 | FastAPI Router | [`levy/api/app.py`](../levy/api/app.py) | The three documented endpoints; errors map to structured JSON, never stack traces. |
 | Cache Orchestrator | [`levy/engine.py`](../levy/engine.py) (`LevyEngine`) | Owns the lookup flow, the hit/miss decision, and metric recording. The router adds one structured JSON log record per request, sufficient to replay a request sequence. |
@@ -49,15 +48,14 @@ ship:
 | Vector Store (Faiss) | [`levy/cache/vector_index.py`](../levy/cache/vector_index.py), [`levy/cache/semantic_cache.py`](../levy/cache/semantic_cache.py) | HNSW index over L2 distance, plus a monotonic id → `CacheEntry` map — the spec's "separate metadata dictionary". |
 | LLM Connector | [`levy/llm_client.py`](../levy/llm_client.py) | `LLMClient` ABC with mock, OpenAI-compatible, Ollama, and Anthropic implementations. |
 
-**Recorded deviation — synchronous connector.** The study design describes the
-LLM connector as an "asynchronous wrapper". The engine, caches, and harness are
+**Design note — synchronous connector.** The engine, caches, and harness are
 synchronous throughout, so the connector implements the synchronous `LLMClient`
 ABC and concurrency is handled at the HTTP boundary instead: the router's
 endpoints are declared `def`, so FastAPI runs them in its threadpool and
 requests are served concurrently without an `AsyncAnthropic` migration. This is
-a documented resolution, not silent drift — the rationale is in
-`openspec/changes/add-anthropic-connector/design.md` and
-`openspec/changes/add-fastapi-router/design.md`.
+a deliberate choice — the rationale is in
+`openspec/changes/archive/2026-07-25-add-anthropic-connector/design.md` and
+`openspec/changes/archive/2026-07-25-add-fastapi-router/design.md`.
 
 ### 2.3 Research layers
 
@@ -112,7 +110,7 @@ client cannot accidentally depend on hit-vs-miss body differences.
 
 ### 3.1 The similarity scale
 
-Per Algorithm 1 of the study design, similarity is derived from L2
+Similarity is derived from L2
 distance as `similarity = 1 / (1 + distance)`. All embeddings are L2-normalised
 before indexing and querying, so the distance scale is identical across
 embedding models and results are comparable between them.

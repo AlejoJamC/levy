@@ -42,7 +42,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out-dir", type=Path, required=True, help="Directory for the analysis bundle (tables, figures, metadata)")
     parser.add_argument("--dataset", type=Path, default=None, help="Dataset file for the kappa section (default: the dataset_path recorded in run_meta.json)")
     parser.add_argument("--alpha", type=float, default=DEFAULT_ALPHA, help=f"Significance level for the hypothesis tests (default: {DEFAULT_ALPHA})")
-    parser.add_argument("--kappa-threshold", type=float, default=KAPPA_THRESHOLD, help=f"Annotation-validity bar for kappa (default: {KAPPA_THRESHOLD}, per study design)")
+    parser.add_argument("--kappa-threshold", type=float, default=KAPPA_THRESHOLD, help=f"Annotation-validity bar for kappa (default: {KAPPA_THRESHOLD})")
     return parser
 
 

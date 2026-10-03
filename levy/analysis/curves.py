@@ -28,7 +28,7 @@ import pandas as pd  # noqa: E402
 
 PathLike = Union[str, Path]
 
-#: Economic-viability bar: hit rate must exceed 30% (study design).
+#: Economic-viability bar: hit rate must exceed 30%.
 HIT_RATE_VIABILITY = 0.30
 
 CURVE_COLUMNS = ["model", "workload", "threshold", "metric", "value", "zero_div", "n"]

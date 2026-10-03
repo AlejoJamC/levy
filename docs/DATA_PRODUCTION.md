@@ -14,8 +14,8 @@ What it is not:
   [`REPRODUCTION.md`](REPRODUCTION.md).
 - **Not the pipeline definition.** `scripts/reproduce.sh` is the single
   definition of the evaluation pipeline; Part 2 below wraps it.
-- **Not the datasheet.** Corpus licences, the sampling protocol, the recorded
-  deviations from the original study plan and the dataset's limitations are in
+- **Not the datasheet.** Corpus licences, the sampling protocol, the corpus
+  choices and the dataset's limitations are in
   [`../data/DATASHEET.md`](../data/DATASHEET.md).
 
 ---
@@ -169,7 +169,7 @@ and writes nothing — fix them all, then re-run. Common findings:
 
 | Finding | Meaning |
 |---|---|
-| `[class-pool] … needs 150 positive pairs, only N available` | that corpus cannot fill the stratum; see the study plan's Risk 1 fallback path before substituting anything |
+| `[class-pool] … needs 150 positive pairs, only N available` | that corpus cannot fill the stratum; the fallback corpora listed in `data/DATASHEET.md` §2 are the substitution path |
 | `[checksum] … does not match the pinned` | the file changed since you pinned it |
 | `[required-fields] … missing columns` | wrong file, or the QQP conversion in 2A did not run |
 | `[label-domain] … outside the declared domain` | an unexpected label value; reported, never coerced |
@@ -319,7 +319,7 @@ analysis bundle → ±5% replication.
 ## Embedding models
 
 `--embedding-provider sentence-transformers`, loading both study checkpoints from
-HuggingFace, as the original study plan mandate. Registry wiring in
+HuggingFace. Registry wiring in
 `levy/embedding_manager.py`:
 
 | Alias | Resolved checkpoint | Prefix | `trust_remote_code` |
@@ -641,16 +641,14 @@ directory. Not implemented.
 
 ## Do not
 
-Per the original study plan — these are findings to report, never things to code
-around:
+These are findings to report, never things to code around:
 
 - **Do not rescale the thresholds** to chase hit rate. The 0.70–0.90 band on the
-  `1/(1+L2)` scale is spec-mandated.
+  `1/(1+L2)` scale is intentional.
 - **Do not lower the κ > 0.7 bar**, re-annotate non-blind, re-draw for agreement,
   or change `ground_truth_label()`.
 - **Do not substitute either embedding model.** The pair is the independent
   variable of the primary research question, O2, H0₁ and Success Criterion 1.
-- **Do not edit the two original study plan** for any reason.
 - **Do not replace `data/ground_truth.{csv,json}`** — the synthetic fixtures are
   the permanent offline default for the test suite and `reproduce.sh`.
 
@@ -688,7 +686,7 @@ the log is the only progress signal.
 
 ## Related documentation
 
-- [`../data/DATASHEET.md`](../data/DATASHEET.md) — corpora, licences, protocol, deviations, limitations
+- [`../data/DATASHEET.md`](../data/DATASHEET.md) — corpora, licences, protocol, corpus choices, limitations
 - [`../data/README.md`](../data/README.md) — what is committed versus generated in `data/`
 - [`../data/raw/README.md`](../data/raw/README.md) — per-corpus acquisition layout
 - [`REPRODUCTION.md`](REPRODUCTION.md) — reproducing the study from the published artifact

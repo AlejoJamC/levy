@@ -1,7 +1,7 @@
 """
 Hypothesis testing on false positive rate (LEV-8 / D3).
 
-Implements the study design's statistical analysis plan literally:
+Implements the statistical analysis plan literally:
 
   * Two-way ANOVA on false positive rate with factors (embedding model,
     workload) *including their interaction*, over the 30 per-configuration
@@ -16,7 +16,7 @@ Implements the study design's statistical analysis plan literally:
     significant (over the 6 model x workload cells when the interaction is
     significant), always accompanied by a ran/skipped statement.
 
-No test is added beyond the study plan: no multiplicity corrections across
+No test is added beyond the specified plan: no multiplicity corrections across
 the three hypotheses, no auto-"correction" when residual diagnostics look
 poor. The diagnostics are reported so the author can interpret them in the
 dissertation; interpreting them is not code's job. Effect sizes (eta^2,
@@ -38,7 +38,7 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 DEFAULT_ALPHA = 0.05
 
-#: The dependent variable prescribed by the study plan.
+#: The dependent variable prescribed by the analysis plan.
 RESPONSE = "fpr"
 
 EFFECT_MODEL = "model"

@@ -1,7 +1,7 @@
 """
 Experiment configuration and the 30-configuration grid (LEV-4 / D3).
 
-The study design's experimental grid is fixed: 2 embedding models
+The experimental grid is fixed: 2 embedding models
 (`all-MiniLM-L6-v2`, `modernbert`) x 3 workloads (`faq`, `code`, `chat`) x
 5 similarity thresholds (0.70-0.90, step 0.05) = 30 configurations.
 Thresholds are carried verbatim on the `1/(1+L2)` similarity scale used by

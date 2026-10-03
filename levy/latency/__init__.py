@@ -1,9 +1,8 @@
 """
 Latency measurement for the cache lookup path (LEV-14 / D1 economic viability).
 
-The study plan defines economic viability by hit rate **and**
-"latency measurements (cache lookup overhead vs LLM call savings)". This
-package supplies the second half: a decomposed measurement of what a lookup
+Economic viability is judged on hit rate **and** on latency (cache lookup
+overhead vs LLM call savings). This package supplies the second half: a decomposed measurement of what a lookup
 costs, and the artefact contract that reports it.
 
 Two measurements live here, and they have different reproducibility:

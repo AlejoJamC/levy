@@ -4,7 +4,7 @@ VectorIndex abstraction for the semantic cache (LEV-2).
 Two implementations:
 - BruteForceVectorIndex  — numpy exact k-NN by L2, offline default and correctness oracle.
 - FaissHNSWVectorIndex   — faiss.IndexHNSWFlat(dim, M) wrapped in IndexIDMap, as prescribed
-                           by the study design.
+                           by the design.
 
 Both implementations accept and return raw (un-normalised) vectors; normalisation is the
 caller's responsibility (SemanticCache normalises before calling add/search, per design.md D3).
