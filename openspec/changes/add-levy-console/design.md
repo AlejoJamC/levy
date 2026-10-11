@@ -68,7 +68,7 @@ The response reuses the delivered response model and the same two headers, so th
   - Ollama LLM models;
   - Ollama embedding models.
 
-`ConsoleOptions.from_config()` builds the lists. A provider with no configured model is not offered. If no LLM model is configured at all, `POST /console/chat` answers 503 naming the variables. No list contains `mock`.
+`ConsoleOptions.from_config()` builds the lists from the configuration current at the time of the request. Without an explicit configuration (the module-level app), that is `.env` re-read (D14). The parameters are plain optional strings, validated against those lists on each request, and the OpenAPI schema is rewritten with the current lists and defaults each time it is served (`publish_choices`). An enum is written even for a single option, which a one-value `Literal` would publish as `const` and Swagger would render as a text box. A provider with no configured model is not offered. If no LLM model is configured at all, `POST /console/chat` answers 503 naming the variables. No list contains `mock`.
 
 The console's default configuration is the base `LevyConfig`, with `vector_index_backend` resolved to the backend actually in use and every value the lists do not offer replaced by the first configured option.
 
@@ -193,9 +193,15 @@ Review showed model ids and prices written as code defaults: `claude-haiku-4-5-2
 
 Decision:
 - **Models and prices come from `.env`:**
-  - `LEVY_ANTHROPIC_MODELS` holds `model:input_usd_per_mtok:output_usd_per_mtok` entries, comma-separated. Each model travels with its two prices (the LEV-14 triple), and the first entry is the default.
-  - `LEVY_OLLAMA_MODELS` and `LEVY_OLLAMA_EMBEDDING_MODELS` hold comma-separated model lists; the first entry is the default.
-  - `LevyConfig` reads all three, and `.env.example` documents the format with placeholders only.
+  - One fact per line, one model per number `<n>`:
+    - `LEVY_ANTHROPIC_MODEL_<n>` with `LEVY_ANTHROPIC_MODEL_<n>_INPUT_USD_PER_MTOK` and `_OUTPUT_USD_PER_MTOK` (the LEV-14 triple);
+    - `LEVY_OLLAMA_MODEL_<n>`;
+    - `LEVY_OLLAMA_EMBEDDING_MODEL_<n>`.
+  - The lowest number is the default. Numbers need not be consecutive, and adding a model means adding a new number; nothing is replaced.
+  - **Prices:** the currency and unit are in the variable name (US dollars per million tokens sent, and per million written). The value is only the number, with a dot for decimals. `$1`, `1usd`, `3eur` or `1,25` are rejected with an error naming the variable and showing `1.25`. A model without both prices, or a price without its model, is rejected the same way.
+  - **Why this shape and not a list or `model:price:price`:** model ids contain `-`, `.` and `:`, which cannot be part of a variable name or split safely, so a number is the key. One line per fact also keeps every `.env` diff exact.
+  - **Read again on use:** `levy.config.current_model_catalog()` re-reads `.env` on every console request and every Swagger load, so a model added there appears after refreshing Swagger, without a restart. A variable set in the process environment wins over `.env`, as usual.
+  - `.env.example` documents the format with placeholders only.
 - **No defaults in the clients.** `AnthropicLLMClient`, `OllamaLLMClient` and `OllamaEmbeddingClient` have no default model or price. Constructing one without them fails, naming the variable to set.
 - **What stays in code:** what Levy implements — the provider types, the index backends, the cache stores, and the study's two embedding models, which belong to the experiment design.
 - **Scripts:** `scripts/populate_responses.py` and `scripts/run_throughput.py` take their model from those variables or from their flags, and stop with a clear message when neither is set. Their docstrings keep the model ids that produced the published results, as provenance.

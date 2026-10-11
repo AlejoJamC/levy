@@ -60,10 +60,10 @@ class TestLLMClientConstructors(unittest.TestCase):
     def test_ollama_clients_require_a_model(self):
         with self.assertRaises(ValueError) as llm:
             OllamaLLMClient(base_url="http://example.test:1")
-        self.assertIn("LEVY_OLLAMA_MODELS", str(llm.exception))
+        self.assertIn("LEVY_OLLAMA_MODEL_<n>", str(llm.exception))
         with self.assertRaises(ValueError) as emb:
             OllamaEmbeddingClient(base_url="http://example.test:1")
-        self.assertIn("LEVY_OLLAMA_EMBEDDING_MODELS", str(emb.exception))
+        self.assertIn("LEVY_OLLAMA_EMBEDDING_MODEL_<n>", str(emb.exception))
 
 
 # ---------------------------------------------------------------------------

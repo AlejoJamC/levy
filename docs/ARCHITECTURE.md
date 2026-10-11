@@ -132,6 +132,28 @@ shared per embedding model across thresholds, so changing a threshold never
 reloads a model. Requesting a pair beyond the cap (default 8) returns a
 structured `400 pool_cap_exceeded`.
 
+### 3.3 The console section
+
+`levy/console/` is a layer beside the delivered endpoints, not a change to them.
+`POST /console/chat` takes each setting as a query parameter typed by a closed
+list (`options.py`), so Swagger shows every setting as a selectable field:
+threshold, embedding provider and model, LLM provider and model, exact and
+semantic cache on/off, index backend and store.
+
+The console's engines live in their own `ConsolePool` (`pool.py`):
+- one `LevyEngine` per resolved configuration, separate from the delivered `EnginePool`;
+- embedding managers shared per `(embedding_provider, embedding_model)`;
+- for `redis`, a `PrefixedRedisStore` that keeps each configuration's keys apart.
+
+Every console request is traced (`tracing.py`) through two opt-in engine hooks:
+- the timing collector, which now also records the provider call and the store;
+- an observation object that `SemanticCache.get()` fills with the nearest
+  neighbour, on a miss as well as a hit.
+
+Without either, the engine behaves exactly as before. Traces live in a bounded
+in-memory buffer that the page at `/console` polls with a version cursor, so a
+request is visible while its provider call is still in flight.
+
 ---
 
 ## 4. Experiment flow
@@ -199,9 +221,10 @@ Anthropic settings (model, retries, budget cap, per-MTok prices). It loads
 only `.env.example` is committed, and `scripts/audit_release.sh` enforces that.
 
 Models are not written in the code either, because they change every few
-months. `LEVY_ANTHROPIC_MODELS` (`model:input:output,...`, each model with its
-two per-MTok prices), `LEVY_OLLAMA_MODELS` and `LEVY_OLLAMA_EMBEDDING_MODELS`
-in `.env` name the models; the first entry of each is the default. The code
+months. `.env` names them one fact per line: `LEVY_ANTHROPIC_MODEL_<n>` with its
+`_INPUT_USD_PER_MTOK` and `_OUTPUT_USD_PER_MTOK`, `LEVY_OLLAMA_MODEL_<n>` and
+`LEVY_OLLAMA_EMBEDDING_MODEL_<n>`; the lowest number is the default. The console
+reads `.env` again on each Swagger load and request, so no restart is needed. The code
 keeps only what Levy itself implements: the provider types, the index backends,
 the cache stores, and the study's two embedding models.
 

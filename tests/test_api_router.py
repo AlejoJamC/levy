@@ -17,7 +17,7 @@ from levy.config import LevyConfig
 from levy.llm_client import AnthropicLLMClient
 
 
-# Placeholder model and prices: real ones live in LEVY_ANTHROPIC_MODELS, never in code.
+# Placeholder model and prices: real ones live in .env (LEVY_ANTHROPIC_MODEL_<n>), never in code.
 TEST_CLIENT = dict(model="test-anthropic-model", input_price_per_mtok=5.0, output_price_per_mtok=25.0)
 TEST_CONFIG = dict(anthropic_model="test-anthropic-model", anthropic_input_price_per_mtok=5.0, anthropic_output_price_per_mtok=25.0)
 

@@ -11,11 +11,11 @@ def main():
     print("--- Levy with Local Ollama ---")
 
     # Configuration for Ollama. The models are not written here: set them in .env
-    # (LEVY_OLLAMA_MODELS, LEVY_OLLAMA_EMBEDDING_MODELS) to models you have pulled
+    # (LEVY_OLLAMA_MODEL_<n>, LEVY_OLLAMA_EMBEDDING_MODEL_<n>) to models you have pulled
     # and are serving with `ollama serve`.
     defaults = LevyConfig()
     if not defaults.ollama_models or not defaults.ollama_embedding_models:
-        print("Set LEVY_OLLAMA_MODELS and LEVY_OLLAMA_EMBEDDING_MODELS in .env first.")
+        print("Set LEVY_OLLAMA_MODEL_1 and LEVY_OLLAMA_EMBEDDING_MODEL_1 in .env first.")
         return
     config = LevyConfig(
         llm_provider="ollama",

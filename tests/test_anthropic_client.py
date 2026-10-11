@@ -50,7 +50,7 @@ def _error_response(status_code: int, error_type: str, message: str, headers=Non
     )
 
 
-# A placeholder id: real model ids live in LEVY_ANTHROPIC_MODELS, never in code.
+# A placeholder id: real model ids live in .env (LEVY_ANTHROPIC_MODEL_<n>), never in code.
 TEST_MODEL = "test-anthropic-model"
 TEST_CONFIG = dict(anthropic_model=TEST_MODEL, anthropic_input_price_per_mtok=5.0, anthropic_output_price_per_mtok=25.0)
 
@@ -82,7 +82,7 @@ class TestConstruction(unittest.TestCase):
         ):
             with self.assertRaises(ValueError) as ctx:
                 AnthropicLLMClient(api_key="sk-test", **kwargs)
-            self.assertIn("LEVY_ANTHROPIC_MODELS", str(ctx.exception))
+            self.assertIn("LEVY_ANTHROPIC_MODEL_<n>", str(ctx.exception))
 
 
 class TestSuccessfulGeneration(unittest.TestCase):

@@ -36,10 +36,14 @@ The delivered endpoints (`POST /v1/chat/completions`, `GET /admin/cache/stats`, 
 
 Each parameter SHALL default to the console's default configuration, shown as the pre-selected value. No list SHALL contain a mock provider. A model that does not belong to the chosen provider SHALL be rejected with a validation error naming the parameter and the models valid for that provider. The response SHALL have the same body shape and `X-Cache-Status` / `X-Cache-Similarity` headers as the delivered chat endpoint.
 
-The model lists SHALL come from the configuration (`LEVY_ANTHROPIC_MODELS`, `LEVY_OLLAMA_MODELS`, `LEVY_OLLAMA_EMBEDDING_MODELS`), never from model ids written in the code. A provider with no configured model SHALL NOT be offered. When no LLM model is configured at all, the endpoint SHALL answer 503 naming those variables.
+The model lists SHALL come from `.env` (`LEVY_ANTHROPIC_MODEL_<n>`, `LEVY_OLLAMA_MODEL_<n>`, `LEVY_OLLAMA_EMBEDDING_MODEL_<n>`), never from model ids written in the code. They SHALL be read again on every request and every load of the OpenAPI schema, so a model added to `.env` is offered after refreshing Swagger without restarting Levy. Every list-type parameter SHALL be published as an enum, even with a single option. A provider with no configured model SHALL NOT be offered. When no LLM model is configured at all, the endpoint SHALL answer 503 naming those variables.
+
+#### Scenario: A model added to .env appears without a restart
+- **WHEN** a new `LEVY_OLLAMA_MODEL_<n>` is added to `.env` while Levy is running and Swagger is refreshed
+- **THEN** the new model is offered in the `llm_model` selector and accepted by `POST /console/chat`
 
 #### Scenario: No LLM model configured
-- **WHEN** neither `LEVY_ANTHROPIC_MODELS` nor `LEVY_OLLAMA_MODELS` names a model and `POST /console/chat` is called
+- **WHEN** no `LEVY_ANTHROPIC_MODEL_<n>` and no `LEVY_OLLAMA_MODEL_<n>` is set and `POST /console/chat` is called
 - **THEN** the endpoint answers 503 with a message naming both variables
 
 #### Scenario: Settings are selectable in Swagger
@@ -129,7 +133,7 @@ For the selected request, the console SHALL show:
 - **Configuration:** every resolved console setting, marking which ones the request set and which came from the defaults.
 - **Timing waterfall:** each recorded segment positioned by start offset and sized by duration on one linear scale, with exact values printed, and the lookup overhead expressed as a share of the provider call it avoided or made.
 - **Semantic decision:** the nearest cached prompt (on a miss too), the L2 distance, the similarity, the equivalent cosine `1 − d²/2`, the threshold, and the resulting decision.
-- **Cost:** tokens, estimated call cost, cumulative spend against the budget cap and, for a hit, the latency, tokens and cost avoided with a link to the originating request.
+- **Cost:** tokens, estimated call cost, cumulative estimated spend and, for a hit, the latency, tokens and cost avoided with a link to the originating request.
 - **Identity:** request id, arrival time, embedding identity, provider endpoint and model.
 - **Content:** the prompt and the answer.
 

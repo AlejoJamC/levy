@@ -106,7 +106,7 @@ plain `unittest.TestCase`s), but pytest is the one true command going forward.
 ```python
 from levy import LevyEngine, LevyConfig
 
-# Initialize with defaults (Mock LLM, Exact Cache only)
+# Initialize with defaults (Anthropic LLM: needs ANTHROPIC_API_KEY in .env)
 engine = LevyEngine()
 
 # First call - hits the "LLM"
@@ -146,8 +146,8 @@ Ollama model (see [Models used in the study](#models-used-in-the-study)).
 2. Pull a generation model and an embedding model (any you like), and name
    them in `.env` — Levy's code names no model:
    ```bash
-   LEVY_OLLAMA_MODELS=<generation model>
-   LEVY_OLLAMA_EMBEDDING_MODELS=<embedding model>
+   LEVY_OLLAMA_MODEL_1=<generation model>
+   LEVY_OLLAMA_EMBEDDING_MODEL_1=<embedding model>
    ```
 3. Run the demo:
    ```bash
@@ -165,9 +165,11 @@ The `anthropic` provider wraps the official `anthropic` SDK behind the same
 synchronous `LLMClient` interface as Mock/Ollama:
 
 ```bash
-# .env -- the model and its two per-MTok prices, together; first entry is the default
+# .env -- one model per number, the lowest is the default (format in .env.example)
 ANTHROPIC_API_KEY=...
-LEVY_ANTHROPIC_MODELS=<model-id>:<input USD per MTok>:<output USD per MTok>
+LEVY_ANTHROPIC_MODEL_1=<model id>
+LEVY_ANTHROPIC_MODEL_1_INPUT_USD_PER_MTOK=<number>
+LEVY_ANTHROPIC_MODEL_1_OUTPUT_USD_PER_MTOK=<number>
 ```
 
 ```python
@@ -201,11 +203,12 @@ result = engine.generate("Hello")
   is a refusal, the client raises `AnthropicRefusalError` instead of
   returning (and thereby caching) empty content.
 - **Model and prices from `.env`:** no model id or price is written in Levy's
-  code; models change every few months. `LEVY_ANTHROPIC_MODELS` lists
-  `model:input:output` entries, and the first one is the default. The model id
-  and its two per-MTok prices are one triple describing one model, so they are
-  configured together. Without them, constructing the client fails and names
-  the variable.
+  code; models change every few months. Each model is a numbered
+  `LEVY_ANTHROPIC_MODEL_<n>` with its `_INPUT_USD_PER_MTOK` and
+  `_OUTPUT_USD_PER_MTOK` (US dollars per million tokens sent and written, as a
+  plain number with a dot); the lowest number is the default, and adding a
+  model means adding a new number. Without them, constructing the client fails
+  and names the variable.
 
 **One-time real-API smoke check — opt-in and billed.** This makes one real API
 call charged to the `ANTHROPIC_API_KEY` in your `.env`. It is deliberately
@@ -335,13 +338,56 @@ synchronous, and blocking the event loop directly would serialize every
 request. This satisfies the intent (concurrent request handling) without an
 `AsyncAnthropic` migration; see `openspec/changes/archive/2026-07-25-add-fastapi-router/design.md`.
 
+## Levy Console
+
+A `console` section of the HTTP API, beside the endpoints above, plus a page
+that shows each console request live: the path it took, where each step ran,
+how long each step cost, why the cache decided what it decided, and what a hit
+saved. The delivered `/v1/chat/completions` and `/admin/*` endpoints are not
+changed by it, and the console never shares their engines or caches.
+
+```bash
+uvicorn levy.api.app:app
+```
+
+Open `http://localhost:8000/docs` and `http://localhost:8000/console` side by
+side. In the docs' **console** section, `POST /console/chat` takes the prompt
+and every setting as a field with its list of options:
+
+| Setting | Options |
+|---|---|
+| `threshold` | number in [0, 1] (1/(1+L2) scale) |
+| `embedding_provider` | `sentence-transformers`, `ollama` |
+| `embedding_model` | `all-MiniLM-L6-v2`, `modernbert` (sentence-transformers); every `LEVY_OLLAMA_EMBEDDING_MODEL_<n>` (ollama) |
+| `llm_provider` | `anthropic`, `ollama` |
+| `llm_model` | every `LEVY_ANTHROPIC_MODEL_<n>` (anthropic) and `LEVY_OLLAMA_MODEL_<n>` (ollama) |
+| `exact_cache`, `semantic_cache` | `true`, `false` |
+| `vector_index_backend` | `faiss`, `brute_force` |
+| `cache_store` | `memory`, `redis` |
+
+A model must belong to its chosen provider. Providers, backends and stores are
+what Levy implements (`levy/console/options.py`); the model lists come from
+`.env`, and a provider with no configured model is not offered. Levy reads
+`.env` again when Swagger is refreshed, so a model added there appears in the
+selectors without restarting Levy. Each executed request appears on the page without a
+refresh. A miss is shown waiting at the provider while its call is in flight;
+the lookup steps (milliseconds) are replayed hop by hop with their real timings.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /console/chat` | Chat under a per-request configuration; same body and headers as `/v1/chat/completions` |
+| `GET /console/traces?after=<version>` | Live trace feed the page polls |
+| `POST /console/traces/clear` | Empty the page's history |
+| `POST /console/cache/clear` | Empty the console's caches |
+| `GET /console` | The page |
+
 ## Configuration
 
 You can configure Levy via `LevyConfig`:
 
 ```python
 config = LevyConfig(
-    llm_provider="anthropic",    # key read from ANTHROPIC_API_KEY in .env; also "ollama"
+    llm_provider="anthropic",    # default; key read from ANTHROPIC_API_KEY in .env; also "ollama"
     enable_semantic_cache=True,
     similarity_threshold=0.85,   # in 1/(1+L2) space; study sweep: 0.70–0.90
     # Embedding model for the study (default: all-MiniLM-L6-v2 baseline)

@@ -105,7 +105,7 @@ Traces SHALL be held in memory only, in a buffer bounded to a configured maximum
 - every trace created or updated after that version, in arrival order;
 - the current version;
 - a buffer epoch;
-- the console's default configuration and the budget cap;
+- the console's default configuration;
 - the console's aggregate cache statistics and cumulative estimated spend.
 
 `POST /console/traces/clear` SHALL empty the buffer and start a new epoch. Traces SHALL never be written to disk.

@@ -40,6 +40,9 @@ dashboard = [
 [tool.setuptools.packages.find]
 include = ["levy*"]
 
+[tool.setuptools.package-data]
+"levy.console" = ["static/*"]
+
 [tool.setuptools.dynamic]
 version = {attr = "levy.__version__"}
 

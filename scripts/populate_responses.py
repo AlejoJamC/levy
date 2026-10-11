@@ -22,7 +22,7 @@ Cost control, in the order it applies:
    recorded so far is already on disk, one JSON object per line.
 
 Set `--model` and both `--*-price-per-mtok` flags to the model you are actually
-running. The defaults are the first entry of LEVY_ANTHROPIC_MODELS in `.env`; a
+running. The defaults are the lowest-numbered LEVY_ANTHROPIC_MODEL_<n> in `.env`; a
 cost figure computed at another model's prices would be wrong in both directions.
 
 Examples:
@@ -33,7 +33,7 @@ Examples:
     # The pilot run.
     python scripts/populate_responses.py --dataset data/ground_truth.full.csv \\
         --workload faq --out-dir results/latency-run \\
-        --model <model in LEVY_ANTHROPIC_MODELS> \\
+        --model <a LEVY_ANTHROPIC_MODEL_<n> from .env> \\
         --input-price-per-mtok <USD per MTok in> --output-price-per-mtok <USD per MTok out>
 """
 
@@ -61,7 +61,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dataset", type=Path, default=Path("data/ground_truth.full.csv"), help="Dataset file (.csv or .json); default: data/ground_truth.full.csv")
     parser.add_argument("--workload", type=str, default="faq", help="Workload to populate (default: faq)")
     parser.add_argument("--out-dir", type=Path, required=True, help="Output directory for responses.jsonl and llm_calls.json (never a harness result directory)")
-    parser.add_argument("--model", type=str, default=defaults.anthropic_model, help="Anthropic model id (default: the first entry of LEVY_ANTHROPIC_MODELS)")
+    parser.add_argument("--model", type=str, default=defaults.anthropic_model, help="Anthropic model id (default: the lowest-numbered LEVY_ANTHROPIC_MODEL_<n> in .env)")
     parser.add_argument("--max-tokens", type=int, default=256, help="max_tokens per request (default: 256)")
     parser.add_argument("--input-price-per-mtok", type=float, default=defaults.anthropic_input_price_per_mtok, help="USD per 1M input tokens for the model actually used")
     parser.add_argument("--output-price-per-mtok", type=float, default=defaults.anthropic_output_price_per_mtok, help="USD per 1M output tokens for the model actually used")
@@ -96,7 +96,7 @@ def main(argv=None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
     if not args.model or args.input_price_per_mtok is None or args.output_price_per_mtok is None:
-        parser.error("no Anthropic model and prices: set LEVY_ANTHROPIC_MODELS in .env or pass "
+        parser.error("no Anthropic model and prices: set LEVY_ANTHROPIC_MODEL_<n> and its prices in .env or pass "
                      "--model, --input-price-per-mtok and --output-price-per-mtok")
 
     prompts = unique_prompts(args.dataset, args.workload)

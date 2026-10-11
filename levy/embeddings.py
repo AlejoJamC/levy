@@ -55,7 +55,7 @@ class OllamaEmbeddingClient(EmbeddingClient):
     """Client for local Ollama embeddings."""
     def __init__(self, base_url: str = "http://localhost:11434", model: Optional[str] = None):
         if not model:
-            raise ValueError("An Ollama embedding model is required; configure it in LEVY_OLLAMA_EMBEDDING_MODELS")
+            raise ValueError("An Ollama embedding model is required; configure it in .env as LEVY_OLLAMA_EMBEDDING_MODEL_<n>")
         # Local import to avoid circular dependency issues or just standard practice if keeping clean
         import httpx
         self.httpx = httpx
