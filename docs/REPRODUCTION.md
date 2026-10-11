@@ -3,9 +3,10 @@
 This guide runs Levy's full evaluation pipeline from a fresh checkout. Every
 command can be executed verbatim.
 
-**The default path is fully offline.** It uses the dataset committed in `data/`
-and mock providers, so it needs **no API key, no model download, and no network
-access**. There are two routes:
+**The default path needs no API key.** It uses the dataset committed in `data/`
+and the study's two embedding models (`sentence-transformers`). Their weights
+download once on first use; after that everything runs offline. There are two
+routes:
 
 - [Route A — Docker](#route-a--docker-one-command): one command, nothing to
   install but Docker.
@@ -22,9 +23,8 @@ quietly stale.
 > **15 synthetic fixture pairs** (5 per workload, obviously fabricated text,
 > `source_corpus="synthetic-fixture"`), not the real 900-pair research dataset.
 > It exists so the pipeline is runnable end-to-end today. **No metric produced
-> from it is a research result** — under mock embeddings no semantic hits occur,
-> so false positive rate has zero variance and the hypothesis tests are
-> correctly reported as `undefined`. See [`data/README.md`](../data/README.md)
+> from it is a research result** — 5 pairs per workload give the tests almost
+> no power. See [`data/README.md`](../data/README.md)
 > and [`data/DATASHEET.md`](../data/DATASHEET.md). Running against the real
 > dataset changes exactly one argument — see
 > [Swapping in the real dataset](#swapping-in-the-real-dataset).
@@ -69,13 +69,8 @@ Apple Silicon with a warm network). The size comes from `environment.yml` pullin
 environment fidelity, not for distribution size. Rebuilds after a source-only
 change are fast: the conda solve is cached until `environment.yml` itself changes.
 
-**The default path needs no network and no API key.** Confirm it yourself — this
-completes with exit code 0 and produces `results.csv` / `decisions.csv`
-byte-identical to the conda route:
-
-```bash
-docker run --rm --network none -v "$PWD/results:/opt/levy/results" levy:latest
-```
+The image holds the libraries, not the model weights: the first run downloads
+the two embedding models, so it needs network once. No API key is needed.
 
 **Redis is unaffected.** The previously documented service still works exactly
 as before and the pipeline does not depend on it (the engine defaults to the
@@ -85,12 +80,7 @@ in-memory store):
 docker compose up -d redis
 ```
 
-**Opt-in overrides** (each one has a cost, so none is the default):
-
-```bash
-# Real embeddings — downloads model weights on first use, needs network:
-docker compose run --rm -e LEVY_EMBEDDING_PROVIDER=sentence-transformers pipeline
-```
+**Overrides:**
 
 ```bash
 # A different dataset (mounted into the image's data/ directory):
@@ -122,8 +112,8 @@ conda activate levy
 Apple Silicon. If Faiss is absent for any reason the engine falls back to an
 exact brute-force numpy index automatically, and results are unchanged.
 
-Verify the environment with the gated test suite (offline, mock providers only —
-the same command CI runs):
+Verify the environment with the gated test suite (offline: the tests use test
+doubles instead of models and providers — the same command CI runs):
 
 ```bash
 python -m pytest tests/ -q --cov=levy --cov-branch --cov-fail-under=90
@@ -198,7 +188,7 @@ scripts/reproduce.sh
 ```
 
 Defaults: dataset `data/ground_truth.csv`, output directory
-`results/reproduce`, embedding provider `mock`, the full study grid. Override
+`results/reproduce`, the study's embedding models, the full study grid. Override
 positionally or by environment variable:
 
 ```bash
@@ -209,7 +199,6 @@ scripts/reproduce.sh data/ground_truth.csv results/study-run
 |---|---|---|
 | `LEVY_DATASET` | `data/ground_truth.csv` | dataset file (`.csv` or `.json`) |
 | `LEVY_OUT_DIR` | `results/reproduce` | output directory |
-| `LEVY_EMBEDDING_PROVIDER` | `mock` | `mock`, `sentence-transformers`, `ollama` |
 | `LEVY_MODELS` | full grid | comma-separated model subset |
 | `LEVY_WORKLOADS` | `faq,code,chat` | comma-separated workload subset |
 | `LEVY_THRESHOLDS` | `0.70,…,0.90` | comma-separated threshold subset |
@@ -225,8 +214,7 @@ want to inspect or rerun one stage.
 ```bash
 python scripts/run_experiments.py \
     --dataset data/ground_truth.csv \
-    --out-dir results/reproduce \
-    --embedding-provider mock
+    --out-dir results/reproduce
 ```
 
 Writes to `results/reproduce/`:
@@ -291,8 +279,8 @@ The absolute floor exists because a purely relative tolerance collapses into
 demanding bit-exact equality near a reference of 0.0. Exit code is zero when
 every value is within tolerance; otherwise non-zero, with a per-configuration
 diff table naming the configuration, the metric, both values, and the deviation.
-Under mock providers the harness is byte-deterministic, so a self-comparison
-matches exactly — the tolerance is there for real-provider runs.
+On one host the harness is deterministic, so a self-comparison matches
+exactly — the tolerance is there for runs on another host.
 
 The verdict is also written to `replication.json` beside the reference
 `results.csv`, so it can be read rather than inferred from an exit code:
@@ -317,10 +305,10 @@ The pipeline prints three stage banners and ends with:
 
 [2/3] Statistical analysis -> results/reproduce/analysis
 [run_analysis] analysed 30 configuration(s) from results/reproduce
-  H0_1 (model): p=nan -> undefined
-  H0_2 (workload): p=nan -> undefined
-  H0_3 (model:workload): p=nan -> undefined
-  Tukey HSD was not run: fpr has zero variance across all configurations, ...
+  H0_1 (model): p=1 -> retain
+  H0_2 (workload): p=0.157267 -> retain
+  H0_3 (model:workload): p=1 -> retain
+  Tukey HSD was not run: no effect was significant at alpha=0.05 (...)
   kappa=0.722... (threshold 0.7, FIXTURE ONLY)
 [run_analysis] wrote the analysis bundle to results/reproduce/analysis
 
@@ -328,12 +316,9 @@ The pipeline prints three stage banners and ends with:
 RESULT: replication PASSED
 ```
 
-The `undefined` hypothesis decisions are the **correct** result for the fixture
-dataset under mock embeddings, not a failure: mock embeddings are text-hashed
-random vectors, so no semantic hits occur, false positive rate is constant at
-zero across all 30 configurations, and the ANOVA F-tests are genuinely
-undefined. The pipeline reports that rather than laundering it into three
-retained nulls.
+On the fixture, semantic hits occur only at the lowest thresholds (0.70–0.80),
+so three retained hypotheses are the expected outcome of 15 pairs, not a study
+finding.
 
 ---
 
@@ -355,18 +340,7 @@ above. In Docker:
 docker compose run --rm -e LEVY_DATASET=data/ground_truth.full.csv pipeline
 ```
 
-For an actual research run, also switch to real embeddings — this downloads
-model weights on first use and needs network access:
-
-```bash
-LEVY_EMBEDDING_PROVIDER=sentence-transformers \
-    scripts/reproduce.sh data/ground_truth.full.csv results/study-run
-```
-
-The output structure is identical; only the numbers change. With real
-embeddings the false positive rate varies across configurations, so the ANOVA
-F-tests become defined and H0₁–H0₃ get real `reject`/`retain` decisions, with
-Tukey HSD following up any significant effect.
+The output structure is identical; only the numbers change.
 
 ### Expected κ on the real dataset — 0.5000, below the 0.7 bar
 
@@ -409,7 +383,7 @@ separately because only one of them replicates.
 
 ### The reproducible half — lookup overhead (offline)
 
-Runs offline with mock providers and makes no provider call. It reads the
+Makes no provider call: it serves the recorded responses. It reads the
 configuration list from an existing `results.csv` (read-only; nothing is
 written to that directory) and measures each configuration's lookup path:
 
@@ -530,7 +504,7 @@ exit 1.
 python -m pytest tests/ -q --cov=levy --cov-branch --cov-fail-under=90
 ```
 
-Fully offline — mock providers only, no API key, no network. This is the same
+Fully offline — the tests use test doubles, no API key, no network. This is the same
 command CI runs (`.github/workflows/tests.yml`).
 
 ### Pipeline
@@ -550,9 +524,8 @@ Non-zero exit from any stage fails the whole script (`set -euo pipefail`).
 | `ModuleNotFoundError: numpy` (or any dependency) | The `levy` conda environment is not active. `conda activate levy`. |
 | `scripts/reproduce.sh: Permission denied` | `chmod +x scripts/reproduce.sh`, or run it as `bash scripts/reproduce.sh`. |
 | Segfault importing faiss | The pip `faiss-cpu` wheel on Apple Silicon. Install from conda-forge (`environment.yml` already does). |
-| Hypothesis decisions are `undefined` | Expected with the fixture dataset under mock embeddings — see [Expected output](#expected-output). |
 | Docker build is slow the first time | One-time conda solve plus torch. Subsequent builds reuse the cached environment layer. |
-| A model download starts unexpectedly | `LEVY_EMBEDDING_PROVIDER` is not `mock`. The default path never downloads anything. |
+| A model download starts | Expected once: the first run downloads the two embedding models' weights. Later runs use the local copy. |
 
 ## Related documentation
 

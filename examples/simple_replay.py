@@ -46,7 +46,7 @@ def main():
         enable_exact_cache=False, 
         enable_semantic_cache=False,
         llm_provider="mock",
-        embedding_provider="mock"
+        embedding_provider="sentence-transformers"
     )
     run_experiment(prompts, config_none, "Baseline (No Cache)")
 
@@ -55,23 +55,12 @@ def main():
         enable_exact_cache=True, 
         enable_semantic_cache=False,
         llm_provider="mock",
-        embedding_provider="mock"
+        embedding_provider="sentence-transformers"
     )
     run_experiment(prompts, config_exact, "Exact Cache Only")
 
-    # 3. Semantic Cache
-    # We use 'mock' embeddings which are random-seeded by text in my implementation,
-    # so semantic similarity might be low or random unless we used a real model.
-    # If the user installs 'sentence-transformers', they can switch provider to "sentence-transformers".
-    
-    # I'll check if sentence-transformers is installed, otherwise warn about mock semantic limitations used in scaffold
-    try:
-        import sentence_transformers
-        emb_provider = "sentence-transformers"
-        print("\n(Using real SentenceTransformers for semantic cache)")
-    except ImportError:
-        emb_provider = "mock"
-        print("\n(Using MOCK embeddings - semantic matching will be random/hash-based)")
+    # 3. Semantic Cache, with the study's baseline embedding model
+    emb_provider = "sentence-transformers"
 
     config_semantic = LevyConfig(
         enable_exact_cache=True, 

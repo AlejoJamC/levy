@@ -22,8 +22,8 @@ Cost control, in the order it applies:
    recorded so far is already on disk, one JSON object per line.
 
 Set `--model` and both `--*-price-per-mtok` flags to the model you are actually
-running. The defaults in `levy/config.py` describe a different model, and a cost
-figure carried over from it would be wrong in both directions.
+running. The defaults are the lowest-numbered LEVY_ANTHROPIC_MODEL_<n> in `.env`; a
+cost figure computed at another model's prices would be wrong in both directions.
 
 Examples:
     # What would this cost? Sends nothing.
@@ -33,8 +33,8 @@ Examples:
     # The pilot run.
     python scripts/populate_responses.py --dataset data/ground_truth.full.csv \\
         --workload faq --out-dir results/latency-run \\
-        --model claude-haiku-4-5-20251001 \\
-        --input-price-per-mtok 1.0 --output-price-per-mtok 5.0
+        --model <a LEVY_ANTHROPIC_MODEL_<n> from .env> \\
+        --input-price-per-mtok <USD per MTok in> --output-price-per-mtok <USD per MTok out>
 """
 
 import argparse
@@ -61,13 +61,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dataset", type=Path, default=Path("data/ground_truth.full.csv"), help="Dataset file (.csv or .json); default: data/ground_truth.full.csv")
     parser.add_argument("--workload", type=str, default="faq", help="Workload to populate (default: faq)")
     parser.add_argument("--out-dir", type=Path, required=True, help="Output directory for responses.jsonl and llm_calls.json (never a harness result directory)")
-    parser.add_argument("--model", type=str, default=defaults.anthropic_model, help=f"Anthropic model id (default: {defaults.anthropic_model})")
+    parser.add_argument("--model", type=str, default=defaults.anthropic_model, help="Anthropic model id (default: the lowest-numbered LEVY_ANTHROPIC_MODEL_<n> in .env)")
     parser.add_argument("--max-tokens", type=int, default=256, help="max_tokens per request (default: 256)")
     parser.add_argument("--input-price-per-mtok", type=float, default=defaults.anthropic_input_price_per_mtok, help="USD per 1M input tokens for the model actually used")
     parser.add_argument("--output-price-per-mtok", type=float, default=defaults.anthropic_output_price_per_mtok, help="USD per 1M output tokens for the model actually used")
     parser.add_argument("--budget-cap-usd", type=float, default=defaults.anthropic_budget_cap_usd, help=f"Hard cap on estimated spend (default: {defaults.anthropic_budget_cap_usd})")
     parser.add_argument("--max-calls", type=int, default=None, help="Stop after this many calls in this invocation (default: no limit beyond the budget cap)")
-    parser.add_argument("--reprice-as", type=str, default=None, help="Also record what this run would have cost at another model's prices, e.g. claude-sonnet-5")
+    parser.add_argument("--reprice-as", type=str, default=None, help="Also record what this run would have cost at another model's prices (a model id)")
     parser.add_argument("--reprice-input-per-mtok", type=float, default=None, help="Input price for --reprice-as")
     parser.add_argument("--reprice-output-per-mtok", type=float, default=None, help="Output price for --reprice-as")
     parser.add_argument("--dry-run", action="store_true", help="Report what would be called and stop. Sends nothing, spends nothing")
@@ -93,7 +93,11 @@ def unique_prompts(dataset: Path, workload: str) -> List[str]:
 
 
 def main(argv=None) -> int:
-    args = build_arg_parser().parse_args(argv)
+    parser = build_arg_parser()
+    args = parser.parse_args(argv)
+    if not args.model or args.input_price_per_mtok is None or args.output_price_per_mtok is None:
+        parser.error("no Anthropic model and prices: set LEVY_ANTHROPIC_MODEL_<n> and its prices in .env or pass "
+                     "--model, --input-price-per-mtok and --output-price-per-mtok")
 
     prompts = unique_prompts(args.dataset, args.workload)
     if not prompts:

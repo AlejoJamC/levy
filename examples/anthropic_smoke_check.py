@@ -22,7 +22,7 @@ from levy import LevyEngine, LevyConfig
 def main():
     config = LevyConfig(
         llm_provider="anthropic",
-        embedding_provider="mock",
+        embedding_provider="sentence-transformers",
         enable_semantic_cache=False,
     )
     if not config.anthropic_api_key:

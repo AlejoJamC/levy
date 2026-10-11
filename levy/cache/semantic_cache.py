@@ -19,7 +19,7 @@ import numpy as np
 from levy.cache.base import CacheInterface
 from levy.cache.vector_index import VectorIndex, _l2_normalize, make_vector_index
 from levy.latency.timing import SEGMENT_EMBED, SEGMENT_INDEX_SEARCH, segment
-from levy.models import CacheEntry, LLMRequest
+from levy.models import CacheEntry, LLMRequest, SemanticLookupObservation
 
 if TYPE_CHECKING:  # pragma: no cover -- typing only
     from levy.latency.timing import TimingCollector
@@ -78,7 +78,12 @@ class SemanticCache(CacheInterface):
     # CacheInterface
     # ------------------------------------------------------------------
 
-    def get(self, request: LLMRequest, timing: Optional["TimingCollector"] = None) -> Optional[CacheEntry]:
+    def get(
+        self,
+        request: LLMRequest,
+        timing: Optional["TimingCollector"] = None,
+        observation: Optional[SemanticLookupObservation] = None,
+    ) -> Optional[CacheEntry]:
         """
         Look up `request`, optionally decomposing the cost into `timing`.
 
@@ -87,8 +92,18 @@ class SemanticCache(CacheInterface):
         collector no clock is read. Embedding and index search are timed here
         rather than inside `VectorIndex`, so `VectorIndex.search()` keeps its
         signature and both backends stay measurable through the same path.
+
+        `observation` only observes too: when passed, it receives the
+        index size, the threshold, and the nearest neighbour with its distance
+        and similarity -- on a miss as well as a hit, where the lookup itself
+        discards a sub-threshold neighbour.
         """
-        if self._index.size() == 0:
+        size = self._index.size()
+        if observation is not None:
+            observation.reached = True
+            observation.index_size = size
+            observation.threshold = self.threshold
+        if size == 0:
             return None
 
         with segment(timing, SEGMENT_EMBED):
@@ -102,13 +117,21 @@ class SemanticCache(CacheInterface):
 
         distance = distances[0]
         similarity = 1.0 / (1.0 + distance)
+        entry = self._entries.get(ids[0])
+
+        if observation is not None:
+            observation.distance = float(distance)
+            observation.similarity = float(similarity)
+            observation.nearest_prompt = entry.prompt if entry is not None else None
 
         if similarity < self.threshold:
             return None
 
-        entry = self._entries.get(ids[0])
         if entry is None:
             return None
+
+        if observation is not None:
+            observation.hit = True
 
         entry.access_count += 1
         entry.metadata["last_similarity_score"] = float(similarity)

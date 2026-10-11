@@ -25,6 +25,12 @@ SEGMENT_TOTAL_LOOKUP = "total_lookup"
 
 SEGMENTS = (SEGMENT_EMBED, SEGMENT_INDEX_SEARCH, SEGMENT_EXACT_LOOKUP, SEGMENT_TOTAL_LOOKUP)
 
+# The rest of a miss, after the lookup path has ended: the provider call and
+# the cache write that follows it, for request tracing. Deliberately
+# not in SEGMENTS, which is the lookup decomposition the benchmark reports.
+SEGMENT_LLM_CALL = "llm_call"
+SEGMENT_STORE = "store"
+
 
 class TimingCollector:
     """

@@ -51,7 +51,7 @@ def _sweep():
     """One full-grid sweep, computed once and shared across the tests."""
     if "results" not in _SWEEP_CACHE:
         pairs = load_dataset(FIXTURE_DATASET)
-        results, identities = run_sweep(pairs, llm_latency_seconds=0.0)
+        results, identities = run_sweep(pairs, llm_latency_seconds=0.0, embedding_provider="mock")
         _SWEEP_CACHE["results"] = results
         _SWEEP_CACHE["identities"] = identities
     return _SWEEP_CACHE["results"], _SWEEP_CACHE["identities"]

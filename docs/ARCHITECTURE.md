@@ -46,7 +46,7 @@ The system has three headline components:
 | Cache Orchestrator | [`levy/engine.py`](../levy/engine.py) (`LevyEngine`) | Owns the lookup flow, the hit/miss decision, and metric recording. The router adds one structured JSON log record per request, sufficient to replay a request sequence. |
 | Embedding Manager | [`levy/embedding_manager.py`](../levy/embedding_manager.py) | Resolves study-model aliases through a registry, lazily loads one client per checkpoint, memoizes by `(model_key, sha256(text))`, applies each model's symmetric task prefix. |
 | Vector Store (Faiss) | [`levy/cache/vector_index.py`](../levy/cache/vector_index.py), [`levy/cache/semantic_cache.py`](../levy/cache/semantic_cache.py) | HNSW index over L2 distance, plus a monotonic id → `CacheEntry` map — a separate metadata dictionary. |
-| LLM Connector | [`levy/llm_client.py`](../levy/llm_client.py) | `LLMClient` ABC with mock, OpenAI-compatible, Ollama, and Anthropic implementations. |
+| LLM Connector | [`levy/llm_client.py`](../levy/llm_client.py) | `LLMClient` ABC with mock, Ollama, and Anthropic implementations. |
 
 **Design note — synchronous connector.** The engine, caches, and harness are
 synchronous throughout, so the connector implements the synchronous `LLMClient`
@@ -96,7 +96,7 @@ A single `POST /v1/chat/completions`:
    │   similarity = 1 / (1 + distance)
    │   similarity ≥ threshold? ──▶ return cached response  (X-Cache-Status: HIT)
    │
-   └─▶ [LLM connector] provider call (Anthropic / OpenAI-compatible / Ollama / mock)
+   └─▶ [LLM connector] provider call (Anthropic / Ollama / mock)
             │
             ▼
        store response in the exact cache, and its embedding in the vector index
@@ -131,6 +131,28 @@ with that pair reuse it, so their caches accumulate. One `EmbeddingManager` is
 shared per embedding model across thresholds, so changing a threshold never
 reloads a model. Requesting a pair beyond the cap (default 8) returns a
 structured `400 pool_cap_exceeded`.
+
+### 3.3 The console section
+
+`levy/console/` is a layer beside the delivered endpoints, not a change to them.
+`POST /console/chat` takes each setting as a query parameter typed by a closed
+list (`options.py`), so Swagger shows every setting as a selectable field:
+threshold, embedding provider and model, LLM provider and model, exact and
+semantic cache on/off, index backend and store.
+
+The console's engines live in their own `ConsolePool` (`pool.py`):
+- one `LevyEngine` per resolved configuration, separate from the delivered `EnginePool`;
+- embedding managers shared per `(embedding_provider, embedding_model)`;
+- for `redis`, a `PrefixedRedisStore` that keeps each configuration's keys apart.
+
+Every console request is traced (`tracing.py`) through two opt-in engine hooks:
+- the timing collector, which now also records the provider call and the store;
+- an observation object that `SemanticCache.get()` fills with the nearest
+  neighbour, on a miss as well as a hit.
+
+Without either, the engine behaves exactly as before. Traces live in a bounded
+in-memory buffer that the page at `/console` polls with a version cursor, so a
+request is visible while its provider call is still in flight.
 
 ---
 
@@ -178,7 +200,7 @@ mock implementation:
 
 | Dependency | ABC | Implementations |
 |---|---|---|
-| LLM | `LLMClient` | `MockLLMClient`, `OpenAILLMClient`, `OllamaLLMClient`, `AnthropicLLMClient` |
+| LLM | `LLMClient` | `MockLLMClient`, `OllamaLLMClient`, `AnthropicLLMClient` |
 | Embeddings | `EmbeddingClient` | mock (text-seeded, normalised), `SentenceTransformerClient`, `OllamaEmbeddingClient` |
 | Vector index | `VectorIndex` | `BruteForceVectorIndex` (exact k-NN oracle), `FaissHNSWVectorIndex` |
 | Cache store | `CacheInterface` | `InMemoryStore` (FIFO eviction), `RedisStore` |
@@ -198,6 +220,14 @@ Anthropic settings (model, retries, budget cap, per-MTok prices). It loads
 `.env` via python-dotenv. Secrets never appear in code or in tracked files —
 only `.env.example` is committed, and `scripts/audit_release.sh` enforces that.
 
+Models are not written in the code either, because they change every few
+months. `.env` names them one fact per line: `LEVY_ANTHROPIC_MODEL_<n>` with its
+`_INPUT_USD_PER_MTOK` and `_OUTPUT_USD_PER_MTOK`, `LEVY_OLLAMA_MODEL_<n>` and
+`LEVY_OLLAMA_EMBEDDING_MODEL_<n>`; the lowest number is the default. The console
+reads `.env` again on each Swagger load and request, so no restart is needed. The code
+keeps only what Levy itself implements: the provider types, the index backends,
+the cache stores, and the study's two embedding models.
+
 ### 5.3 Dataclasses in the core, Pydantic at the edge
 
 The core package uses plain dataclasses. Pydantic appears only in
@@ -209,8 +239,7 @@ hot path.
 
 Zero-division in a metric is reported as `0.0` plus an explicit flag, never as
 NaN and never silently dropped. Where a statistical test is undefined — for
-instance zero variance in false positive rate, which is exactly what the
-committed fixture yields under mock embeddings — the hypothesis decision is
+instance zero variance in false positive rate — the hypothesis decision is
 reported as `undefined` rather than as a retained null. Residual diagnostics
 (design balance, Shapiro-Wilk, Levene) are reported and never acted on
 automatically.

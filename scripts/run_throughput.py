@@ -42,7 +42,7 @@ Usage:
     python scripts/run_throughput.py --out-dir release/throughput
     python scripts/run_throughput.py --out-dir /tmp/throughput --llm-latency-percentile p95
     python scripts/run_throughput.py --out-dir /tmp/throughput --llm-latency-seconds 1.0
-    python scripts/run_throughput.py --out-dir release/throughput --llm-provider anthropic --anthropic-model claude-opus-4-8
+    python scripts/run_throughput.py --out-dir release/throughput --llm-provider anthropic --anthropic-model <a LEVY_ANTHROPIC_MODEL_<n> from .env>
 """
 
 import argparse
@@ -79,7 +79,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--llm-latency-percentile", type=str, default="p50", choices=["p50", "p95"], help="Which real measured percentile to use as the mock's per-call delay (default: p50)")
     parser.add_argument("--llm-latency-seconds", type=float, default=None, help="Override: use this fixed delay instead of reading real data")
     parser.add_argument("--llm-provider", type=str, default="mock", choices=["mock", "anthropic"], help="'mock' (default): no network call, simulated delay per --llm-latency-seconds/--llm-latency-percentile. 'anthropic': real, billed calls to the real API for every all-miss request -- real cost, real rate limits. Requires ANTHROPIC_API_KEY.")
-    parser.add_argument("--anthropic-model", type=str, default=None, help="Model to use with --llm-provider anthropic (default: LevyConfig's own default, claude-haiku-4-5-20251001). Also names the output subdirectory, so a second model's run cannot overwrite the first's.")
+    parser.add_argument("--anthropic-model", type=str, default=None, help="Model to use with --llm-provider anthropic, one of the LEVY_ANTHROPIC_MODEL_<n> in .env (default: the lowest-numbered). Also names the output subdirectory, so a second model's run cannot overwrite the first's.")
     parser.add_argument("--serve-only", action="store_true", help="Only start the server (blocking, foreground) on --host/--port; do not generate load or write output. Meant to run inside a resource-isolated container while a separate --client-only process drives it.")
     parser.add_argument("--client-only", action="store_true", help="Do not start a local server; drive load against --base-url instead (an already-running --serve-only instance).")
     parser.add_argument("--base-url", type=str, default=None, help="Server URL to drive load against, with --client-only (e.g. http://127.0.0.1:8000)")
@@ -116,7 +116,10 @@ def resolve_model_id(args: argparse.Namespace, llm_latency_provenance: dict) -> 
     if args.llm_provider == "anthropic":
         from levy.config import LevyConfig
 
-        return args.anthropic_model or LevyConfig().anthropic_model
+        model = args.anthropic_model or LevyConfig().anthropic_model
+        if not model:
+            raise SystemExit("No Anthropic model: pass --anthropic-model or set LEVY_ANTHROPIC_MODEL_<n> in .env")
+        return model
 
     model = llm_latency_provenance.get("model")
     if model:
@@ -138,10 +141,14 @@ def _serve(host: str, port: int, llm_latency_seconds: float, llm_provider: str =
     from levy.config import LevyConfig
 
     if llm_provider == "anthropic":
-        kwargs = {"llm_provider": "anthropic", "embedding_provider": "sentence-transformers"}
-        if anthropic_model:
-            kwargs["anthropic_model"] = anthropic_model
-        config = LevyConfig(**kwargs)
+        config = LevyConfig(llm_provider="anthropic", embedding_provider="sentence-transformers")
+        model = anthropic_model or config.anthropic_model
+        prices = config.anthropic_prices(model)
+        if prices is None:
+            raise SystemExit(f"{model!r} is not configured in .env as a LEVY_ANTHROPIC_MODEL_<n> with its two prices")
+        # The model and its two prices always travel together (LEV-14 triple).
+        config.anthropic_model = model
+        config.anthropic_input_price_per_mtok, config.anthropic_output_price_per_mtok = prices
     else:
         config = LevyConfig(
             llm_provider="mock",
@@ -193,7 +200,7 @@ async def fire_one(client: httpx.AsyncClient, base_url: str, prompt: str) -> Tup
     try:
         r = await client.post(
             f"{base_url}/v1/chat/completions",
-            json={"model": "claude-haiku-4-5-20251001", "messages": [{"role": "user", "content": prompt}]},
+            json={"messages": [{"role": "user", "content": prompt}]},
             timeout=30.0,
         )
         ok = r.status_code == 200

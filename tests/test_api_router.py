@@ -2,7 +2,7 @@
 Tests for levy.api (LEV-7 FastAPI router).
 
 Fully offline: mock LLM + mock embeddings via FastAPI's in-process TestClient.
-No network access, no real Anthropic/OpenAI/Ollama calls.
+No network access, no real Anthropic/Ollama calls.
 """
 
 import json
@@ -15,6 +15,11 @@ from fastapi.testclient import TestClient
 from levy.api.app import create_app
 from levy.config import LevyConfig
 from levy.llm_client import AnthropicLLMClient
+
+
+# Placeholder model and prices: real ones live in .env (LEVY_ANTHROPIC_MODEL_<n>), never in code.
+TEST_CLIENT = dict(model="test-anthropic-model", input_price_per_mtok=5.0, output_price_per_mtok=25.0)
+TEST_CONFIG = dict(anthropic_model="test-anthropic-model", anthropic_input_price_per_mtok=5.0, anthropic_output_price_per_mtok=25.0)
 
 
 def _mock_config(**overrides) -> LevyConfig:
@@ -189,6 +194,7 @@ class TestErrors(unittest.TestCase):
             llm_provider="anthropic",
             anthropic_api_key="sk-test",
             anthropic_budget_cap_usd=0.0,
+            **TEST_CONFIG,
         )
         app = create_app(config=config)
         client = TestClient(app)
@@ -201,7 +207,7 @@ class TestErrors(unittest.TestCase):
                     "type": "message",
                     "role": "assistant",
                     "content": [{"type": "text", "text": "hi"}],
-                    "model": "claude-opus-4-8",
+                    "model": "test-anthropic-model",
                     "stop_reason": "end_turn",
                     "stop_sequence": None,
                     "usage": {"input_tokens": 1, "output_tokens": 1},
@@ -213,7 +219,7 @@ class TestErrors(unittest.TestCase):
         # deterministically with no real network access (mirrors test_anthropic_client.py).
         engine = app.state.pool.get(None, None)
         engine.llm_client = AnthropicLLMClient(
-            api_key="sk-test", http_client=http_client, budget_cap_usd=0.0
+            api_key="sk-test", http_client=http_client, budget_cap_usd=0.0, **TEST_CLIENT
         )
 
         r = client.post("/v1/chat/completions", json=_chat_body("too expensive"))
@@ -224,7 +230,7 @@ class TestErrors(unittest.TestCase):
         self.assertEqual(body["cap_usd"], 0.0)
 
     def test_refusal_returns_structured_502(self):
-        config = _mock_config(llm_provider="anthropic", anthropic_api_key="sk-test")
+        config = _mock_config(llm_provider="anthropic", anthropic_api_key="sk-test", **TEST_CONFIG)
         app = create_app(config=config)
         client = TestClient(app)
 
@@ -236,7 +242,7 @@ class TestErrors(unittest.TestCase):
                     "type": "message",
                     "role": "assistant",
                     "content": [{"type": "text", "text": ""}],
-                    "model": "claude-opus-4-8",
+                    "model": "test-anthropic-model",
                     "stop_reason": "refusal",
                     "stop_sequence": None,
                     "usage": {"input_tokens": 1, "output_tokens": 0},
@@ -245,7 +251,7 @@ class TestErrors(unittest.TestCase):
 
         http_client = anthropic.DefaultHttpxClient(transport=httpx.MockTransport(handler))
         engine = app.state.pool.get(None, None)
-        engine.llm_client = AnthropicLLMClient(api_key="sk-test", http_client=http_client)
+        engine.llm_client = AnthropicLLMClient(api_key="sk-test", http_client=http_client, **TEST_CLIENT)
 
         r = client.post("/v1/chat/completions", json=_chat_body("say something refused"))
 

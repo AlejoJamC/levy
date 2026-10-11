@@ -7,6 +7,11 @@ Endpoints (intended interface + known-gap #1):
   GET  /admin/cache/stats    -- aggregated hit rate, index size, per-model breakdown.
   POST /admin/cache/clear    -- empties every pooled engine's caches + metrics.
 
+Console section, beside the delivered endpoints above and sharing none
+of their engines or caches -- see `levy/console/`:
+  POST /console/chat, GET /console/traces, POST /console/traces/clear,
+  POST /console/cache/clear, and the page at GET /console.
+
 Design decision (recorded in design.md): endpoints are declared `def` (sync) so
 FastAPI runs them in its threadpool -- the whole call chain (engine, caches, the
 LEV-6 Anthropic client) is synchronous and blocking the event loop would
@@ -16,6 +21,7 @@ at the HTTP boundary without an AsyncAnthropic migration.
 Run with: uvicorn levy.api.app:app
 """
 
+import copy
 import json
 import logging
 import time
@@ -24,6 +30,7 @@ from typing import List, Optional
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from levy import __version__
 from levy.api.pool import EnginePool, PoolCapExceededError
@@ -37,7 +44,10 @@ from levy.api.schemas import (
     StatsResponse,
     Usage,
 )
-from levy.config import LevyConfig
+from levy.config import LevyConfig, current_model_catalog
+from levy.console.pool import DEFAULT_CONSOLE_POOL_CAP, ConsolePool, EmbeddingManagerFactory, LLMClientFactory
+from levy.console.routes import STATIC_DIR, build_console_router, publish_choices
+from levy.console.tracing import DEFAULT_TRACE_BUFFER_SIZE, TraceRecorder
 from levy.llm_client import AnthropicRefusalError, BudgetExceededError
 from levy.models import LevyResult
 
@@ -116,10 +126,24 @@ def _aggregate_stats(pool: EnginePool) -> StatsResponse:
 
 
 def create_app(
-    config: Optional[LevyConfig] = None, max_engines: int = DEFAULT_POOL_CAP
+    config: Optional[LevyConfig] = None,
+    max_engines: int = DEFAULT_POOL_CAP,
+    console_max_engines: int = DEFAULT_CONSOLE_POOL_CAP,
+    trace_buffer_size: int = DEFAULT_TRACE_BUFFER_SIZE,
+    console_llm_client_factory: Optional[LLMClientFactory] = None,
+    console_embedding_manager_factory: Optional[EmbeddingManagerFactory] = None,
 ) -> FastAPI:
-    """Build a Levy API app. Tests pass a mock-provider `config` for offline runs."""
-    pool = EnginePool(config or LevyConfig(), max_engines=max_engines)
+    """Build a Levy API app. Tests pass a mock-provider `config` for offline runs.
+
+    The console section gets its own engine pool and trace recorder;
+    the two `console_*_factory` arguments let the offline tests give it test
+    doubles, and are left unset to serve the real providers. Without an explicit
+    `config`, the console reads its models from `.env` again on every schema
+    load and request, so an edited `.env` needs no restart.
+    """
+    reload_models = config is None
+    config = config or LevyConfig()
+    pool = EnginePool(config, max_engines=max_engines)
 
     app = FastAPI(
         title="Levy Semantic Caching API",
@@ -243,6 +267,31 @@ def create_app(
     )
     def cache_clear() -> ClearResponse:
         return ClearResponse(cleared=pool.clear_all())
+
+    console_pool = ConsolePool(
+        config,
+        max_engines=console_max_engines,
+        llm_client_factory=console_llm_client_factory,
+        embedding_manager_factory=console_embedding_manager_factory,
+    )
+    recorder = TraceRecorder(max_traces=trace_buffer_size)
+    app.state.console_pool = console_pool
+    app.state.trace_recorder = recorder
+
+    def console_config() -> LevyConfig:
+        return config.with_models(current_model_catalog()) if reload_models else config
+
+    app.include_router(build_console_router(console_config, console_pool, recorder, _to_response_body))
+    app.mount("/console/assets", StaticFiles(directory=STATIC_DIR), name="console-assets")
+
+    cached_openapi = app.openapi
+
+    def openapi_with_current_choices():
+        # FastAPI builds the schema once and caches it; the console's options
+        # change with `.env`, so they are written into a copy on every request.
+        return publish_choices(copy.deepcopy(cached_openapi()), console_config())
+
+    app.openapi = openapi_with_current_choices
 
     return app
 

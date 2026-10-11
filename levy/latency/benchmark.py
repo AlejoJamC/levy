@@ -173,7 +173,7 @@ def _build_engine(
     engine_config = LevyConfig(
         llm_provider="mock",
         mock_llm_latency_seconds=0,
-        embedding_provider="mock",  # overridden by the injected manager
+        embedding_provider="sentence-transformers",  # the injected manager is what embeds
         embedding_model=config.model,
         enable_exact_cache=True,
         enable_semantic_cache=True,
@@ -273,7 +273,7 @@ def benchmark_configuration(
 def benchmark_configurations(
     configs: List[ExperimentConfig],
     pairs: List[QueryPair],
-    embedding_provider: str = "mock",
+    embedding_provider: str = "sentence-transformers",
     llm_client: Optional[LLMClient] = None,
     warmup: int = DEFAULT_WARMUP,
     repetitions: int = DEFAULT_REPETITIONS,
