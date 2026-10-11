@@ -48,6 +48,16 @@ from levy.latency.corpus import CorpusLLMClient, load_corpus
 from levy.latency.report import summarise_calls, write_latency_csv, write_latency_meta
 from levy.llm_client import MockLLMClient
 
+
+EMBEDDING_PROVIDERS = ("sentence-transformers", "ollama")
+
+
+def embedding_provider(value: str) -> str:
+    # Real embeddings only. "mock" stays accepted, unlisted, for the offline test suite.
+    if value in EMBEDDING_PROVIDERS or value == "mock":
+        return value
+    raise argparse.ArgumentTypeError(f"choose from {', '.join(EMBEDDING_PROVIDERS)}")
+
 RESPONSES_FILENAME = "responses.jsonl"
 
 
@@ -58,7 +68,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out-dir", type=Path, required=True, help="Output directory for latency.csv and latency_meta.json (never a harness result directory)")
     parser.add_argument("--workload", type=str, default="faq", help="Workload to measure (default: faq, the only workload where the cache measurably operates)")
     parser.add_argument("--responses", type=Path, default=None, help=f"Response corpus to serve from; default: <out-dir>/{RESPONSES_FILENAME}")
-    parser.add_argument("--embedding-provider", type=str, default="mock", choices=["mock", "sentence-transformers", "ollama"], help="Embedding provider (default: mock, fully offline)")
+    parser.add_argument("--embedding-provider", type=embedding_provider, default="sentence-transformers", metavar="{sentence-transformers,ollama}", help="Embedding provider (default: sentence-transformers)")
     parser.add_argument("--warmup", type=int, default=DEFAULT_WARMUP, help=f"Discarded warm-up lookups per configuration (default: {DEFAULT_WARMUP})")
     parser.add_argument("--repetitions", type=int, default=DEFAULT_REPETITIONS, help=f"Measured repetitions per segment per phase (default: {DEFAULT_REPETITIONS})")
     parser.add_argument("--probe-seed", type=int, default=DEFAULT_PROBE_SEED, help=f"Seed for probe selection (default: {DEFAULT_PROBE_SEED})")

@@ -54,8 +54,8 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   exact cache → semantic cache → LLM call → store (with embedding when semantic
   cache is enabled). Records metrics at each step.
 - `levy/config.py` — `LevyConfig` dataclass. Providers: `llm_provider` =
-  `mock | ollama | anthropic`; `embedding_provider` = `mock | sentence-transformers |
-  ollama`; `cache_store_type` = `memory | redis`. Loads `.env` via python-dotenv.
+  `mock | ollama | anthropic`; `embedding_provider` = `sentence-transformers | ollama`
+  (`mock` is a test double only, never a default or a documented option); `cache_store_type` = `memory | redis`. Loads `.env` via python-dotenv.
 - `levy/models.py` — dataclasses: `LLMRequest`, `LLMResponse`, `CacheEntry`,
   `LevyResult` (`source` ∈ `llm | exact_cache | semantic_cache`), `MetricsSnapshot`.
 - `levy/llm_client.py` — `LLMClient` ABC + `MockLLMClient` (0.5s sleep, reversed
@@ -311,8 +311,8 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
 - `scripts/run_experiments.py` — argparse CLI over `levy/experiment/runner.py`: dataset
   path (default `data/ground_truth.csv`), output directory, `--models/--workloads/
   --thresholds` grid-subset flags for smoke runs, `--embedding-provider` (default
-  `mock`, fully offline against the synthetic fixture; pass `sentence-transformers` for
-  the real study run, which is LEV-13). Non-zero exit on a sanity-check failure.
+  `sentence-transformers`, the study's models; `mock` is accepted, unlisted, for the
+  offline tests only). Non-zero exit on a sanity-check failure.
 - `scripts/merge_results.py` (2026-08-06) — argparse CLI over `levy/experiment/merge.py`:
   positional harness directories + `--out-dir` (which may be one of them, an in-place
   merge, backed up first). `--allow-partial` writes an incomplete set for diagnostics
@@ -362,8 +362,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   statement; residual diagnostics — design balance, Shapiro-Wilk, Levene — reported,
   never acted on; η², partial η² and ω² per term (LEV-20) appended to `anova.csv`
   as `eta_sq`/`partial_eta_sq`/`omega_sq`, ω² deliberately unclamped, kept out of
-  `ANOVA_COLUMNS` so older bundles still load in the dashboard. **Degenerate-response rule:** zero variance in `fpr` (what the
-  synthetic fixture yields under mock embeddings) makes the F-tests undefined, so
+  `ANOVA_COLUMNS` so older bundles still load in the dashboard. **Degenerate-response rule:** zero variance in `fpr` makes the F-tests undefined, so
   decisions are reported as `undefined`, never as retained nulls);
   `curves.py` (tidy threshold-vs-hit-rate / threshold-vs-precision tables per
   (model, workload) with the harness zero-division flags carried through, plus
@@ -384,9 +383,9 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   exits non-zero with the diff table when out of tolerance.
 - **Release packaging (LEV-9)** — `scripts/reproduce.sh` is the **single definition
   of the evaluation pipeline** (`run_experiments.py` → `run_analysis.py` →
-  `check_replication.py`, `set -euo pipefail`, offline defaults: fixture dataset +
-  mock embeddings; overridable via positional args or `LEVY_DATASET` /
-  `LEVY_OUT_DIR` / `LEVY_EMBEDDING_PROVIDER` / `LEVY_MODELS` / `LEVY_WORKLOADS` /
+  `check_replication.py`, `set -euo pipefail`, defaults: fixture dataset +
+  `sentence-transformers` embeddings, weights downloaded once on first use; overridable via positional args or `LEVY_DATASET` /
+  `LEVY_OUT_DIR` / `LEVY_MODELS` / `LEVY_WORKLOADS` /
   `LEVY_THRESHOLDS`). `docs/REPRODUCTION.md` shows those same commands and the
   container's `CMD` invokes the script — so a flag change breaks the script rather
   than silently staling the guide. **Do not restate the pipeline commands anywhere
@@ -394,9 +393,9 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   dependency source, keeping conda-forge `faiss-cpu`); `docker-compose.yml` gained a
   `pipeline` service (`docker compose run --rm pipeline`) with the pre-existing
   `redis:7-alpine` service untouched and not a dependency of the default path.
-  Verified: `--network none`, no `ANTHROPIC_API_KEY`, exit 0, `results.csv`/
-  `decisions.csv` byte-identical to the host conda run; cold build 5m34s, image
-  16.4 GB (torch, via sentence-transformers). Docker is outside the pytest suite by
+  The image holds the libraries, not the model weights, so its first run needs
+  network to download the two embedding models; no `ANTHROPIC_API_KEY` is needed.
+  Cold build 5m34s, image 16.4 GB (torch, via sentence-transformers). Docker is outside the pytest suite by
   design. `scripts/audit_release.sh` is the re-runnable release audit (LICENSE, no
   tracked secret file, 9 credential patterns over tracked files *and* over all git
   history via `git log --all --pickaxe-regex -S`, personal-data markers in `data/`,
@@ -429,9 +428,8 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   dashboard.py` is the thin Streamlit shell (`streamlit run scripts/
   dashboard.py -- --bundle <dir>`): threshold-performance explorer (both
   metrics, degenerate points marked, 30% viability line), a hypothesis/κ
-  summary read verbatim from the bundle, and a live query box (`mock` /
-  `sentence-transformers` provider choice, the latter documented as
-  needing a first-run download). A missing/incomplete bundle renders the
+  summary read verbatim from the bundle, and a live query box (embeds with
+  `sentence-transformers`, the study's models; weights download on first use). A missing/incomplete bundle renders the
   typed error's message and stops cleanly, never a traceback; provenance
   (fixture-only labelling, providers) is a visible banner. `tests/
   test_dashboard.py` — 19 unit tests, fully offline, headless (no Streamlit
@@ -672,7 +670,7 @@ python examples/anthropic_smoke_check.py  # one real, billed call; requires ANTH
 uvicorn levy.api.app:app --reload
 
 # Whole evaluation pipeline in one command (LEV-9) — the canonical entry point.
-# Offline by default (fixture dataset + mock embeddings); prefer this over
+# Fixture dataset + the study's embedding models by default; prefer this over
 # retyping the three stages below.
 scripts/reproduce.sh                          # -> results/reproduce/
 scripts/reproduce.sh data/ground_truth.csv results/study-run
@@ -862,6 +860,7 @@ real calls, 0 refusals, no budget halt.
 - Provider abstraction: every external dependency (LLM, embeddings, store) has an
   ABC plus a mock implementation, so tests and demos run with zero external
   services. Keep this pattern when adding Anthropic/Faiss/FastAPI.
-- The mock-first design is deliberate: experiments must be reproducible offline.
+- Test doubles exist for the offline test suite. Mock embeddings never appear as a
+  default or a documented option anywhere a user runs Levy.
 - Licence is Apache 2.0; the code and dataset will be released publicly, so keep
   the repo free of personal/sensitive data.

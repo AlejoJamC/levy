@@ -405,7 +405,7 @@ terminal session. Everything is redirected to the log, including the completion
 marker, so nothing holds the terminal:
 
 ```bash
-nohup sh -c 'LEVY_EMBEDDING_PROVIDER=sentence-transformers scripts/reproduce.sh data/ground_truth.full.csv results/study-run; echo "== RUN DONE (exit $?) =="' > results/study-run.log 2>&1 < /dev/null & disown
+nohup sh -c 'scripts/reproduce.sh data/ground_truth.full.csv results/study-run; echo "== RUN DONE (exit $?) =="' > results/study-run.log 2>&1 < /dev/null & disown
 ```
 
 Check on it:

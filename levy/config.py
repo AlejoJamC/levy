@@ -71,7 +71,7 @@ class LevyConfig:
     anthropic_output_price_per_mtok: Optional[float] = field(default_factory=lambda: _first_anthropic(2))
     
     # Embedding settings
-    embedding_provider: str = "sentence-transformers"  # "mock", "sentence-transformers", "ollama"
+    embedding_provider: str = "sentence-transformers"  # "sentence-transformers", "ollama"; "mock" is a test double
     embedding_model: str = "all-MiniLM-L6-v2"  # study baseline; use "modernbert" for the other study model
     
     # Storage settings

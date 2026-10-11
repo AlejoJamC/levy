@@ -6,10 +6,8 @@ Loads a ground-truth dataset via `levy.dataset.load_dataset`, replays it
 through the offline harness (Algorithm 2) for every (model, workload,
 threshold) configuration, and writes `results.csv`, `decisions.csv`, and
 `run_meta.json` to the chosen output directory. Runs fully offline with
-the mock LLM provider; `--embedding-provider` defaults to `mock` so the
-committed synthetic fixture can be exercised with zero external
-dependencies (a real study run passes `--embedding-provider
-sentence-transformers` once the real 900-pair dataset, LEV-11, lands).
+the mock LLM provider (the replay needs a cache decision, not an answer) and
+real embeddings, `sentence-transformers` by default.
 
 Examples:
     # Full 30-configuration grid on the committed synthetic fixture:
@@ -38,6 +36,16 @@ from levy.experiment.metrics import ExperimentSanityError
 from levy.experiment.runner import run_sweep, write_decisions_csv, write_results_csv, write_run_meta
 
 
+EMBEDDING_PROVIDERS = ("sentence-transformers", "ollama")
+
+
+def embedding_provider(value: str) -> str:
+    # Real embeddings only. "mock" stays accepted, unlisted, for the offline test suite.
+    if value in EMBEDDING_PROVIDERS or value == "mock":
+        return value
+    raise argparse.ArgumentTypeError(f"choose from {', '.join(EMBEDDING_PROVIDERS)}")
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dataset", type=Path, default=Path("data/ground_truth.csv"), help="Dataset file (.csv or .json); default: data/ground_truth.csv")
@@ -45,7 +53,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--models", type=str, default=None, help="Comma-separated model subset (default: full study grid, e.g. all-MiniLM-L6-v2,modernbert)")
     parser.add_argument("--workloads", type=str, default=None, help="Comma-separated workload subset (default: faq,code,chat)")
     parser.add_argument("--thresholds", type=str, default=None, help="Comma-separated threshold subset (default: 0.70,0.75,0.80,0.85,0.90)")
-    parser.add_argument("--embedding-provider", type=str, default="mock", choices=["mock", "sentence-transformers", "ollama"], help="Embedding provider for the sweep (default: mock, fully offline)")
+    parser.add_argument("--embedding-provider", type=embedding_provider, default="sentence-transformers", metavar="{sentence-transformers,ollama}", help="Embedding provider for the sweep (default: sentence-transformers)")
     parser.add_argument("--llm-latency-seconds", type=float, default=0.5, help="MockLLMClient sleep per call in seconds (default: 0.5, matching production latency order of magnitude); 0 disables the sleep")
     parser.add_argument("--vector-index-backend", type=str, default="auto", choices=["auto", "faiss", "brute_force"], help="Vector index backend for the sweep (default: auto, prefers Faiss if importable). The RESOLVED backend (never the literal 'auto') is recorded in run_meta.json.")
     return parser

@@ -204,6 +204,14 @@ Decision:
   - The latency benchmark replays recorded responses through an injected client.
   - Nothing writes to `release/`.
 
+### D15. Real embeddings by default, mock only in tests (decided 2026-10-11)
+
+Levy is a semantic cache: mock embeddings carry no meaning, so a run with them is not Levy. They were the default of `scripts/reproduce.sh`, the container, `run_experiments.py` and `run_latency.py`, and a choice in the dashboard. The published results all used `sentence-transformers`.
+
+- Default everywhere a user runs Levy: `sentence-transformers`, the study's two models. Their weights download once on first use.
+- Mock embeddings stay only as a test double for the offline suite, passed explicitly by the tests. They are not listed by any CLI, documented, or offered by the dashboard.
+- The mock LLM stays where the answer is irrelevant (the harness replay decides hit or miss, not the answer).
+
 ## Risks / Trade-offs
 
 - **Prompts and answers are served unauthenticated at `/console/traces`.** → Same exposure as the existing per-request log and the unauthenticated API. Memory-only, bounded, never written to disk, local tool.

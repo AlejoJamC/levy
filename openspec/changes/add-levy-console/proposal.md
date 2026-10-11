@@ -78,6 +78,8 @@ The delivered endpoint also lets a request choose only its threshold and embeddi
 - `api-router`: the LLM provider no longer defaults to the mock, and the router serves Anthropic and Ollama (OpenAI removed). The delivered endpoints are otherwise unchanged.
 - `anthropic-connector`: the Anthropic client sits beside the Ollama client and the mock test double; the OpenAI provider no longer exists. The model and its prices come from the environment, never from a default in code.
 - `test-infrastructure`: the coverage exclusions no longer name an OpenAI client.
+- `release-packaging`: the reproduction pipeline and container default to the study's embedding models, not mock embeddings.
+- `results-dashboard`: the query demo embeds with the study's models only.
 
 ## Impact
 

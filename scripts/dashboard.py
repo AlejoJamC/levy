@@ -159,15 +159,7 @@ def _render_query_panel(bundle, dataset_path: str) -> None:
         "dataset's queries, and reports the nearest match under the production 1/(1+L2) semantics."
     )
 
-    provider = st.radio(
-        "Embedding provider",
-        options=["mock", "sentence-transformers"],
-        horizontal=True,
-        help=(
-            "mock is fully offline and deterministic; sentence-transformers downloads model "
-            "weights on first use and needs network access."
-        ),
-    )
+    provider = "sentence-transformers"
     model_name = st.selectbox("Embedding model", KNOWN_MODEL_NAMES)
     threshold = st.slider("Similarity threshold (1/(1+L2) scale)", 0.0, 1.0, 0.85, 0.01)
     text = st.text_input("Query text")

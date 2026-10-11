@@ -216,8 +216,7 @@ hot path.
 
 Zero-division in a metric is reported as `0.0` plus an explicit flag, never as
 NaN and never silently dropped. Where a statistical test is undefined — for
-instance zero variance in false positive rate, which is exactly what the
-committed fixture yields under mock embeddings — the hypothesis decision is
+instance zero variance in false positive rate — the hypothesis decision is
 reported as `undefined` rather than as a retained null. Residual diagnostics
 (design balance, Shapiro-Wilk, Levene) are reported and never acted on
 automatically.

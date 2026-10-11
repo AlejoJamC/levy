@@ -25,7 +25,7 @@ def run_experiment(
     config: ExperimentConfig,
     pairs: List[QueryPair],
     embedding_manager: Optional[EmbeddingManager] = None,
-    embedding_provider: str = "mock",
+    embedding_provider: str = "sentence-transformers",
     llm_latency_seconds: float = 0.5,
     vector_index_backend: str = "auto",
 ) -> EvaluationResult:

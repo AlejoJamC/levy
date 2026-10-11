@@ -142,3 +142,10 @@
 - [x] 12.4 `scripts/populate_responses.py`, `scripts/run_throughput.py` and `examples/ollama_demo.py` take models from the environment or their flags.
 - [x] 12.5 Document the variables in `.env.example` (placeholders only), `README.md`, `docs/ARCHITECTURE.md` and `CLAUDE.md`.
 - [x] 12.6 Tests use placeholder model ids; environment parsing tested in `tests/test_config.py`; full suite and gated coverage run pass.
+
+## 13. Real embeddings by default (design D15, 2026-10-11)
+
+- [x] 13.1 `sentence-transformers` is the default embedding provider in `scripts/reproduce.sh`, `docker-compose.yml`, `run_experiments.py`, `run_latency.py`, `check_replication.py`, the harness and benchmark functions, and the examples; the CLIs list only `sentence-transformers` and `ollama`.
+- [x] 13.2 The dashboard's query demo embeds with `sentence-transformers` only.
+- [x] 13.3 Tests that need no model pass the mock explicitly; the suite passes with no model weights available.
+- [x] 13.4 `README.md`, `docs/REPRODUCTION.md`, `Dockerfile` and `CLAUDE.md` describe the new defaults.

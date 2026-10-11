@@ -122,7 +122,7 @@ print(result2.source) # 'exact_cache'
 
 | Example | Requirements | Cost |
 |---|---|---|
-| `examples/simple_replay.py` | None for the mock path. Uses `sentence-transformers` for the semantic configuration when importable, which downloads model weights on first run (needs network); falls back to mock embeddings otherwise. | Free |
+| `examples/simple_replay.py` | `sentence-transformers` (model weights download on first run). | Free |
 | `examples/ollama_demo.py` | Optional side demo of the Ollama provider; **not used in the study**. Needs a local Ollama service with the models pulled (see below). | Free (local models) |
 | `examples/anthropic_smoke_check.py` | A real `ANTHROPIC_API_KEY`. | **Billed** — makes one real API call |
 
@@ -427,7 +427,7 @@ grid — 2 embedding models × 3 workloads × 5 similarity thresholds
 label per the replay-harness algorithm.
 
 ```bash
-# Full 30-configuration sweep on the committed synthetic fixture (offline, mock providers):
+# Full 30-configuration sweep on the committed synthetic fixture:
 python scripts/run_experiments.py --out-dir results/smoke-run
 
 # Smoke run: one model, one workload, two thresholds:
@@ -436,7 +436,7 @@ python scripts/run_experiments.py --out-dir results/smoke-run \
 
 # Real study run — the rehydrated 900-pair dataset and real embeddings:
 python scripts/run_experiments.py --dataset data/ground_truth.full.csv \
-    --embedding-provider sentence-transformers --out-dir results/study-run
+    --out-dir results/study-run
 ```
 
 Outputs written to `--out-dir`:
@@ -452,12 +452,10 @@ Outputs written to `--out-dir`:
   re-running on identical inputs reproduces `results.csv`/`decisions.csv`
   byte-identically.
 
-`--embedding-provider` defaults to `mock`, so the harness runs fully offline
-with zero external dependencies against the committed synthetic fixture
-(`data/ground_truth.csv`). Mock embeddings are text-hashed random vectors and
-don't capture semantic similarity — this validates the machinery, not
-research results; a real run needs `sentence-transformers` and the real
-900-pair dataset, which is published as `data/ground_truth.ids.csv` and
+`--embedding-provider` defaults to `sentence-transformers`, the study's two
+models; their weights download once on first use. The committed synthetic
+fixture (`data/ground_truth.csv`) validates the pipeline; research results
+need the real 900-pair dataset, which is published as `data/ground_truth.ids.csv` and
 reconstructed locally with `scripts/rehydrate_dataset.py` (see
 [`docs/REPRODUCTION.md`](docs/REPRODUCTION.md)).
 
@@ -497,10 +495,9 @@ Every CSV is timestamp-free and byte-identical across re-runs on identical
 input, matching the harness's determinism convention.
 
 **Degenerate results are reported, not laundered.** If false positive rate
-has zero variance across all configurations — which is exactly what the
-synthetic fixture produces under mock embeddings, since no semantic hits
-occur — the F-tests are undefined, and the three hypotheses are reported as
-`undefined` rather than as retained nulls.
+has zero variance across all configurations, the F-tests are undefined, and
+the three hypotheses are reported as `undefined` rather than as retained
+nulls.
 
 ### Replication check (±5%)
 
@@ -523,9 +520,8 @@ The absolute floor exists because a purely relative tolerance collapses to
 demanding bit-exact equality near a reference of 0.0. Exit code is zero when
 every value is within tolerance; otherwise non-zero, with a per-configuration
 diff table naming the configuration, the metric, both values, and the
-deviation. Under mock providers the harness is byte-deterministic, so a
-self-comparison matches exactly; the tolerance is there for real-provider
-runs.
+deviation. On one host the harness is deterministic, so a self-comparison
+matches exactly; the tolerance is there for runs on another host.
 
 The verdict is also written to `replication.json` beside the reference, so it
 can be read rather than inferred from an exit code. It records which
@@ -579,10 +575,8 @@ Curve exploration and the hypothesis summary work from the bundle alone; the
 query panel additionally needs a dataset file (default: the one recorded in
 the bundle's `analysis_meta.json`, falling back to `data/ground_truth.csv`).
 
-**Offline story:** the query panel's "mock" embedding provider is fully
-offline and deterministic — no network, no model download. Switching it to
-"sentence-transformers" downloads model weights on first use and needs
-network access. If the bundle directory is missing or incomplete, the app
+The query panel embeds with the study's models (`sentence-transformers`);
+their weights download once on first use. If the bundle directory is missing or incomplete, the app
 reports exactly what's absent and the command to generate it
 (`scripts/reproduce.sh`), and stops cleanly rather than showing a traceback.
 
