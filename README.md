@@ -1,6 +1,6 @@
 # Levy
 
-**Levy** is a semantic caching engine for LLM APIs, built as the IT artefact of an MSc Artificial Intelligence capstone project (University of Liverpool). It sits between your application and an LLM provider (Mock, OpenAI-compatible, Ollama, or Anthropic) to optimize costs and latency by reusing responses for identical or semantically similar prompts.
+**Levy** is a semantic caching engine for LLM APIs, built as the IT artefact of an MSc Artificial Intelligence capstone project (University of Liverpool). It sits between your application and an LLM provider (Anthropic, or a local Ollama model) to optimize costs and latency by reusing responses for identical or semantically similar prompts.
 
 The research behind Levy benchmarks false positive rates of semantic caching across embedding models (all-MiniLM vs ModernBERT), workloads (FAQ, code, chat), and similarity thresholds.
 
@@ -34,7 +34,7 @@ levy/
 │   ├── api/                 # FastAPI router: app, Pydantic schemas, engine pool
 │   ├── cache/               # Exact + semantic cache, vector index (Faiss HNSW /
 │   │                        #   brute-force), InMemory/Redis stores
-│   ├── llm_client.py        # LLM interaction (Mock, OpenAI, Ollama, Anthropic)
+│   ├── llm_client.py        # LLM interaction (Mock, Ollama, Anthropic)
 │   ├── embeddings.py        # EmbeddingClient ABC + Mock, SentenceTransformer, Ollama
 │   ├── embedding_manager.py # EmbeddingManager: study-model registry, runtime switching,
 │   │                        #   memoization, symmetric prefix handling
@@ -162,7 +162,7 @@ service. The billed Anthropic smoke check must be invoked by hand; see
 ### Using Anthropic
 
 The `anthropic` provider wraps the official `anthropic` SDK behind the same
-synchronous `LLMClient` interface as Mock/OpenAI/Ollama:
+synchronous `LLMClient` interface as Mock/Ollama:
 
 ```python
 config = LevyConfig(
@@ -336,8 +336,7 @@ You can configure Levy via `LevyConfig`:
 
 ```python
 config = LevyConfig(
-    llm_provider="openai",
-    openai_api_key="sk-...",
+    llm_provider="anthropic",    # key read from ANTHROPIC_API_KEY in .env; also "ollama"
     enable_semantic_cache=True,
     similarity_threshold=0.85,   # in 1/(1+L2) space; study sweep: 0.70–0.90
     # Embedding model for the study (default: all-MiniLM-L6-v2 baseline)

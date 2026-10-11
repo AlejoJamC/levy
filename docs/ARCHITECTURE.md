@@ -46,7 +46,7 @@ The system has three headline components:
 | Cache Orchestrator | [`levy/engine.py`](../levy/engine.py) (`LevyEngine`) | Owns the lookup flow, the hit/miss decision, and metric recording. The router adds one structured JSON log record per request, sufficient to replay a request sequence. |
 | Embedding Manager | [`levy/embedding_manager.py`](../levy/embedding_manager.py) | Resolves study-model aliases through a registry, lazily loads one client per checkpoint, memoizes by `(model_key, sha256(text))`, applies each model's symmetric task prefix. |
 | Vector Store (Faiss) | [`levy/cache/vector_index.py`](../levy/cache/vector_index.py), [`levy/cache/semantic_cache.py`](../levy/cache/semantic_cache.py) | HNSW index over L2 distance, plus a monotonic id → `CacheEntry` map — a separate metadata dictionary. |
-| LLM Connector | [`levy/llm_client.py`](../levy/llm_client.py) | `LLMClient` ABC with mock, OpenAI-compatible, Ollama, and Anthropic implementations. |
+| LLM Connector | [`levy/llm_client.py`](../levy/llm_client.py) | `LLMClient` ABC with mock, Ollama, and Anthropic implementations. |
 
 **Design note — synchronous connector.** The engine, caches, and harness are
 synchronous throughout, so the connector implements the synchronous `LLMClient`
@@ -96,7 +96,7 @@ A single `POST /v1/chat/completions`:
    │   similarity = 1 / (1 + distance)
    │   similarity ≥ threshold? ──▶ return cached response  (X-Cache-Status: HIT)
    │
-   └─▶ [LLM connector] provider call (Anthropic / OpenAI-compatible / Ollama / mock)
+   └─▶ [LLM connector] provider call (Anthropic / Ollama / mock)
             │
             ▼
        store response in the exact cache, and its embedding in the vector index
@@ -178,7 +178,7 @@ mock implementation:
 
 | Dependency | ABC | Implementations |
 |---|---|---|
-| LLM | `LLMClient` | `MockLLMClient`, `OpenAILLMClient`, `OllamaLLMClient`, `AnthropicLLMClient` |
+| LLM | `LLMClient` | `MockLLMClient`, `OllamaLLMClient`, `AnthropicLLMClient` |
 | Embeddings | `EmbeddingClient` | mock (text-seeded, normalised), `SentenceTransformerClient`, `OllamaEmbeddingClient` |
 | Vector index | `VectorIndex` | `BruteForceVectorIndex` (exact k-NN oracle), `FaissHNSWVectorIndex` |
 | Cache store | `CacheInterface` | `InMemoryStore` (FIFO eviction), `RedisStore` |

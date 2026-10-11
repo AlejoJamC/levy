@@ -10,7 +10,7 @@ from levy.latency.timing import (
     since_ms,
 )
 from levy.models import LLMRequest, LevyResult, LLMResponse
-from levy.llm_client import LLMClient, MockLLMClient, OpenAILLMClient, OllamaLLMClient, AnthropicLLMClient
+from levy.llm_client import LLMClient, MockLLMClient, OllamaLLMClient, AnthropicLLMClient
 from levy.embedding_manager import EmbeddingManager
 from levy.cache.store import InMemoryStore
 # Load RedisStore conditionally or just import if available
@@ -43,14 +43,6 @@ class LevyEngine:
         # from a real provider, so the timed run itself makes no network call).
         if llm_client is not None:
             self.llm_client = llm_client
-        elif config.llm_provider == "openai":
-            if not config.openai_api_key:
-                raise ValueError("OpenAI API key required for 'openai' provider")
-            self.llm_client = OpenAILLMClient(
-                api_key=config.openai_api_key,
-                base_url=config.openai_base_url,
-                model=config.model_name
-            )
         elif config.llm_provider == "ollama":
             self.llm_client = OllamaLLMClient(
                 base_url=config.ollama_base_url,
@@ -65,8 +57,13 @@ class LevyEngine:
                 input_price_per_mtok=config.anthropic_input_price_per_mtok,
                 output_price_per_mtok=config.anthropic_output_price_per_mtok,
             )
-        else:
+        elif config.llm_provider == "mock":
             self.llm_client = MockLLMClient(latency_seconds=config.mock_llm_latency_seconds)
+        else:
+            # An unrecognised provider is an error, never a silent mock (LEV-23, design D13).
+            raise ValueError(
+                f"Unknown llm_provider {config.llm_provider!r}; accepted: 'anthropic', 'ollama', 'mock'"
+            )
 
         # 2. Initialize Embedding Manager (handles mock, sentence-transformers, ollama).
         # Callers (e.g. the experiment harness sweeping many configs per model) may inject

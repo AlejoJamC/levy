@@ -1,7 +1,7 @@
 """
 Tests for levy.llm_client and levy.embeddings: abstract-base contracts,
 constructor plumbing, and offline-testable branches. Network-touching
-bodies (OpenAI/Ollama LLM calls, Ollama/sentence-transformers embedding
+bodies (Ollama LLM calls, Ollama/sentence-transformers embedding
 calls) are excluded from coverage via inline pragmas and are not exercised
 here -- see CLAUDE.md known-gaps note and the add-test-infrastructure design.
 """
@@ -9,7 +9,7 @@ here -- see CLAUDE.md known-gaps note and the add-test-infrastructure design.
 import unittest
 
 from levy.embeddings import EmbeddingClient, OllamaEmbeddingClient
-from levy.llm_client import LLMClient, MockLLMClient, OllamaLLMClient, OpenAILLMClient
+from levy.llm_client import LLMClient, MockLLMClient, OllamaLLMClient
 from levy.models import LLMRequest
 
 
@@ -46,17 +46,11 @@ class TestMockLLMClient(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# OpenAILLMClient / OllamaLLMClient constructors (attribute plumbing only --
+# OllamaLLMClient constructor (attribute plumbing only --
 # generate() makes a real HTTP call and is pragma-excluded)
 # ---------------------------------------------------------------------------
 
 class TestLLMClientConstructors(unittest.TestCase):
-
-    def test_openai_client_stores_config(self):
-        client = OpenAILLMClient(api_key="sk-test", base_url="https://example.test/v1", model="gpt-x")
-        self.assertEqual(client.api_key, "sk-test")
-        self.assertEqual(client.base_url, "https://example.test/v1")
-        self.assertEqual(client.model, "gpt-x")
 
     def test_ollama_llm_client_stores_config(self):
         client = OllamaLLMClient(base_url="http://example.test:1", model="qwen3")

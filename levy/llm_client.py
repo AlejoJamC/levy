@@ -28,43 +28,6 @@ class MockLLMClient(LLMClient):
             model="mock-v1"
         )
 
-class OpenAILLMClient(LLMClient):
-    """Minimal OpenAI client using httpx."""
-    def __init__(self, api_key: str, base_url: str = "https://api.openai.com/v1", model: str = "gpt-3.5-turbo"):
-        self.api_key = api_key
-        self.base_url = base_url
-        self.model = model
-
-    def generate(self, request: LLMRequest) -> LLMResponse:  # pragma: no cover -- requires the real OpenAI API
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": self.model,
-            "messages": [{"role": "user", "content": request.prompt}],
-            "max_tokens": request.max_tokens,
-            "temperature": request.temperature,
-        }
-        
-        # Merge extra params
-        payload.update(request.extra_params)
-
-        with httpx.Client(timeout=30.0) as client:
-            resp = client.post(f"{self.base_url}/chat/completions", json=payload, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
-            
-            content = data["choices"][0]["message"]["content"]
-            tokens = data.get("usage", {}).get("total_tokens", 0)
-            
-            return LLMResponse(
-                text=content,
-                token_usage=tokens,
-                model=self.model,
-                metadata=data
-            )
-
 class BudgetExceededError(Exception):
     """Raised when accumulated estimated Anthropic spend has reached the configured cap."""
     def __init__(self, cap_usd: float, estimated_cost_usd: float):

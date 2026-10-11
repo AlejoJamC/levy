@@ -11,10 +11,8 @@ class LevyConfig:
     Configuration for the Levy Engine.
     """
     # LLM settings
-    llm_provider: str = "mock"  # "mock", "openai", "ollama", "anthropic"
+    llm_provider: str = "mock"  # "mock", "ollama", "anthropic"
     mock_llm_latency_seconds: float = 0.5  # simulated delay for MockLLMClient; tests inject 0
-    openai_api_key: Optional[str] = field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
-    openai_base_url: str = "https://api.openai.com/v1"
     ollama_base_url: str = "http://localhost:11434"
     model_name: str = "qwen3"  # default local model for Ollama; override per deployment
 

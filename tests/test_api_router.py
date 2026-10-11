@@ -2,7 +2,7 @@
 Tests for levy.api (LEV-7 FastAPI router).
 
 Fully offline: mock LLM + mock embeddings via FastAPI's in-process TestClient.
-No network access, no real Anthropic/OpenAI/Ollama calls.
+No network access, no real Anthropic/Ollama calls.
 """
 
 import json

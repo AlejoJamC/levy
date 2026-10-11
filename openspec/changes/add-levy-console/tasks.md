@@ -127,9 +127,9 @@
 
 ## 11. Remove the OpenAI provider (design D13, 2026-10-11)
 
-- [ ] 11.1 Remove `OpenAILLMClient` from `levy/llm_client.py` and the engine's `openai` branch and import from `levy/engine.py`. Make the engine's final branch build the mock only for `mock` and raise, naming the accepted providers, for anything else, so a removed or mistyped provider never silently becomes the mock.
-- [ ] 11.2 Remove `openai_api_key` and `openai_base_url` from `LevyConfig`, and `OPENAI_API_KEY` from `.env.example`.
-- [ ] 11.3 Remove the tests that only checked the OpenAI client's construction (`tests/test_engine.py`, `tests/test_providers.py`), and the OpenAI mentions in test docstrings.
-- [ ] 11.4 Remove OpenAI from `README.md`, `docs/ARCHITECTURE.md` and `CLAUDE.md`. Leave `scripts/audit_release.sh`'s key patterns and the archived OpenSpec changes as they are.
-- [ ] 11.5 Remove `openai` from the console's lists, pool and tracing, and from their tests.
-- [ ] 11.6 Full suite and gated coverage run pass.
+- [x] 11.1 Remove `OpenAILLMClient` from `levy/llm_client.py` and the engine's `openai` branch and import from `levy/engine.py`. Make the engine's final branch build the mock only for `mock` and raise, naming the accepted providers, for anything else, so a removed or mistyped provider never silently becomes the mock.
+- [x] 11.2 Remove `openai_api_key` and `openai_base_url` from `LevyConfig`, and `OPENAI_API_KEY` from `.env.example`.
+- [x] 11.3 Remove the tests that only checked the OpenAI client's construction (`tests/test_engine.py`, `tests/test_providers.py`), and the OpenAI mentions in test docstrings.
+- [x] 11.4 Remove OpenAI from `README.md`, `docs/ARCHITECTURE.md` and `CLAUDE.md`. Leave `scripts/audit_release.sh`'s key patterns and the archived OpenSpec changes as they are.
+- [x] 11.5 Remove `openai` from the console's lists, pool and tracing, and from their tests.
+- [x] 11.6 Full suite and gated coverage run pass.

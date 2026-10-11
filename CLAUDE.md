@@ -54,12 +54,12 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   exact cache → semantic cache → LLM call → store (with embedding when semantic
   cache is enabled). Records metrics at each step.
 - `levy/config.py` — `LevyConfig` dataclass. Providers: `llm_provider` =
-  `mock | openai | ollama`; `embedding_provider` = `mock | sentence-transformers |
+  `mock | ollama | anthropic`; `embedding_provider` = `mock | sentence-transformers |
   ollama`; `cache_store_type` = `memory | redis`. Loads `.env` via python-dotenv.
 - `levy/models.py` — dataclasses: `LLMRequest`, `LLMResponse`, `CacheEntry`,
   `LevyResult` (`source` ∈ `llm | exact_cache | semantic_cache`), `MetricsSnapshot`.
 - `levy/llm_client.py` — `LLMClient` ABC + `MockLLMClient` (0.5s sleep, reversed
-  echo), `OpenAILLMClient` (raw httpx), `OllamaLLMClient`, `AnthropicLLMClient`
+  echo), `OllamaLLMClient`, `AnthropicLLMClient`
   (LEV-6) — synchronous wrapper around the official `anthropic` SDK
   (`messages.create`), selected via `llm_provider="anthropic"`. Retry is the
   SDK's own exponential backoff (`anthropic_max_retries`), not reimplemented;
@@ -494,8 +494,8 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
 
 - `tests/test_analysis_robustness.py` (11, LEV-22) and `tests/test_prevalence.py` (23,
   LEV-21) — offline tests for `levy/analysis/robustness.py` and
-  `scripts/measure_prevalence.py`. `tests/test_cache.py` (17), `test_engine.py` (9),
-  `test_metrics.py` (12) and `test_providers.py` (9) cover the core engine, caches,
+  `scripts/measure_prevalence.py`. `tests/test_cache.py` (17), `test_engine.py` (8),
+  `test_metrics.py` (12) and `test_providers.py` (8) cover the core engine, caches,
   metrics and provider clients. Counts per file drift; `pytest --co -q` is the
   authority.
 
@@ -602,10 +602,10 @@ implied by the original design, not bugs:
    `python -m unittest discover` still works but is no longer advertised as the
    default. A gated command (`--cov=levy --cov-branch --cov-fail-under=90`) enforces
    ≥90% branch coverage on `levy/`, with network-only provider internals
-   (OpenAI/Ollama LLM clients, Ollama/SentenceTransformer embedding clients) excluded
+   (the Ollama LLM client, Ollama/SentenceTransformer embedding clients) excluded
    via inline `# pragma: no cover` markers. `MockLLMClient` latency is now injectable
    (`latency_seconds`, default 0.5 unchanged); tests inject 0, so the suite runs in
-   the suite is not dominated by sleeps (the full suite, 666 tests, takes about 2 minutes).
+   the suite is not dominated by sleeps (the full suite, 664 tests, takes about 2 minutes).
 
 ## Commands
 
