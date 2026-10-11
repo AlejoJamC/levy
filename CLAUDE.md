@@ -115,7 +115,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   when Faiss absent), engine end-to-end semantic cache hit/miss.
 - `examples/simple_replay.py` — replays a prompt list under no-cache / exact /
   exact+semantic configs. `examples/ollama_demo.py` — optional side demo of the
-  Ollama provider (`qwen3` + `nomic-embed-text`); **not used in the study** — the
+  Ollama provider (models from `LEVY_OLLAMA_MODELS` / `LEVY_OLLAMA_EMBEDDING_MODELS`); **not used in the study** — the
   real models are `all-MiniLM-L6-v2` / `modernbert` embeddings, a mock LLM in the
   D3 grid, and Claude Haiku/Sonnet/Opus for latency and throughput. `examples/anthropic_smoke_check.py`
   — one-shot real-API smoke check for the Anthropic connector (billed, requires a
@@ -494,9 +494,9 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
 
 - `tests/test_analysis_robustness.py` (11, LEV-22) and `tests/test_prevalence.py` (23,
   LEV-21) — offline tests for `levy/analysis/robustness.py` and
-  `scripts/measure_prevalence.py`. `tests/test_cache.py` (17), `test_engine.py` (8),
-  `test_metrics.py` (12) and `test_providers.py` (8) cover the core engine, caches,
-  metrics and provider clients. Counts per file drift; `pytest --co -q` is the
+  `scripts/measure_prevalence.py`. `tests/test_cache.py` (17), `test_engine.py` (9),
+  `test_metrics.py` (12) and `test_providers.py` (9) cover the core engine, caches,
+  metrics and provider clients; `tests/test_config.py` (5) covers models read from the environment. Counts per file drift; `pytest --co -q` is the
   authority.
 
 - **Later measurement and analysis tooling (LEV-17, LEV-18, LEV-21, LEV-22).**
@@ -538,11 +538,13 @@ implied by the original design, not bugs:
    **Model default drift:** the original design's example model string
    (`claude-3-sonnet-20240229`) is retired; the connector defaults to a current
    model instead — flagged here, not silently resolved.
-   Since LEV-14 that default is **`claude-haiku-4-5-20251001` at $1/$5 per MTok**,
-   the model the latency pilot actually calls: `anthropic_model` and the two
-   price fields are one triple describing one model, and the previous
-   `claude-opus-4-8` / $5 / $25 values described a model no run had ever called.
-   Escalating the model means changing all three together.
+   **Since LEV-23 (design D14) no model id or price is written in the code.**
+   `anthropic_model` and its two per-MTok prices are one triple describing one
+   model, read together from the first entry of `LEVY_ANTHROPIC_MODELS`
+   (`model:input:output,...`) in `.env`; Ollama models likewise come from
+   `LEVY_OLLAMA_MODELS` / `LEVY_OLLAMA_EMBEDDING_MODELS`. A client constructed
+   without them fails naming the variable. The published latency run used
+   `claude-haiku-4-5-20251001` at $1/$5 (recorded in `release/latency/`).
 3. ~~**No Faiss HNSW index**~~ — **Resolved (LEV-2).** `SemanticCache` now owns a
    `VectorIndex` (Faiss HNSW or brute-force oracle) and uses `similarity =
    1/(1+L2_distance)` per Algorithm 1. **Threshold-scale flag for LEV-4/LEV-8:**
@@ -605,7 +607,7 @@ implied by the original design, not bugs:
    (the Ollama LLM client, Ollama/SentenceTransformer embedding clients) excluded
    via inline `# pragma: no cover` markers. `MockLLMClient` latency is now injectable
    (`latency_seconds`, default 0.5 unchanged); tests inject 0, so the suite runs in
-   the suite is not dominated by sleeps (the full suite, 664 tests, takes about 2 minutes).
+   the suite is not dominated by sleeps (the full suite, 672 tests, takes about 2 minutes).
 
 ## Commands
 
@@ -663,7 +665,7 @@ python scripts/annotate_dataset.py \
 
 # Demos
 python examples/simple_replay.py     # mock LLM; uses sentence-transformers if installed
-python examples/ollama_demo.py       # optional, not part of the study; needs `ollama serve` + qwen3 + nomic-embed-text
+python examples/ollama_demo.py       # optional, not part of the study; needs `ollama serve` + LEVY_OLLAMA_* in .env
 python examples/anthropic_smoke_check.py  # one real, billed call; requires ANTHROPIC_API_KEY in .env
 
 # HTTP API (LEV-7) — reads .env for the configured provider's credentials

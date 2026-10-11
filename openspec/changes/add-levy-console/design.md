@@ -59,16 +59,18 @@ These are the only edits to delivered core code, and with neither argument passe
 
 The response reuses the delivered response model and the same two headers, so the console's answer looks exactly like the delivered one.
 
-### D3. Option lists and prices in `levy/console/options.py`
+### D3. Option lists: what Levy implements in code, which models exist from `.env`
 
-The console owns its lists, so `LevyConfig` is not extended:
-- embedding models per provider: the `EmbeddingManager` registry for `sentence-transformers` (`all-MiniLM-L6-v2`, `modernbert`), and an Ollama list seeded with the model `OllamaEmbeddingClient` already uses;
-- LLM models per provider, seeded with the models the clients already name;
-- per-MTok input and output prices per Anthropic model, seeded with `claude-haiku-4-5-20251001` at $1 / $5, the triple already in `LevyConfig`.
+`levy/console/options.py` keeps two kinds of list apart:
+- **What Levy implements**, in code: the provider types, the vector index backends, the cache stores, and the study's two embedding models (`all-MiniLM-L6-v2`, `modernbert`, from the `EmbeddingManager` registry).
+- **Which models exist and what they cost**, from the `LevyConfig` the app was built with, i.e. from `.env` (D14):
+  - Anthropic models with their per-MTok prices;
+  - Ollama LLM models;
+  - Ollama embedding models.
 
-Adding a model means adding it to its list, plus its prices for a billed provider. No list contains `mock`.
+`ConsoleOptions.from_config()` builds the lists. A provider with no configured model is not offered. If no LLM model is configured at all, `POST /console/chat` answers 503 naming the variables. No list contains `mock`.
 
-The console's default configuration is `LevyConfig()` with `vector_index_backend` resolved to the backend actually in use.
+The console's default configuration is the base `LevyConfig`, with `vector_index_backend` resolved to the backend actually in use and every value the lists do not offer replaced by the first configured option.
 
 ### D4. The console engine pool
 
@@ -184,6 +186,23 @@ Kept:
 Anthropic and Ollama are untouched.
 
 The engine also stops treating an unrecognised `llm_provider` as the mock. Its last branch built a `MockLLMClient` for any value it did not recognise, so after the removal `openai` would have silently become the mock. It now raises, naming the accepted providers.
+
+### D14. No model or price is written in the code (decided 2026-10-11)
+
+Review showed model ids and prices written as code defaults: `claude-haiku-4-5-20251001` at $1 / $5 and `qwen3` in `LevyConfig`, `claude-opus-4-8` at $5 / $25 in `AnthropicLLMClient`, `qwen3` in `OllamaLLMClient`, and `nomic-embed-text` in `OllamaEmbeddingClient`. The console copied them into its lists. Models change every few months, so a default written in code goes stale and silently prices or calls a model nobody chose. Two of these defaults already named models that are not served on the author's machine.
+
+Decision:
+- **Models and prices come from `.env`:**
+  - `LEVY_ANTHROPIC_MODELS` holds `model:input_usd_per_mtok:output_usd_per_mtok` entries, comma-separated. Each model travels with its two prices (the LEV-14 triple), and the first entry is the default.
+  - `LEVY_OLLAMA_MODELS` and `LEVY_OLLAMA_EMBEDDING_MODELS` hold comma-separated model lists; the first entry is the default.
+  - `LevyConfig` reads all three, and `.env.example` documents the format with placeholders only.
+- **No defaults in the clients.** `AnthropicLLMClient`, `OllamaLLMClient` and `OllamaEmbeddingClient` have no default model or price. Constructing one without them fails, naming the variable to set.
+- **What stays in code:** what Levy implements — the provider types, the index backends, the cache stores, and the study's two embedding models, which belong to the experiment design.
+- **Scripts:** `scripts/populate_responses.py` and `scripts/run_throughput.py` take their model from those variables or from their flags, and stop with a clear message when neither is set. Their docstrings keep the model ids that produced the published results, as provenance.
+- **Published results are unaffected.**
+  - The D3 harness builds its engines with the mock LLM and the study's embedding models.
+  - The latency benchmark replays recorded responses through an injected client.
+  - Nothing writes to `release/`.
 
 ## Risks / Trade-offs
 

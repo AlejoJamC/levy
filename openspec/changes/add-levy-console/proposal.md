@@ -50,7 +50,11 @@ The delivered endpoint also lets a request choose only its threshold and embeddi
 
   The page works with no network access and no build step. Its visual design is produced in Claude Design.
 - **No mock default.** `LevyConfig.llm_provider` defaults to `anthropic` instead of `mock`.
-- **The OpenAI provider is removed from Levy (decided 2026-10-11).**
+- **No model or price is written in the code (decided 2026-10-11, design D14).**
+  - Anthropic models with their per-MTok prices come from `LEVY_ANTHROPIC_MODELS` (`model:input:output,...`), and Ollama models from `LEVY_OLLAMA_MODELS` / `LEVY_OLLAMA_EMBEDDING_MODELS`. The first entry of each is the default.
+  - The clients have no default model or price, and fail naming the variable when one is missing.
+  - The console's model lists come from the same variables.
+- **The OpenAI provider is removed from Levy (decided 2026-10-11).
   - Removed: `OpenAILLMClient`, the engine's `openai` branch, `LevyConfig.openai_api_key` / `openai_base_url`, `OPENAI_API_KEY` in `.env.example`, and the tests and docs that describe them.
   - Why: it was never part of the study. Anthropic is the only remote provider in the design and the only one with a budget, and no run of record ever used OpenAI. The client was dead code that would not have worked with a current model.
   - Anthropic and Ollama are untouched.
@@ -72,7 +76,7 @@ The delivered endpoint also lets a request choose only its threshold and embeddi
 ### Modified Capabilities
 
 - `api-router`: the LLM provider no longer defaults to the mock, and the router serves Anthropic and Ollama (OpenAI removed). The delivered endpoints are otherwise unchanged.
-- `anthropic-connector`: the Anthropic client sits beside the Ollama client and the mock test double; the OpenAI provider no longer exists.
+- `anthropic-connector`: the Anthropic client sits beside the Ollama client and the mock test double; the OpenAI provider no longer exists. The model and its prices come from the environment, never from a default in code.
 - `test-infrastructure`: the coverage exclusions no longer name an OpenAI client.
 
 ## Impact
@@ -82,7 +86,9 @@ The delivered endpoint also lets a request choose only its threshold and embeddi
   - `levy/api/app.py`: includes the console router.
   - `levy/config.py`: `llm_provider` default `anthropic`; `openai_api_key` and `openai_base_url` removed.
   - `levy/llm_client.py` and `levy/engine.py`: `OpenAILLMClient` and the engine's `openai` branch removed.
-  - `.env.example`: `OPENAI_API_KEY` removed.
+  - `.env.example`: `OPENAI_API_KEY` removed; `LEVY_ANTHROPIC_MODELS`, `LEVY_OLLAMA_MODELS` and `LEVY_OLLAMA_EMBEDDING_MODELS` documented with placeholders.
+  - `levy/config.py`, `levy/llm_client.py`, `levy/embeddings.py`: model ids and prices read from the environment; no defaults in the clients.
+  - `scripts/populate_responses.py`, `scripts/run_throughput.py`, `examples/ollama_demo.py`: take models from the environment or their flags.
   - `levy/engine.py` and `levy/cache/semantic_cache.py`: the optional `observation` argument, and the `llm_call`/`store` segments when timing is requested.
   - `levy/models.py`: a `SemanticLookupObservation` dataclass.
   - `levy/latency/timing.py`: two segment constants, kept out of `SEGMENTS`.

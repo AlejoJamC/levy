@@ -75,15 +75,22 @@ class AnthropicLLMClient(LLMClient):
     def __init__(
         self,
         api_key: Optional[str],
-        model: str = "claude-opus-4-8",
+        model: Optional[str] = None,
         max_retries: int = 2,
         budget_cap_usd: float = 200.0,
-        input_price_per_mtok: float = 5.0,
-        output_price_per_mtok: float = 25.0,
+        input_price_per_mtok: Optional[float] = None,
+        output_price_per_mtok: Optional[float] = None,
         http_client: Optional[Any] = None,
     ):
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY is required for the 'anthropic' provider")
+        # No model or price is written in the code: they change every few months and
+        # come from LEVY_ANTHROPIC_MODELS (LEV-23, design D14).
+        if not model or input_price_per_mtok is None or output_price_per_mtok is None:
+            raise ValueError(
+                "An Anthropic model and its input/output prices per MTok are required; "
+                "configure them in LEVY_ANTHROPIC_MODELS ('model:input:output')"
+            )
         self.model = model
         self.budget = _BudgetGuard(budget_cap_usd, input_price_per_mtok, output_price_per_mtok)
 
@@ -132,7 +139,9 @@ class AnthropicLLMClient(LLMClient):
 
 class OllamaLLMClient(LLMClient):
     """Client for local Ollama instances."""
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen3"):
+    def __init__(self, base_url: str = "http://localhost:11434", model: Optional[str] = None):
+        if not model:
+            raise ValueError("An Ollama model is required; configure it in LEVY_OLLAMA_MODELS")
         self.base_url = base_url
         self.model = model
 

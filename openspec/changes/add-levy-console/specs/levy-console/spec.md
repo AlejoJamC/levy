@@ -36,6 +36,12 @@ The delivered endpoints (`POST /v1/chat/completions`, `GET /admin/cache/stats`, 
 
 Each parameter SHALL default to the console's default configuration, shown as the pre-selected value. No list SHALL contain a mock provider. A model that does not belong to the chosen provider SHALL be rejected with a validation error naming the parameter and the models valid for that provider. The response SHALL have the same body shape and `X-Cache-Status` / `X-Cache-Similarity` headers as the delivered chat endpoint.
 
+The model lists SHALL come from the configuration (`LEVY_ANTHROPIC_MODELS`, `LEVY_OLLAMA_MODELS`, `LEVY_OLLAMA_EMBEDDING_MODELS`), never from model ids written in the code. A provider with no configured model SHALL NOT be offered. When no LLM model is configured at all, the endpoint SHALL answer 503 naming those variables.
+
+#### Scenario: No LLM model configured
+- **WHEN** neither `LEVY_ANTHROPIC_MODELS` nor `LEVY_OLLAMA_MODELS` names a model and `POST /console/chat` is called
+- **THEN** the endpoint answers 503 with a message naming both variables
+
 #### Scenario: Settings are selectable in Swagger
 - **WHEN** `POST /console/chat` is opened in Swagger
 - **THEN** each list-type setting is a selectable field showing its options, with the default pre-selected

@@ -53,9 +53,17 @@ class TestMockLLMClient(unittest.TestCase):
 class TestLLMClientConstructors(unittest.TestCase):
 
     def test_ollama_llm_client_stores_config(self):
-        client = OllamaLLMClient(base_url="http://example.test:1", model="qwen3")
+        client = OllamaLLMClient(base_url="http://example.test:1", model="test-ollama-model")
         self.assertEqual(client.base_url, "http://example.test:1")
-        self.assertEqual(client.model, "qwen3")
+        self.assertEqual(client.model, "test-ollama-model")
+
+    def test_ollama_clients_require_a_model(self):
+        with self.assertRaises(ValueError) as llm:
+            OllamaLLMClient(base_url="http://example.test:1")
+        self.assertIn("LEVY_OLLAMA_MODELS", str(llm.exception))
+        with self.assertRaises(ValueError) as emb:
+            OllamaEmbeddingClient(base_url="http://example.test:1")
+        self.assertIn("LEVY_OLLAMA_EMBEDDING_MODELS", str(emb.exception))
 
 
 # ---------------------------------------------------------------------------
@@ -86,13 +94,13 @@ class TestEmbeddingClientAbstract(unittest.TestCase):
 class TestOllamaEmbeddingClient(unittest.TestCase):
 
     def test_constructor_stores_config(self):
-        client = OllamaEmbeddingClient(base_url="http://example.test:1", model="nomic-embed-text")
+        client = OllamaEmbeddingClient(base_url="http://example.test:1", model="test-embedding-model")
         self.assertEqual(client.base_url, "http://example.test:1")
-        self.assertEqual(client.model, "nomic-embed-text")
+        self.assertEqual(client.model, "test-embedding-model")
         self.assertIsNone(client._dimension)
 
     def test_get_dimension_returns_cached_value_without_calling_embed(self):
-        client = OllamaEmbeddingClient()
+        client = OllamaEmbeddingClient(model="test-embedding-model")
         client._dimension = 42  # simulate a prior embed() call having set this
         self.assertEqual(client.get_dimension(), 42)
 

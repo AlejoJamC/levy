@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 import numpy as np
 import random
 
@@ -53,7 +53,9 @@ class SentenceTransformerClient(EmbeddingClient):
 
 class OllamaEmbeddingClient(EmbeddingClient):
     """Client for local Ollama embeddings."""
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "nomic-embed-text"):
+    def __init__(self, base_url: str = "http://localhost:11434", model: Optional[str] = None):
+        if not model:
+            raise ValueError("An Ollama embedding model is required; configure it in LEVY_OLLAMA_EMBEDDING_MODELS")
         # Local import to avoid circular dependency issues or just standard practice if keeping clean
         import httpx
         self.httpx = httpx

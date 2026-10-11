@@ -143,11 +143,11 @@ study itself never used it: no test, result, or release artefact involves an
 Ollama model (see [Models used in the study](#models-used-in-the-study)).
 
 1. Install and run [Ollama](https://ollama.com/).
-2. Pull the demo models (`qwen3` for generation; `nomic-embed-text` for
-   embeddings — unrelated to the study's `nomic-ai/modernbert-embed-base`):
+2. Pull a generation model and an embedding model (any you like), and name
+   them in `.env` — Levy's code names no model:
    ```bash
-   ollama pull qwen3
-   ollama pull nomic-embed-text
+   LEVY_OLLAMA_MODELS=<generation model>
+   LEVY_OLLAMA_EMBEDDING_MODELS=<embedding model>
    ```
 3. Run the demo:
    ```bash
@@ -164,15 +164,18 @@ service. The billed Anthropic smoke check must be invoked by hand; see
 The `anthropic` provider wraps the official `anthropic` SDK behind the same
 synchronous `LLMClient` interface as Mock/Ollama:
 
+```bash
+# .env -- the model and its two per-MTok prices, together; first entry is the default
+ANTHROPIC_API_KEY=...
+LEVY_ANTHROPIC_MODELS=<model-id>:<input USD per MTok>:<output USD per MTok>
+```
+
 ```python
 config = LevyConfig(
     llm_provider="anthropic",
-    # anthropic_api_key defaults to the ANTHROPIC_API_KEY env var (.env)
-    anthropic_model="claude-haiku-4-5-20251001",  # default; override per config
+    # api key, model and prices come from .env (above)
     anthropic_max_retries=2,                 # SDK's own exponential backoff
     anthropic_budget_cap_usd=200.0,          # hard stop (budget cap)
-    anthropic_input_price_per_mtok=1.0,      # USD / 1M input tokens
-    anthropic_output_price_per_mtok=5.0,     # USD / 1M output tokens
 )
 engine = LevyEngine(config)
 result = engine.generate("Hello")
@@ -197,10 +200,12 @@ result = engine.generate("Hello")
 - **Refusals:** if the API returns a successful response whose `stop_reason`
   is a refusal, the client raises `AnthropicRefusalError` instead of
   returning (and thereby caching) empty content.
-- **Model default:** `anthropic_model` defaults to a current model —
-  `claude-haiku-4-5-20251001`, the model the latency measurement calls. The
-  model id and the two per-MTok prices are one triple describing one model:
-  change them together, or the budget guard costs a model you are not running.
+- **Model and prices from `.env`:** no model id or price is written in Levy's
+  code; models change every few months. `LEVY_ANTHROPIC_MODELS` lists
+  `model:input:output` entries, and the first one is the default. The model id
+  and its two per-MTok prices are one triple describing one model, so they are
+  configured together. Without them, constructing the client fails and names
+  the variable.
 
 **One-time real-API smoke check — opt-in and billed.** This makes one real API
 call charged to the `ANTHROPIC_API_KEY` in your `.env`. It is deliberately

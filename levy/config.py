@@ -1,9 +1,48 @@
 import os
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Tuple
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Which LLM and Ollama embedding models exist, and what Anthropic charges for
+# them, changes every few months. None of it is written in the code: it is read
+# from the environment (`.env`, documented in `.env.example`). LEV-23, design D14.
+ANTHROPIC_MODELS_ENV = "LEVY_ANTHROPIC_MODELS"            # "model:input_usd_per_mtok:output_usd_per_mtok,..."
+OLLAMA_MODELS_ENV = "LEVY_OLLAMA_MODELS"                  # "model,model,..."
+OLLAMA_EMBEDDING_MODELS_ENV = "LEVY_OLLAMA_EMBEDDING_MODELS"  # "model,model,..."
+
+
+def _env_list(name: str) -> Tuple[str, ...]:
+    return tuple(item.strip() for item in os.getenv(name, "").split(",") if item.strip())
+
+
+def _anthropic_models_from_env() -> Tuple[Tuple[str, float, float], ...]:
+    """Each entry keeps a model and its two prices together: they describe one model."""
+    models = []
+    for item in _env_list(ANTHROPIC_MODELS_ENV):
+        parts = [part.strip() for part in item.split(":")]
+        try:
+            if len(parts) != 3 or not parts[0]:
+                raise ValueError
+            models.append((parts[0], float(parts[1]), float(parts[2])))
+        except ValueError:
+            raise ValueError(
+                f"{ANTHROPIC_MODELS_ENV}: {item!r} is not 'model:input_usd_per_mtok:output_usd_per_mtok'"
+            ) from None
+    return tuple(models)
+
+
+def _first_ollama(name: str) -> Optional[str]:
+    models = _env_list(name)
+    return models[0] if models else None
+
+
+def _first_anthropic(index: int):
+    """Field `index` (0 model, 1 input price, 2 output price) of the default Anthropic entry."""
+    models = _anthropic_models_from_env()
+    return models[0][index] if models else None
+
 
 @dataclass
 class LevyConfig:
@@ -14,23 +53,22 @@ class LevyConfig:
     llm_provider: str = "mock"  # "mock", "ollama", "anthropic"
     mock_llm_latency_seconds: float = 0.5  # simulated delay for MockLLMClient; tests inject 0
     ollama_base_url: str = "http://localhost:11434"
-    model_name: str = "qwen3"  # default local model for Ollama; override per deployment
+    # Ollama models from LEVY_OLLAMA_MODELS; the first is the default (`model_name`).
+    ollama_models: Tuple[str, ...] = field(default_factory=lambda: _env_list(OLLAMA_MODELS_ENV))
+    model_name: Optional[str] = field(default_factory=lambda: _first_ollama(OLLAMA_MODELS_ENV))
+    # Ollama embedding models from LEVY_OLLAMA_EMBEDDING_MODELS.
+    ollama_embedding_models: Tuple[str, ...] = field(default_factory=lambda: _env_list(OLLAMA_EMBEDDING_MODELS_ENV))
 
     # Anthropic settings (LEV-6)
     anthropic_api_key: Optional[str] = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY"))
-    # the original example model (claude-3-sonnet-20240229) is retired; defaulting to the
-    # current recommended model is an intentional change, not silent drift.
-    #
-    # LEV-14: this triple is set to the model a run actually uses, together. The
-    # previous default (claude-opus-4-8 at $5/$25 per MTok) described a model no
-    # run had ever called, and a cost figure carried over from it would be wrong
-    # in both directions. The latency pilot runs claude-haiku-4-5-20251001, so
-    # that is what these describe; escalating the model means changing all three.
-    anthropic_model: str = "claude-haiku-4-5-20251001"
+    # Model and its two per-MTok prices are one triple describing one model (LEV-14):
+    # all three come from the first entry of LEVY_ANTHROPIC_MODELS, together.
+    anthropic_models: Tuple[Tuple[str, float, float], ...] = field(default_factory=_anthropic_models_from_env)
+    anthropic_model: Optional[str] = field(default_factory=lambda: _first_anthropic(0))
     anthropic_max_retries: int = 2
     anthropic_budget_cap_usd: float = 200.0  # budget hard cap (~$50 expected spend)
-    anthropic_input_price_per_mtok: float = 1.0  # USD per 1M input tokens, claude-haiku-4-5
-    anthropic_output_price_per_mtok: float = 5.0  # USD per 1M output tokens, claude-haiku-4-5
+    anthropic_input_price_per_mtok: Optional[float] = field(default_factory=lambda: _first_anthropic(1))
+    anthropic_output_price_per_mtok: Optional[float] = field(default_factory=lambda: _first_anthropic(2))
     
     # Embedding settings
     embedding_provider: str = "sentence-transformers"  # "mock", "sentence-transformers", "ollama"
@@ -55,3 +93,10 @@ class LevyConfig:
     hnsw_m: int = 32
     hnsw_ef_construction: int = 200
     hnsw_ef_search: int = 64
+
+    def anthropic_prices(self, model: Optional[str]) -> Optional[Tuple[float, float]]:
+        """(input, output) USD per MTok configured for `model`, or None when it is not configured."""
+        for name, input_price, output_price in self.anthropic_models:
+            if name == model:
+                return input_price, output_price
+        return None

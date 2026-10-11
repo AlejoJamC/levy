@@ -198,6 +198,13 @@ Anthropic settings (model, retries, budget cap, per-MTok prices). It loads
 `.env` via python-dotenv. Secrets never appear in code or in tracked files —
 only `.env.example` is committed, and `scripts/audit_release.sh` enforces that.
 
+Models are not written in the code either, because they change every few
+months. `LEVY_ANTHROPIC_MODELS` (`model:input:output,...`, each model with its
+two per-MTok prices), `LEVY_OLLAMA_MODELS` and `LEVY_OLLAMA_EMBEDDING_MODELS`
+in `.env` name the models; the first entry of each is the default. The code
+keeps only what Levy itself implements: the provider types, the index backends,
+the cache stores, and the study's two embedding models.
+
 ### 5.3 Dataclasses in the core, Pydantic at the edge
 
 The core package uses plain dataclasses. Pydantic appears only in

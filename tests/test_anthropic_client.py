@@ -25,7 +25,7 @@ from levy.models import LLMRequest
 
 def _message_response(
     text: str = "hello world",
-    model: str = "claude-opus-4-8",
+    model: str = "test-anthropic-model",
     stop_reason: str = "end_turn",
     input_tokens: int = 10,
     output_tokens: int = 5,
@@ -50,8 +50,16 @@ def _error_response(status_code: int, error_type: str, message: str, headers=Non
     )
 
 
+# A placeholder id: real model ids live in LEVY_ANTHROPIC_MODELS, never in code.
+TEST_MODEL = "test-anthropic-model"
+TEST_CONFIG = dict(anthropic_model=TEST_MODEL, anthropic_input_price_per_mtok=5.0, anthropic_output_price_per_mtok=25.0)
+
+
 def _make_client(handler, **kwargs) -> AnthropicLLMClient:
     http_client = anthropic.DefaultHttpxClient(transport=httpx.MockTransport(handler))
+    kwargs.setdefault("model", TEST_MODEL)
+    kwargs.setdefault("input_price_per_mtok", 5.0)
+    kwargs.setdefault("output_price_per_mtok", 25.0)
     return AnthropicLLMClient(api_key="sk-test", http_client=http_client, **kwargs)
 
 
@@ -66,13 +74,23 @@ class TestConstruction(unittest.TestCase):
         with self.assertRaises(ValueError):
             AnthropicLLMClient(api_key="")
 
+    def test_missing_model_or_prices_raises_naming_the_variable(self):
+        for kwargs in (
+            {},
+            {"model": TEST_MODEL},
+            {"model": TEST_MODEL, "input_price_per_mtok": 1.0},
+        ):
+            with self.assertRaises(ValueError) as ctx:
+                AnthropicLLMClient(api_key="sk-test", **kwargs)
+            self.assertIn("LEVY_ANTHROPIC_MODELS", str(ctx.exception))
+
 
 class TestSuccessfulGeneration(unittest.TestCase):
 
     def test_success_populates_text_token_usage_and_metadata(self):
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(200, json=_message_response(
-                text="hi there", model="claude-opus-4-8", input_tokens=12, output_tokens=8,
+                text="hi there", model="test-anthropic-model", input_tokens=12, output_tokens=8,
             ))
 
         client = _make_client(handler, max_retries=0)
@@ -80,10 +98,10 @@ class TestSuccessfulGeneration(unittest.TestCase):
 
         self.assertEqual(response.text, "hi there")
         self.assertEqual(response.token_usage, 20)  # 12 + 8
-        self.assertEqual(response.model, "claude-opus-4-8")
+        self.assertEqual(response.model, "test-anthropic-model")
         self.assertEqual(response.metadata["input_tokens"], 12)
         self.assertEqual(response.metadata["output_tokens"], 8)
-        self.assertEqual(response.metadata["model"], "claude-opus-4-8")
+        self.assertEqual(response.metadata["model"], "test-anthropic-model")
         self.assertEqual(response.metadata["stop_reason"], "end_turn")
 
     def test_success_records_request_count_and_estimated_cost(self):
@@ -170,6 +188,7 @@ class TestRefusal(unittest.TestCase):
             llm_provider="anthropic",
             anthropic_api_key="sk-test",
             embedding_provider="mock",
+            **TEST_CONFIG,
             enable_semantic_cache=False,
         )
         engine = LevyEngine(config)
@@ -227,6 +246,7 @@ class TestEngineEndToEnd(unittest.TestCase):
             llm_provider="anthropic",
             anthropic_api_key="sk-test",
             embedding_provider="mock",
+            **TEST_CONFIG,
             enable_semantic_cache=False,
         )
         engine = LevyEngine(config)

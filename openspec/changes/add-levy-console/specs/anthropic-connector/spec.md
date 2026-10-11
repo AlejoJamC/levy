@@ -14,3 +14,22 @@ The system SHALL provide an `AnthropicLLMClient` implementing the existing `LLMC
 #### Scenario: An unknown provider is rejected, never replaced by the mock
 - **WHEN** the engine is configured with an `llm_provider` that is not `anthropic`, `ollama` or `mock` (for example `openai`)
 - **THEN** construction fails with an error naming the accepted providers, instead of silently falling back to the mock client
+
+### Requirement: Configuration and secret handling
+The system SHALL read the API key from `ANTHROPIC_API_KEY` and the Anthropic models from `LEVY_ANTHROPIC_MODELS`, both loaded via `.env` (never committed; `.env.example` documents the variables with placeholders only). `LEVY_ANTHROPIC_MODELS` lists `model:input_usd_per_mtok:output_usd_per_mtok` entries, the first being the default. The retry count and budget cap SHALL be configurable. No Anthropic model identifier or price SHALL be written in the code: models change every few months (design D14 of `add-levy-console`).
+
+#### Scenario: Key absent
+- **WHEN** `llm_provider = "anthropic"` is selected without an API key configured
+- **THEN** construction fails with an error naming the missing variable, rather than failing obscurely at first call
+
+#### Scenario: Model absent
+- **WHEN** an Anthropic client is constructed with no model or no prices configured
+- **THEN** construction fails with an error naming `LEVY_ANTHROPIC_MODELS`
+
+#### Scenario: Model configurable
+- **WHEN** `LEVY_ANTHROPIC_MODELS` names a different model with its prices
+- **THEN** requests are sent with that model, the response metadata reports it, and the budget guard prices calls at its prices
+
+#### Scenario: Malformed entry rejected
+- **WHEN** an entry of `LEVY_ANTHROPIC_MODELS` is not `model:number:number`
+- **THEN** loading the configuration fails with an error naming the variable and the expected format

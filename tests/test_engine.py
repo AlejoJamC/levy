@@ -22,9 +22,16 @@ from levy.llm_client import LLMClient, OllamaLLMClient
 class TestProviderSelection(unittest.TestCase):
 
     def test_ollama_provider_constructs_client(self):
-        config = LevyConfig(llm_provider="ollama", embedding_provider="mock")
+        config = LevyConfig(llm_provider="ollama", model_name="test-ollama-model", embedding_provider="mock")
         engine = LevyEngine(config)
         self.assertIsInstance(engine.llm_client, OllamaLLMClient)
+        self.assertEqual(engine.llm_client.model, "test-ollama-model")
+
+    def test_ollama_provider_without_a_model_raises_naming_the_variable(self):
+        config = LevyConfig(llm_provider="ollama", model_name=None, embedding_provider="mock")
+        with self.assertRaises(ValueError) as ctx:
+            LevyEngine(config)
+        self.assertIn("LEVY_OLLAMA_MODELS", str(ctx.exception))
 
     def test_unknown_provider_raises_instead_of_falling_back_to_mock(self):
         config = LevyConfig(llm_provider="openai", embedding_provider="mock")

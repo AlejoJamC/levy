@@ -133,3 +133,12 @@
 - [x] 11.4 Remove OpenAI from `README.md`, `docs/ARCHITECTURE.md` and `CLAUDE.md`. Leave `scripts/audit_release.sh`'s key patterns and the archived OpenSpec changes as they are.
 - [x] 11.5 Remove `openai` from the console's lists, pool and tracing, and from their tests.
 - [x] 11.6 Full suite and gated coverage run pass.
+
+## 12. No model or price in the code (design D14, 2026-10-11)
+
+- [x] 12.1 `LevyConfig` reads `LEVY_ANTHROPIC_MODELS` (`model:input:output,...`), `LEVY_OLLAMA_MODELS` and `LEVY_OLLAMA_EMBEDDING_MODELS`. The first entry of each is the default, and a malformed entry fails naming the variable.
+- [x] 12.2 Remove the default model and prices from `AnthropicLLMClient`, `OllamaLLMClient` and `OllamaEmbeddingClient`; constructing one without them fails naming the variable.
+- [x] 12.3 Build the console's model lists and prices from the configuration (`ConsoleOptions`). Offer no provider without models, and answer 503 when no LLM model is configured.
+- [x] 12.4 `scripts/populate_responses.py`, `scripts/run_throughput.py` and `examples/ollama_demo.py` take models from the environment or their flags.
+- [x] 12.5 Document the variables in `.env.example` (placeholders only), `README.md`, `docs/ARCHITECTURE.md` and `CLAUDE.md`.
+- [x] 12.6 Tests use placeholder model ids; environment parsing tested in `tests/test_config.py`; full suite and gated coverage run pass.
