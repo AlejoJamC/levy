@@ -47,8 +47,9 @@ neither is anything else here.
   coefficients and intervals aggregated from `decisions.csv` — no `pair_id`,
   no source corpus id, no text — and repository-relative input paths;
   the figures carry only plotted aggregates (residuals, fitted cell means,
-  curve points) or, for `figures/architecture.png`, module and file names
-  from this repository.
+  curve points, per-configuration rates and counts, median timings,
+  requests per second, truncated SHA-256 digests of `results.csv`) or, for
+  `figures/architecture.png`, module and file names from this repository.
 - **Licence:** Apache 2.0, same as the rest of this repository.
 
 ## Contents
@@ -94,6 +95,11 @@ rather than under a D-number it doesn't have).
 | `prevalence/prevalence.csv` | 3 rows, one per workload (faq / Quora QQP, code / SODD, chat / Twitter PIT-2015): pool size, positive, negative, excluded-band and eligible counts, empty-text drops per class, and duplicate prevalence over the full filtered pool (`prevalence_a` = positive / pool_size) and over the binary-eligible pool (`prevalence_b` = positive / eligible) (LEV-21) |
 | `prevalence/prevalence_meta.json` | Definitions of every column, the boundary statement (source-corpus pools after adapter filtering, not deployed LLM traffic), and per workload: adapter and options, label mapping, native-label census, sampling seed, and the input files' names and SHA-256 checksums |
 | `figures/architecture.png` | Architecture diagram of the released system: the HTTP API layer (`levy/api/`), the core engine and its caches, vector index and provider clients (`levy/`), and the offline research layers (dataset, experiment, analysis, latency, dashboard). Not produced by any script — prepared for the dissertation |
+| `figures/fpr_heatmap.png`, `figures/fpr_heatmap.pdf` | False positive rate and false-positive count per configuration (workload × model × threshold), with the totals by model and the ANOVA p-values for workload and model, from `d3-results/results.csv` and `d3-results/analysis/anova.csv`. Not produced by any script — prepared for the dissertation |
+| `figures/lookup_vs_provider.png`, `figures/lookup_vs_provider.pdf` | Median cache-lookup time per embedding model against the median provider call, drawn to scale, with the break-even hit rate per model, from `latency/latency.csv` and `latency/llm_calls.json`. Not produced by any script — prepared for the dissertation |
+| `figures/paired_discordance.png`, `figures/paired_discordance.pdf` | Matched pair × threshold units on inadmissible pairs where both models, only all-MiniLM-L6-v2 or only ModernBERT served a false positive, from `d3-results/robustness/model_discordance.csv` (row `ALL`). Not produced by any script — prepared for the dissertation |
+| `figures/replication.png`, `figures/replication.pdf` | SHA-256 of the reference, container and brute-force runs' `results.csv`, with the 60-of-60 precision/recall re-check and the exact-search decision margin, from `d3-results/results.csv` and `d3-results/replication/`. Not produced by any script — prepared for the dissertation |
+| `figures/throughput.png`, `figures/throughput.pdf` | Requests per second at concurrency 1, 4, 16 and 64, all-hit against all-miss (log scale), with the hit-to-miss ratio per level, from `throughput/claude-haiku-4-5-20251001/throughput.csv`. Not produced by any script — prepared for the dissertation |
 
 ## Integrity
 
