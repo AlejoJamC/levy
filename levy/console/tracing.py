@@ -175,14 +175,23 @@ class LiveTimingCollector(TimingCollector):
 
 
 def observation_dict(observation: SemanticLookupObservation) -> Dict[str, Any]:
-    """The semantic block; `cosine = 1 - d^2/2` holds because every vector is L2-normalised."""
+    """The semantic block; `cosine = 1 - d^2/2` holds because every vector is L2-normalised.
+
+    `threshold_cosine` is the cosine the threshold enforces: `d = 1/τ - 1` on the
+    `1/(1+d)` scale.
+    """
     cosine = None
     if observation.distance is not None:
         cosine = 1.0 - observation.distance ** 2 / 2.0
+    threshold_cosine = None
+    if observation.threshold:
+        tau_distance = 1.0 / observation.threshold - 1.0
+        threshold_cosine = 1.0 - tau_distance ** 2 / 2.0
     return {
         "reached": observation.reached,
         "index_size": observation.index_size,
         "threshold": observation.threshold,
+        "threshold_cosine": threshold_cosine,
         "nearest_prompt": observation.nearest_prompt,
         "distance": observation.distance,
         "similarity": observation.similarity,

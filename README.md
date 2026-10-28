@@ -347,8 +347,12 @@ saved. The delivered `/v1/chat/completions` and `/admin/*` endpoints are not
 changed by it, and the console never shares their engines or caches.
 
 ```bash
-uvicorn levy.api.app:app
+docker compose up -d redis
+uvicorn levy.api.app:app --port 8000
 ```
+
+Redis serves `cache_store=redis`; Ollama models need a running Ollama on
+`localhost:11434`.
 
 Open `http://localhost:8000/docs` and `http://localhost:8000/console` side by
 side. In the docs' **console** section, `POST /console/chat` takes the prompt
@@ -372,6 +376,12 @@ what Levy implements (`levy/console/options.py`); the model lists come from
 selectors without restarting Levy. Each executed request appears on the page without a
 refresh. A miss is shown waiting at the provider while its call is in flight;
 the lookup steps (milliseconds) are replayed hop by hop with their real timings.
+
+Under the request path the page shows the answer the request returned. On a
+hit, the line above it sets the prompt asked beside the stored prompt the
+answer was written for. A miss states the nearest stored prompt's similarity
+against τ, and τ is shown with the cosine it enforces
+(`d = 1/τ − 1`, `cosine = 1 − d²/2`).
 
 | Endpoint | Purpose |
 |---|---|

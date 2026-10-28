@@ -225,6 +225,14 @@ class TestConsolePool(unittest.TestCase):
         self.assertIsNot(pool.get(a), pool.get(b))
         self.assertIs(pool.get(a).embedding_manager, pool.get(b).embedding_manager)
 
+    def test_warm_up_loads_the_shared_manager_and_leaves_no_memo(self):
+        pool = self._pool()
+        settings = default_settings(_base())
+        pool.warm_up(settings)
+        manager = pool.get(settings).embedding_manager
+        self.assertIs(pool._managers[(settings.embedding_provider, settings.embedding_model)], manager)
+        self.assertFalse(manager.forget("levy console warm-up"))
+
     def test_redis_engines_get_a_prefixed_store(self):
         pool = self._pool()
         settings = ConsoleSettings(**{**default_settings(_base()).as_dict(), "cache_store": "redis"})
@@ -569,6 +577,11 @@ class TestConsolePage(unittest.TestCase):
         self.assertIn("<title>Levy Console</title>", page.text)
         for asset in ("console.js", "console.css"):
             self.assertEqual(client.get(f"/console/assets/{asset}").status_code, 200)
+
+    def test_docs_hide_parameter_notes(self):
+        page = _client().get("/docs")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(".parameter__enum, .parameter__default, .parameter__extension { display: none; }", page.text)
 
     def test_assets_reference_no_external_origin(self):
         pattern = re.compile(r"""(src|href)\s*=\s*["']https?://|url\(\s*["']?https?://|fetch\(\s*["']https?://|@import\s+["']?https?://""")

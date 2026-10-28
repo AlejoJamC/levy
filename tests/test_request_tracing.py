@@ -244,6 +244,13 @@ class TestTraceFields(unittest.TestCase):
         self.assertAlmostEqual(data["cosine"], 1 - 0.4 ** 2 / 2)
         self.assertIsNone(observation_dict(SemanticLookupObservation(reached=True))["cosine"])
 
+    def test_observation_dict_derives_threshold_cosine(self):
+        expected = {0.70: 0.908, 0.75: 0.944, 0.80: 0.969, 0.85: 0.984, 0.90: 0.994}
+        for tau, cosine in expected.items():
+            data = observation_dict(SemanticLookupObservation(reached=True, threshold=tau))
+            self.assertEqual(round(data["threshold_cosine"], 3), cosine)
+        self.assertIsNone(observation_dict(SemanticLookupObservation(reached=True))["threshold_cosine"])
+
     def test_provider_endpoint_and_location(self):
         base = LevyConfig(llm_provider="mock")
         self.assertEqual(provider_endpoint(_settings(llm_provider="ollama", llm_model="test-ollama-model"), base, object()),

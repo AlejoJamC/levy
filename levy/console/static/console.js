@@ -233,6 +233,7 @@
     renderHistory();
     var t = state.selected ? state.traces.get(state.selected) : null;
     renderMap(t);
+    renderAnswer(t);
     renderDetail(t);
   }
 
@@ -345,7 +346,7 @@
       ? (after ? after.index_size + (after.index_size === 1 ? ' vector' : ' vectors') : (t.semantic ? t.semantic.index_size + ' vectors' : '…'))
       : 'off · skipped';
     $('llm-name').textContent = PROVIDER_NAMES[cfg.llm_provider] || cfg.llm_provider;
-    $('llm-sub').textContent = cfg.llm_model.length > 18 ? cfg.llm_model.slice(0, 17) + '…' : cfg.llm_model;
+    setModelName(cfg.llm_model);
 
     var remote = llmLocation(t) === 'remote';
     $('zone-local').setAttribute('width', remote ? '475' : '655');
@@ -370,21 +371,64 @@
     story.appendChild(document.createTextNode(storyText(t)));
   }
 
+  function setModelName(model) {
+    var sub = $('llm-sub');
+    var cut = model.length > 18 ? Math.max(model.lastIndexOf('-', 18), model.lastIndexOf(':', 18)) : -1;
+    var lines = cut > 0 ? [model.slice(0, cut + 1), model.slice(cut + 1)] : [model];
+    sub.textContent = '';
+    lines.forEach(function (line, i) {
+      var span = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      span.setAttribute('x', '576');
+      if (i) span.setAttribute('dy', '13');
+      span.textContent = line;
+      sub.appendChild(span);
+    });
+    $('llm-name').setAttribute('y', lines.length > 1 ? '114' : '120');
+    sub.setAttribute('y', lines.length > 1 ? '130' : '137');
+  }
+
   function storyText(t) {
     var k = kind(t);
     var where = t.llm ? hostOf(t.llm.endpoint) : (PROVIDER_NAMES[t.config.llm_provider] || t.config.llm_provider);
     var local = llmLocation(t) === 'local';
     if (k === 'exact_hit') return 'Answered from the exact cache in ' + fmtMs(t.total_ms) + '. Same prompt, byte for byte; the request never left this machine.';
     if (k === 'semantic_hit') return 'Answered from the semantic cache in ' + fmtMs(t.total_ms) + '. It matched a stored prompt at similarity ' + t.semantic.similarity.toFixed(4) + ', above τ ' + t.config.threshold + ', and never left this machine.';
-    if (k === 'miss') return (t.config.semantic_cache ? 'Neither cache could answer.' : 'The exact cache could not answer and the semantic cache was off for this request.') + ' Sent to ' + where + (local ? ' on this machine' : '') + ', back in ' + fmtMs(t.total_ms) + ', then stored.';
+    if (k === 'miss') return (t.config.semantic_cache ? missReason(t) : 'The exact cache could not answer and the semantic cache was off for this request.') + ' Sent to ' + where + (local ? ' on this machine' : '') + ', back in ' + fmtMs(t.total_ms) + ', then stored.';
     if (k === 'error') return 'Failed at ' + (t.error.stage || 'the router') + ' after ' + fmtMs(t.total_ms) + '. The client got a structured ' + t.error.kind + ' error and nothing was cached.';
-    if (t.current_stage === 'llm_call') return 'Neither cache could answer. Waiting on ' + where + ': ' + fmtMs(elapsedMs(t)) + ' so far.';
+    if (t.current_stage === 'llm_call') return (t.config.semantic_cache ? missReason(t) : 'Neither cache could answer.') + ' Waiting on ' + where + ': ' + fmtMs(elapsedMs(t)) + ' so far.';
     return 'Running: ' + (SPAN[t.current_stage] ? SPAN[t.current_stage][0].toLowerCase() : t.current_stage) + '…';
+  }
+
+  function missReason(t) {
+    var sem = t.semantic;
+    if (sem && sem.index_size > 0 && sem.similarity !== null) {
+      return 'Neither cache could answer. Nearest stored prompt at similarity ' + sem.similarity.toFixed(4) + ', below τ ' + sem.threshold.toFixed(2) + '.';
+    }
+    return 'Neither cache could answer. The semantic index was empty, so there was nothing to compare against.';
+  }
+
+  function renderAnswer(t) {
+    $('answer-panel').classList.toggle('empty', !t);
+    if (!t) {
+      $('answer-title').textContent = 'What the request got back';
+      return;
+    }
+    var k = kind(t);
+    $('answer-title').textContent = 'What request #' + t.seq + ' got back';
+    $('d-answer').textContent = t.answer || (t.status === 'in_flight' ? 'Waiting for the provider. The answer appears here when the call returns.' : 'No answer: nothing was cached.');
+    var written = t.matched_prompt || (t.semantic && t.semantic.nearest_prompt);
+    var pair = (k === 'exact_hit' || k === 'semantic_hit') && written;
+    $('asked').hidden = !pair;
+    if (!pair) return;
+    $('asked-prompt').textContent = t.prompt;
+    var w = $('written-for');
+    w.textContent = written + (k === 'exact_hit' ? ' (the same text)' : '');
+    w.style.color = OUT[k].color;
   }
 
   function renderDetail(t) {
     var detail = $('detail');
-    detail.hidden = !t;
+    detail.classList.toggle('empty', !t);
     if (!t) return;
     var k = kind(t);
     var o = OUT[k];
@@ -401,7 +445,6 @@
     renderSpans(t);
     renderSemantic(t);
     renderCost(t);
-    $('d-answer').textContent = t.answer || (t.status === 'in_flight' ? 'Waiting for the provider. The answer appears here when the call returns.' : 'No answer: nothing was cached.');
     renderIdentity(t);
   }
 
@@ -505,7 +548,8 @@
 
     var gauge = el('div', 'gauge');
     gauge.setAttribute('role', 'img');
-    gauge.setAttribute('aria-label', 'Similarity ' + sem.similarity.toFixed(4) + ' against threshold ' + sem.threshold.toFixed(2));
+    var tauLabel = 'τ ' + sem.threshold.toFixed(2) + ' = cosine ' + sem.threshold_cosine.toFixed(3);
+    gauge.setAttribute('aria-label', 'Similarity ' + sem.similarity.toFixed(4) + ' against threshold ' + tauLabel);
     gauge.appendChild(el('div', 'g-track'));
     var pass = el('div', 'g-pass');
     pass.style.left = (sem.threshold * 100) + '%';
@@ -523,7 +567,7 @@
     var one = el('span', 'g-lab', '1');
     one.style.right = '0';
     gauge.appendChild(one);
-    var tl = el('span', 'g-lab tau', 'τ ' + sem.threshold.toFixed(2));
+    var tl = el('span', 'g-lab tau' + (sem.threshold >= 0.8 ? ' end' : ''), tauLabel);
     tl.style.left = (sem.threshold * 100) + '%';
     gauge.appendChild(tl);
     box.appendChild(gauge);
@@ -537,7 +581,8 @@
     var f = el('pre', 'well formula',
       'similarity = 1 / (1 + ' + sem.distance.toFixed(3) + ') = ' + sem.similarity.toFixed(4) + '\n' +
       sem.similarity.toFixed(4) + (sem.hit ? ' ≥ ' : ' < ') + 'τ ' + sem.threshold.toFixed(2) + '  →  ' + (sem.hit ? 'HIT' : 'MISS') + '\n' +
-      'cosine = 1 − d² / 2 = ' + sem.cosine.toFixed(4));
+      'cosine = 1 − d² / 2 = ' + sem.cosine.toFixed(4) + '\n' +
+      'τ ' + sem.threshold.toFixed(2) + ' = cosine ' + sem.threshold_cosine.toFixed(3) + ', from d = 1/τ − 1');
     box.appendChild(f);
   }
 
@@ -617,6 +662,16 @@
       render();
     }
   });
+
+  function stepSection(delta) {
+    var blocks = Array.prototype.slice.call(document.querySelectorAll('#detail details.block'));
+    var current = blocks.findIndex(function (d) { return d.open; });
+    var next = current === -1 ? (delta > 0 ? 0 : blocks.length - 1) : current + delta;
+    blocks.forEach(function (d, i) { d.open = i === next; });
+  }
+
+  $('step-prev').addEventListener('click', stepSection.bind(null, -1));
+  $('step-next').addEventListener('click', stepSection.bind(null, 1));
 
   $('clear-history').addEventListener('click', function () {
     fetch('/console/traces/clear', { method: 'POST' }).then(function () {

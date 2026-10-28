@@ -21,6 +21,7 @@ at the HTTP boundary without an AsyncAnthropic migration.
 Run with: uvicorn levy.api.app:app
 """
 
+import contextlib
 import copy
 import json
 import logging
@@ -29,7 +30,8 @@ import uuid
 from typing import List, Optional
 
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from levy import __version__
@@ -46,7 +48,7 @@ from levy.api.schemas import (
 )
 from levy.config import LevyConfig, current_model_catalog
 from levy.console.pool import DEFAULT_CONSOLE_POOL_CAP, ConsolePool, EmbeddingManagerFactory, LLMClientFactory
-from levy.console.routes import STATIC_DIR, build_console_router, publish_choices
+from levy.console.routes import STATIC_DIR, build_console_router, choices, publish_choices
 from levy.console.tracing import DEFAULT_TRACE_BUFFER_SIZE, TraceRecorder
 from levy.llm_client import AnthropicRefusalError, BudgetExceededError
 from levy.models import LevyResult
@@ -54,6 +56,19 @@ from levy.models import LevyResult
 logger = logging.getLogger("levy.api")
 
 DEFAULT_POOL_CAP = 8
+
+
+# Swagger shows each parameter's selector; its enum, default and validation notes are hidden.
+class RevalidatedStaticFiles(StaticFiles):
+    """Console assets the browser revalidates on every load, so an edited page never runs a stale script."""
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
+SWAGGER_HIDDEN = ".parameter__enum, .parameter__default, .parameter__extension { display: none; }"
 
 
 def _extract_prompt(messages: List[ChatMessage]) -> str:
@@ -155,6 +170,7 @@ def create_app(
             "observability and maintenance."
         ),
         version=__version__,
+        docs_url=None,
     )
     app.state.pool = pool
 
@@ -281,8 +297,21 @@ def create_app(
     def console_config() -> LevyConfig:
         return config.with_models(current_model_catalog()) if reload_models else config
 
+    @contextlib.asynccontextmanager
+    async def warm_console(_app):
+        config_now = console_config()
+        _, defaults, _ = choices(config_now)
+        if defaults is not None and defaults.semantic_cache:
+            try:
+                console_pool.warm_up(defaults, config_now)
+            except Exception as exc:  # the first request then loads the model instead
+                logger.warning("console warm-up skipped: %s", exc)
+        yield
+
+    app.router.lifespan_context = warm_console
+
     app.include_router(build_console_router(console_config, console_pool, recorder, _to_response_body))
-    app.mount("/console/assets", StaticFiles(directory=STATIC_DIR), name="console-assets")
+    app.mount("/console/assets", RevalidatedStaticFiles(directory=STATIC_DIR), name="console-assets")
 
     cached_openapi = app.openapi
 
@@ -292,6 +321,12 @@ def create_app(
         return publish_choices(copy.deepcopy(cached_openapi()), console_config())
 
     app.openapi = openapi_with_current_choices
+
+    @app.get("/docs", include_in_schema=False)
+    def swagger_ui() -> HTMLResponse:
+        page = get_swagger_ui_html(openapi_url=app.openapi_url, title=app.title + " - Swagger UI")
+        html = page.body.decode().replace("</head>", f"<style>{SWAGGER_HIDDEN}</style></head>", 1)
+        return HTMLResponse(html)
 
     return app
 

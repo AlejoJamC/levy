@@ -145,20 +145,12 @@ def build_console_router(
         "/chat",
         response_model=ChatCompletionResponse,
         summary="Chat with a configuration chosen per request",
-        description=(
-            "Serves the prompt through the console's own engine for the chosen settings "
-            "(exact cache → semantic cache → LLM provider), never through the delivered "
-            "endpoint's caches. Every setting is optional and limited to its listed options; "
-            "a model must belong to its chosen provider. The model lists come from `.env` and "
-            "are read again when this page is refreshed. Each request appears live in the "
-            "console page at `/console`."
-        ),
     )
     def console_chat(
         request: Request,
         response: Response,
-        prompt: str = Query(..., min_length=1, description="The user prompt"),
-        threshold: Optional[float] = Query(None, ge=0.0, le=1.0, description="Similarity threshold on the 1/(1+L2) scale"),
+        prompt: str = Query(..., min_length=1),
+        threshold: Optional[float] = Query(None, ge=0.0, le=1.0),
         embedding_provider: Optional[str] = Query(None),
         embedding_model: Optional[str] = Query(None),
         llm_provider: Optional[str] = Query(None),
@@ -281,9 +273,8 @@ def build_console_router(
     @router.get(
         "/traces",
         summary="Live trace feed for the console page",
-        description="Every console request created or updated after `after`, plus the console's defaults and totals.",
     )
-    def console_traces(after: int = Query(0, ge=0, description="Return traces whose version is greater than this")) -> Dict[str, Any]:
+    def console_traces(after: int = Query(0, ge=0)) -> Dict[str, Any]:
         _, defaults, _ = choices(config_provider())
         engines = pool.items()
         exact_hits = semantic_hits = misses = 0
@@ -328,6 +319,6 @@ def build_console_router(
 
     @router.get("", include_in_schema=False)
     def console_page() -> FileResponse:
-        return FileResponse(STATIC_DIR / "index.html")
+        return FileResponse(STATIC_DIR / "index.html", headers={"Cache-Control": "no-cache"})
 
     return router

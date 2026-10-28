@@ -35,6 +35,8 @@ LLMClientFactory = Callable[[ConsoleSettings, LevyConfig], LLMClient]
 EmbeddingManagerFactory = Callable[[ConsoleSettings, LevyConfig], EmbeddingManager]
 
 
+WARM_UP_TEXT = "levy console warm-up"
+
 class PrefixedRedisStore:
     """
     A `RedisStore` whose keys carry one configuration's prefix.
@@ -141,12 +143,23 @@ class ConsolePool:
             self._engines[key] = engine
             return engine
 
-    def _build(self, settings: ConsoleSettings, base: LevyConfig) -> LevyEngine:
+    def warm_up(self, settings: ConsoleSettings, config: Optional[LevyConfig] = None) -> None:
+        """Load `settings`' embedding model now, so the first request's timings exclude the model load."""
+        with self._lock:
+            manager = self._manager(settings, config or self.base_config)
+        manager.embed(WARM_UP_TEXT)
+        manager.forget(WARM_UP_TEXT)
+
+    def _manager(self, settings: ConsoleSettings, base: LevyConfig) -> EmbeddingManager:
         manager_key = (settings.embedding_provider, settings.embedding_model)
         manager = self._managers.get(manager_key)
         if manager is None:
             manager = self._embedding_manager_factory(settings, base)
             self._managers[manager_key] = manager
+        return manager
+
+    def _build(self, settings: ConsoleSettings, base: LevyConfig) -> LevyEngine:
+        manager = self._manager(settings, base)
 
         config = dataclasses.replace(
             base,

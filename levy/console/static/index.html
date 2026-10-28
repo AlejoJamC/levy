@@ -17,6 +17,7 @@
   </div>
 </header>
 
+<div class="board">
 <section class="summary" aria-label="Session summary">
   <div class="tile"><span class="tile-k">Served</span><span class="tile-v" id="s-served">0</span><span class="tile-n" id="s-served-note">no requests yet</span></div>
   <div class="tile"><span class="tile-k">Hit rate</span><span class="tile-v" id="s-hit">0 %</span>
@@ -26,7 +27,7 @@
   <div class="tile"><span class="tile-k">Avoided by hits</span><span class="tile-v" id="s-avoided">0 s</span><span class="tile-n" id="s-avoided-note">0 tokens</span></div>
 </section>
 
-<section class="panel" aria-label="Request path">
+<section class="panel path" aria-label="Request path">
   <div class="panel-head">
     <h2 id="map-title">Where requests go</h2>
     <span class="mono muted small" id="map-config"></span>
@@ -87,7 +88,52 @@
   <p class="story" id="story">Fire <span class="mono">POST /console/chat</span> from <a href="/docs#/console">/docs</a>. Each request appears here as it runs.</p>
 </section>
 
-<div class="split">
+<section class="panel answer-panel empty" aria-label="Answer" id="answer-panel">
+  <h2 id="answer-title">What the request got back</h2>
+  <p class="placeholder">The answer of the selected request appears here.</p>
+  <p class="asked" id="asked" hidden><span class="muted">Asked:</span> <span id="asked-prompt"></span><span class="sep" aria-hidden="true">·</span><span class="muted">Answer written for:</span> <span id="written-for"></span></p>
+  <p class="answer" id="d-answer"></p>
+</section>
+
+
+
+  <section class="panel detail empty" aria-label="Trace detail" id="detail">
+    <p class="placeholder">Why the cache decided, where the time went, what it cost and the configuration of the selected request appear here.</p>
+    <div class="d-head">
+      <div class="d-line"><span class="badge" id="d-badge"></span><span class="d-total mono" id="d-total"></span><span class="steps"><button type="button" class="btn step" id="step-prev" aria-label="Previous section">‹</button><button type="button" class="btn step" id="step-next" aria-label="Next section">›</button></span></div>
+      <span class="mono muted small" id="d-meta"></span>
+      <p class="d-prompt" id="d-prompt"></p>
+    </div>
+
+    <details class="block" name="trace">
+      <summary>WHY THIS DECISION</summary>
+      <div id="d-sem"></div>
+    </details>
+
+    <details class="block" name="trace">
+      <summary>WHERE THE TIME WENT</summary>
+      <div id="d-spans"></div>
+      <p class="note" id="d-ratio"></p>
+    </details>
+
+    <details class="block" name="trace">
+      <summary id="d-cost-title">COST</summary>
+      <div class="cells" id="d-cost"></div>
+      <button type="button" class="btn link" id="d-origin" hidden></button>
+      <pre class="err" id="d-error" hidden></pre>
+    </details>
+
+    <details class="block" name="trace">
+      <summary>CONFIGURATION</summary>
+      <dl class="cfg" id="d-config"></dl>
+    </details>
+
+    <details class="block" name="trace">
+      <summary>IDENTITY</summary>
+      <dl class="ident" id="d-ident"></dl>
+    </details>
+  </section>
+
   <section class="panel history" aria-label="Request history">
     <div class="panel-head">
       <h2>History</h2>
@@ -95,47 +141,6 @@
     </div>
     <ol class="rows" id="rows"></ol>
     <p class="muted small" id="rows-empty">No requests yet.</p>
-  </section>
-
-  <section class="panel detail" aria-label="Trace detail" id="detail" hidden>
-    <div class="d-head">
-      <div class="d-line"><span class="badge" id="d-badge"></span><span class="d-total mono" id="d-total"></span></div>
-      <span class="mono muted small" id="d-meta"></span>
-      <p class="d-prompt" id="d-prompt"></p>
-    </div>
-
-    <div class="block">
-      <h3>CONFIGURATION</h3>
-      <dl class="cfg" id="d-config"></dl>
-    </div>
-
-    <div class="block">
-      <h3>WHERE THE TIME WENT</h3>
-      <div id="d-spans"></div>
-      <p class="note" id="d-ratio"></p>
-    </div>
-
-    <div class="block">
-      <h3>WHY THIS DECISION</h3>
-      <div id="d-sem"></div>
-    </div>
-
-    <div class="block">
-      <h3 id="d-cost-title">COST</h3>
-      <div class="cells" id="d-cost"></div>
-      <button type="button" class="btn link" id="d-origin" hidden></button>
-      <pre class="err" id="d-error" hidden></pre>
-    </div>
-
-    <div class="block">
-      <h3>ANSWER</h3>
-      <p class="answer" id="d-answer"></p>
-    </div>
-
-    <div class="block">
-      <h3>IDENTITY</h3>
-      <dl class="ident" id="d-ident"></dl>
-    </div>
   </section>
 </div>
 
