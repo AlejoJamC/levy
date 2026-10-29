@@ -4,13 +4,15 @@ from typing import Optional, Any, Dict, TYPE_CHECKING
 from levy.config import LevyConfig
 from levy.latency.timing import (
     SEGMENT_EXACT_LOOKUP,
+    SEGMENT_LLM_CALL,
+    SEGMENT_STORE,
     SEGMENT_TOTAL_LOOKUP,
     mark,
     segment,
     since_ms,
 )
-from levy.models import LLMRequest, LevyResult, LLMResponse
-from levy.llm_client import LLMClient, MockLLMClient, OpenAILLMClient, OllamaLLMClient, AnthropicLLMClient
+from levy.models import LLMRequest, LevyResult, LLMResponse, SemanticLookupObservation
+from levy.llm_client import LLMClient, MockLLMClient, OllamaLLMClient, AnthropicLLMClient
 from levy.embedding_manager import EmbeddingManager
 from levy.cache.store import InMemoryStore
 # Load RedisStore conditionally or just import if available
@@ -31,10 +33,11 @@ logger = logging.getLogger(__name__)
 class LevyEngine:
     def __init__(
         self,
-        config: LevyConfig = LevyConfig(),
+        config: Optional[LevyConfig] = None,
         embedding_manager: Optional[EmbeddingManager] = None,
         llm_client: Optional[LLMClient] = None,
     ):
+        config = config if config is not None else LevyConfig()
         self.config = config
         self.metrics = LevyMetrics()
 
@@ -43,14 +46,6 @@ class LevyEngine:
         # from a real provider, so the timed run itself makes no network call).
         if llm_client is not None:
             self.llm_client = llm_client
-        elif config.llm_provider == "openai":
-            if not config.openai_api_key:
-                raise ValueError("OpenAI API key required for 'openai' provider")
-            self.llm_client = OpenAILLMClient(
-                api_key=config.openai_api_key,
-                base_url=config.openai_base_url,
-                model=config.model_name
-            )
         elif config.llm_provider == "ollama":
             self.llm_client = OllamaLLMClient(
                 base_url=config.ollama_base_url,
@@ -65,8 +60,13 @@ class LevyEngine:
                 input_price_per_mtok=config.anthropic_input_price_per_mtok,
                 output_price_per_mtok=config.anthropic_output_price_per_mtok,
             )
-        else:
+        elif config.llm_provider == "mock":
             self.llm_client = MockLLMClient(latency_seconds=config.mock_llm_latency_seconds)
+        else:
+            # An unrecognised provider is an error, never a silent mock.
+            raise ValueError(
+                f"Unknown llm_provider {config.llm_provider!r}; accepted: 'anthropic', 'ollama', 'mock'"
+            )
 
         # 2. Initialize Embedding Manager (handles mock, sentence-transformers, ollama).
         # Callers (e.g. the experiment harness sweeping many configs per model) may inject
@@ -97,7 +97,13 @@ class LevyEngine:
             ef_search=self.config.hnsw_ef_search,
         )
 
-    def generate(self, prompt: str, timing: Optional["TimingCollector"] = None, **kwargs) -> LevyResult:
+    def generate(
+        self,
+        prompt: str,
+        timing: Optional["TimingCollector"] = None,
+        observation: Optional[SemanticLookupObservation] = None,
+        **kwargs,
+    ) -> LevyResult:
         """
         Serve `prompt` through exact cache → semantic cache → LLM.
 
@@ -109,6 +115,11 @@ class LevyEngine:
         ends where the lookup does — a miss's LLM call and the subsequent store
         are not lookup overhead and are excluded, which is also what keeps the
         segment sum from exceeding the total.
+
+        On a miss, a collector also receives the provider call and the cache
+        write as `llm_call` and `store` -- outside the lookup segments.
+        `observation` is forwarded to the semantic lookup, which fills
+        it with what it saw; like `timing`, it changes no decision.
         """
         start_time = time.time()
         lookup_start = mark() if timing is not None else 0.0
@@ -137,7 +148,7 @@ class LevyEngine:
         if self.config.enable_semantic_cache:
             # Note: exact cache get doesn't compute embedding usually, 
             # but semantic needs it. Semantic cache 'get' computes it internaly if needed.
-            entry = self.semantic_cache.get(request, timing=timing)
+            entry = self.semantic_cache.get(request, timing=timing, observation=observation)
             if entry:
                 if timing is not None:
                     timing.record(SEGMENT_TOTAL_LOOKUP, since_ms(lookup_start))
@@ -159,20 +170,22 @@ class LevyEngine:
             timing.record(SEGMENT_TOTAL_LOOKUP, since_ms(lookup_start))
         logger.info(f"Cache miss. Calling LLM for: {prompt[:30]}...")
         try:
-            llm_response = self.llm_client.generate(request)
+            with segment(timing, SEGMENT_LLM_CALL):
+                llm_response = self.llm_client.generate(request)
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
             raise e
 
         # 4. Store in Cache
-        embedding = None
-        if self.config.enable_semantic_cache:
-            embedding = self.embedding_manager.embed(prompt)
+        with segment(timing, SEGMENT_STORE):
+            embedding = None
+            if self.config.enable_semantic_cache:
+                embedding = self.embedding_manager.embed(prompt)
 
-        model_meta = self.embedding_manager.get_model_identity().as_dict()
-        self.exact_cache.set(request, llm_response.text, embedding=embedding, metadata=model_meta)
-        if self.config.enable_semantic_cache and embedding is not None:
-            self.semantic_cache.set(request, llm_response.text, embedding=embedding, metadata=model_meta)
+            model_meta = self.embedding_manager.get_model_identity().as_dict()
+            self.exact_cache.set(request, llm_response.text, embedding=embedding, metadata=model_meta)
+            if self.config.enable_semantic_cache and embedding is not None:
+                self.semantic_cache.set(request, llm_response.text, embedding=embedding, metadata=model_meta)
 
         latency = (time.time() - start_time) * 1000
         self.metrics.record_miss()

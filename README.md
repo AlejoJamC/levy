@@ -1,6 +1,6 @@
 # Levy
 
-**Levy** is a semantic caching engine for LLM APIs, built as the IT artefact of an MSc Artificial Intelligence capstone project (University of Liverpool). It sits between your application and an LLM provider (Mock, OpenAI-compatible, Ollama, or Anthropic) to optimize costs and latency by reusing responses for identical or semantically similar prompts.
+**Levy** is a semantic caching engine for LLM APIs, built as the IT artefact of an MSc Artificial Intelligence capstone project (University of Liverpool). It sits between your application and an LLM provider (Anthropic, or a local Ollama model) to optimize costs and latency by reusing responses for identical or semantically similar prompts.
 
 The research behind Levy benchmarks false positive rates of semantic caching across embedding models (all-MiniLM vs ModernBERT), workloads (FAQ, code, chat), and similarity thresholds.
 
@@ -34,7 +34,7 @@ levy/
 │   ├── api/                 # FastAPI router: app, Pydantic schemas, engine pool
 │   ├── cache/               # Exact + semantic cache, vector index (Faiss HNSW /
 │   │                        #   brute-force), InMemory/Redis stores
-│   ├── llm_client.py        # LLM interaction (Mock, OpenAI, Ollama, Anthropic)
+│   ├── llm_client.py        # LLM interaction (Mock, Ollama, Anthropic)
 │   ├── embeddings.py        # EmbeddingClient ABC + Mock, SentenceTransformer, Ollama
 │   ├── embedding_manager.py # EmbeddingManager: study-model registry, runtime switching,
 │   │                        #   memoization, symmetric prefix handling
@@ -106,7 +106,7 @@ plain `unittest.TestCase`s), but pytest is the one true command going forward.
 ```python
 from levy import LevyEngine, LevyConfig
 
-# Initialize with defaults (Mock LLM, Exact Cache only)
+# Initialize with defaults (Anthropic LLM: needs ANTHROPIC_API_KEY in .env)
 engine = LevyEngine()
 
 # First call - hits the "LLM"
@@ -122,7 +122,7 @@ print(result2.source) # 'exact_cache'
 
 | Example | Requirements | Cost |
 |---|---|---|
-| `examples/simple_replay.py` | None for the mock path. Uses `sentence-transformers` for the semantic configuration when importable, which downloads model weights on first run (needs network); falls back to mock embeddings otherwise. | Free |
+| `examples/simple_replay.py` | `sentence-transformers` (model weights download on first run). | Free |
 | `examples/ollama_demo.py` | Optional side demo of the Ollama provider; **not used in the study**. Needs a local Ollama service with the models pulled (see below). | Free (local models) |
 | `examples/anthropic_smoke_check.py` | A real `ANTHROPIC_API_KEY`. | **Billed** — makes one real API call |
 
@@ -143,11 +143,11 @@ study itself never used it: no test, result, or release artefact involves an
 Ollama model (see [Models used in the study](#models-used-in-the-study)).
 
 1. Install and run [Ollama](https://ollama.com/).
-2. Pull the demo models (`qwen3` for generation; `nomic-embed-text` for
-   embeddings — unrelated to the study's `nomic-ai/modernbert-embed-base`):
+2. Pull a generation model and an embedding model (any you like), and name
+   them in `.env` — Levy's code names no model:
    ```bash
-   ollama pull qwen3
-   ollama pull nomic-embed-text
+   LEVY_OLLAMA_MODEL_1=<generation model>
+   LEVY_OLLAMA_EMBEDDING_MODEL_1=<embedding model>
    ```
 3. Run the demo:
    ```bash
@@ -162,17 +162,22 @@ service. The billed Anthropic smoke check must be invoked by hand; see
 ### Using Anthropic
 
 The `anthropic` provider wraps the official `anthropic` SDK behind the same
-synchronous `LLMClient` interface as Mock/OpenAI/Ollama:
+synchronous `LLMClient` interface as Mock/Ollama:
+
+```bash
+# .env -- one model per number, the lowest is the default (format in .env.example)
+ANTHROPIC_API_KEY=...
+LEVY_ANTHROPIC_MODEL_1=<model id>
+LEVY_ANTHROPIC_MODEL_1_INPUT_USD_PER_MTOK=<number>
+LEVY_ANTHROPIC_MODEL_1_OUTPUT_USD_PER_MTOK=<number>
+```
 
 ```python
 config = LevyConfig(
     llm_provider="anthropic",
-    # anthropic_api_key defaults to the ANTHROPIC_API_KEY env var (.env)
-    anthropic_model="claude-haiku-4-5-20251001",  # default; override per config
+    # api key, model and prices come from .env (above)
     anthropic_max_retries=2,                 # SDK's own exponential backoff
     anthropic_budget_cap_usd=200.0,          # hard stop (budget cap)
-    anthropic_input_price_per_mtok=1.0,      # USD / 1M input tokens
-    anthropic_output_price_per_mtok=5.0,     # USD / 1M output tokens
 )
 engine = LevyEngine(config)
 result = engine.generate("Hello")
@@ -197,10 +202,13 @@ result = engine.generate("Hello")
 - **Refusals:** if the API returns a successful response whose `stop_reason`
   is a refusal, the client raises `AnthropicRefusalError` instead of
   returning (and thereby caching) empty content.
-- **Model default:** `anthropic_model` defaults to a current model —
-  `claude-haiku-4-5-20251001`, the model the latency measurement calls. The
-  model id and the two per-MTok prices are one triple describing one model:
-  change them together, or the budget guard costs a model you are not running.
+- **Model and prices from `.env`:** no model id or price is written in Levy's
+  code; models change every few months. Each model is a numbered
+  `LEVY_ANTHROPIC_MODEL_<n>` with its `_INPUT_USD_PER_MTOK` and
+  `_OUTPUT_USD_PER_MTOK` (US dollars per million tokens sent and written, as a
+  plain number with a dot); the lowest number is the default, and adding a
+  model means adding a new number. Without them, constructing the client fails
+  and names the variable.
 
 **One-time real-API smoke check — opt-in and billed.** This makes one real API
 call charged to the `ANTHROPIC_API_KEY` in your `.env`. It is deliberately
@@ -330,14 +338,66 @@ synchronous, and blocking the event loop directly would serialize every
 request. This satisfies the intent (concurrent request handling) without an
 `AsyncAnthropic` migration; see `openspec/changes/archive/2026-07-25-add-fastapi-router/design.md`.
 
+## Levy Console
+
+A `console` section of the HTTP API, beside the endpoints above, plus a page
+that shows each console request live: the path it took, where each step ran,
+how long each step cost, why the cache decided what it decided, and what a hit
+saved. The delivered `/v1/chat/completions` and `/admin/*` endpoints are not
+changed by it, and the console never shares their engines or caches.
+
+```bash
+docker compose up -d redis
+uvicorn levy.api.app:app --port 8000
+```
+
+Redis serves `cache_store=redis`; Ollama models need a running Ollama on
+`localhost:11434`.
+
+Open `http://localhost:8000/docs` and `http://localhost:8000/console` side by
+side. In the docs' **console** section, `POST /console/chat` takes the prompt
+and every setting as a field with its list of options:
+
+| Setting | Options |
+|---|---|
+| `threshold` | number in [0, 1] (1/(1+L2) scale) |
+| `embedding_provider` | `sentence-transformers`, `ollama` |
+| `embedding_model` | `all-MiniLM-L6-v2`, `modernbert` (sentence-transformers); every `LEVY_OLLAMA_EMBEDDING_MODEL_<n>` (ollama) |
+| `llm_provider` | `anthropic`, `ollama` |
+| `llm_model` | every `LEVY_ANTHROPIC_MODEL_<n>` (anthropic) and `LEVY_OLLAMA_MODEL_<n>` (ollama) |
+| `exact_cache`, `semantic_cache` | `true`, `false` |
+| `vector_index_backend` | `faiss`, `brute_force` |
+| `cache_store` | `memory`, `redis` |
+
+A model must belong to its chosen provider. Providers, backends and stores are
+what Levy implements (`levy/console/options.py`); the model lists come from
+`.env`, and a provider with no configured model is not offered. Levy reads
+`.env` again when Swagger is refreshed, so a model added there appears in the
+selectors without restarting Levy. Each executed request appears on the page without a
+refresh. A miss is shown waiting at the provider while its call is in flight;
+the lookup steps (milliseconds) are replayed hop by hop with their real timings.
+
+Under the request path the page shows the answer the request returned. On a
+hit, the line above it sets the prompt asked beside the stored prompt the
+answer was written for. A miss states the nearest stored prompt's similarity
+against τ, and τ is shown with the cosine it enforces
+(`d = 1/τ − 1`, `cosine = 1 − d²/2`).
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /console/chat` | Chat under a per-request configuration; same body and headers as `/v1/chat/completions` |
+| `GET /console/traces?after=<version>` | Live trace feed the page polls |
+| `POST /console/traces/clear` | Empty the page's history |
+| `POST /console/cache/clear` | Empty the console's caches |
+| `GET /console` | The page |
+
 ## Configuration
 
 You can configure Levy via `LevyConfig`:
 
 ```python
 config = LevyConfig(
-    llm_provider="openai",
-    openai_api_key="sk-...",
+    llm_provider="anthropic",    # default; key read from ANTHROPIC_API_KEY in .env; also "ollama"
     enable_semantic_cache=True,
     similarity_threshold=0.85,   # in 1/(1+L2) space; study sweep: 0.70–0.90
     # Embedding model for the study (default: all-MiniLM-L6-v2 baseline)
@@ -423,7 +483,7 @@ grid — 2 embedding models × 3 workloads × 5 similarity thresholds
 label per the replay-harness algorithm.
 
 ```bash
-# Full 30-configuration sweep on the committed synthetic fixture (offline, mock providers):
+# Full 30-configuration sweep on the committed synthetic fixture:
 python scripts/run_experiments.py --out-dir results/smoke-run
 
 # Smoke run: one model, one workload, two thresholds:
@@ -432,7 +492,7 @@ python scripts/run_experiments.py --out-dir results/smoke-run \
 
 # Real study run — the rehydrated 900-pair dataset and real embeddings:
 python scripts/run_experiments.py --dataset data/ground_truth.full.csv \
-    --embedding-provider sentence-transformers --out-dir results/study-run
+    --out-dir results/study-run
 ```
 
 Outputs written to `--out-dir`:
@@ -448,12 +508,10 @@ Outputs written to `--out-dir`:
   re-running on identical inputs reproduces `results.csv`/`decisions.csv`
   byte-identically.
 
-`--embedding-provider` defaults to `mock`, so the harness runs fully offline
-with zero external dependencies against the committed synthetic fixture
-(`data/ground_truth.csv`). Mock embeddings are text-hashed random vectors and
-don't capture semantic similarity — this validates the machinery, not
-research results; a real run needs `sentence-transformers` and the real
-900-pair dataset, which is published as `data/ground_truth.ids.csv` and
+`--embedding-provider` defaults to `sentence-transformers`, the study's two
+models; their weights download once on first use. The committed synthetic
+fixture (`data/ground_truth.csv`) validates the pipeline; research results
+need the real 900-pair dataset, which is published as `data/ground_truth.ids.csv` and
 reconstructed locally with `scripts/rehydrate_dataset.py` (see
 [`docs/REPRODUCTION.md`](docs/REPRODUCTION.md)).
 
@@ -493,10 +551,9 @@ Every CSV is timestamp-free and byte-identical across re-runs on identical
 input, matching the harness's determinism convention.
 
 **Degenerate results are reported, not laundered.** If false positive rate
-has zero variance across all configurations — which is exactly what the
-synthetic fixture produces under mock embeddings, since no semantic hits
-occur — the F-tests are undefined, and the three hypotheses are reported as
-`undefined` rather than as retained nulls.
+has zero variance across all configurations, the F-tests are undefined, and
+the three hypotheses are reported as `undefined` rather than as retained
+nulls.
 
 ### Replication check (±5%)
 
@@ -519,9 +576,8 @@ The absolute floor exists because a purely relative tolerance collapses to
 demanding bit-exact equality near a reference of 0.0. Exit code is zero when
 every value is within tolerance; otherwise non-zero, with a per-configuration
 diff table naming the configuration, the metric, both values, and the
-deviation. Under mock providers the harness is byte-deterministic, so a
-self-comparison matches exactly; the tolerance is there for real-provider
-runs.
+deviation. On one host the harness is deterministic, so a self-comparison
+matches exactly; the tolerance is there for runs on another host.
 
 The verdict is also written to `replication.json` beside the reference, so it
 can be read rather than inferred from an exit code. It records which
@@ -575,10 +631,8 @@ Curve exploration and the hypothesis summary work from the bundle alone; the
 query panel additionally needs a dataset file (default: the one recorded in
 the bundle's `analysis_meta.json`, falling back to `data/ground_truth.csv`).
 
-**Offline story:** the query panel's "mock" embedding provider is fully
-offline and deterministic — no network, no model download. Switching it to
-"sentence-transformers" downloads model weights on first use and needs
-network access. If the bundle directory is missing or incomplete, the app
+The query panel embeds with the study's models (`sentence-transformers`);
+their weights download once on first use. If the bundle directory is missing or incomplete, the app
 reports exactly what's absent and the command to generate it
 (`scripts/reproduce.sh`), and stops cleanly rather than showing a traceback.
 

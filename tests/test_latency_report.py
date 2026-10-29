@@ -349,6 +349,7 @@ class TestDriverEndToEnd(unittest.TestCase):
                 [
                     "--reference", str(reference),
                     "--dataset", str(FIXTURE),
+                    "--embedding-provider", "mock",
                     "--out-dir", str(out_dir),
                     "--workload", "faq",
                     "--warmup", "1",
@@ -388,6 +389,7 @@ class TestDriverEndToEnd(unittest.TestCase):
                 [
                     "--reference", str(reference),
                     "--dataset", str(FIXTURE),
+                    "--embedding-provider", "mock",
                     "--out-dir", str(out_dir),
                     "--responses", str(corpus),
                     "--warmup", "1",
@@ -422,6 +424,7 @@ class TestDriverEndToEnd(unittest.TestCase):
                     [
                         "--reference", str(reference),
                         "--dataset", str(FIXTURE),
+                        "--embedding-provider", "mock",
                         "--out-dir", str(tmp_path / "out"),
                         "--workload", "chat",  # the reference holds faq only
                     ]

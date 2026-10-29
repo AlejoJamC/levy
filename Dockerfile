@@ -6,14 +6,14 @@
 # following the guide" cannot diverge. In particular this keeps `faiss-cpu` from
 # conda-forge (the pip wheel segfaults on Apple Silicon arm64).
 #
-# Default entry point runs the full pipeline offline: the committed fixture
-# dataset with mock embeddings, so no API key, no model download, and no network
-# access are needed.
+# Default entry point runs the full pipeline on the committed fixture dataset with
+# the study's embedding models; their weights download on first run (network).
+# No API key is needed.
 #
 # Build:
 #   docker build -t levy:latest .
 #
-# Run (one command, offline):
+# Run (one command):
 #   docker run --rm -v "$PWD/results:/opt/levy/results" levy:latest
 #
 # Expect a multi-GB image: `environment.yml` pulls sentence-transformers, hence
@@ -47,8 +47,7 @@ ENV PYTHONPATH=/opt/levy \
     MPLBACKEND=Agg \
     LEVY_OUT_DIR=/opt/levy/results/reproduce
 
-# Offline by default: fixture dataset + mock embeddings + mock LLM.
-# Opt in to real providers with `-e LEVY_EMBEDDING_PROVIDER=sentence-transformers`
-# (downloads model weights: needs network) and, for the HTTP API only,
-# `-e ANTHROPIC_API_KEY=...` (billed). The pipeline itself never calls a real LLM.
+# Fixture dataset + the study's embedding models (sentence-transformers). For the
+# HTTP API only, `-e ANTHROPIC_API_KEY=...` (billed). The pipeline never calls a
+# real LLM: the replay needs a cache decision, not an answer.
 CMD ["scripts/reproduce.sh"]

@@ -59,7 +59,7 @@ DECISIONS_FIELDNAMES = [
 def run_sweep(
     pairs: List[QueryPair],
     configs: Optional[List[ExperimentConfig]] = None,
-    embedding_provider: str = "mock",
+    embedding_provider: str = "sentence-transformers",
     llm_latency_seconds: float = 0.5,
     vector_index_backend: str = "auto",
 ) -> Tuple[List[EvaluationResult], Dict[str, dict]]:

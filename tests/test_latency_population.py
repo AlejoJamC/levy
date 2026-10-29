@@ -48,7 +48,9 @@ def _message_response(text="an answer", model="claude-haiku-4-5-20251001", stop_
 
 def _client(handler, **kwargs) -> AnthropicLLMClient:
     http_client = anthropic.DefaultHttpxClient(transport=httpx.MockTransport(handler))
-    kwargs.setdefault("model", "claude-haiku-4-5-20251001")
+    kwargs.setdefault("model", "test-anthropic-model")
+    kwargs.setdefault("input_price_per_mtok", 1.0)
+    kwargs.setdefault("output_price_per_mtok", 5.0)
     kwargs.setdefault("max_retries", 0)
     return AnthropicLLMClient(api_key="sk-test", http_client=http_client, **kwargs)
 

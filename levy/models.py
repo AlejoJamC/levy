@@ -48,6 +48,23 @@ class LevyResult:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
+class SemanticLookupObservation:
+    """What one semantic-cache lookup saw, written by `SemanticCache.get`.
+
+    Opt-in, like the timing collector: a caller passes an empty instance to see
+    the nearest neighbour and its similarity on a miss as well as a hit (the
+    cache itself discards a sub-threshold neighbour). `reached` stays False
+    when the lookup never got to the semantic cache.
+    """
+    reached: bool = False
+    index_size: int = 0
+    threshold: Optional[float] = None
+    nearest_prompt: Optional[str] = None
+    distance: Optional[float] = None
+    similarity: Optional[float] = None
+    hit: bool = False
+
+@dataclass
 class MetricsSnapshot:
     """Snapshot of current metrics."""
     total_requests: int

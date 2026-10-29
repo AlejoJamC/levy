@@ -54,12 +54,13 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   exact cache → semantic cache → LLM call → store (with embedding when semantic
   cache is enabled). Records metrics at each step.
 - `levy/config.py` — `LevyConfig` dataclass. Providers: `llm_provider` =
-  `mock | openai | ollama`; `embedding_provider` = `mock | sentence-transformers |
-  ollama`; `cache_store_type` = `memory | redis`. Loads `.env` via python-dotenv.
+  `anthropic | ollama` (default `anthropic` since LEV-23; `mock` remains a
+  test double only); `embedding_provider` = `sentence-transformers | ollama`
+  (`mock` is a test double only, never a default or a documented option); `cache_store_type` = `memory | redis`. Loads `.env` via python-dotenv.
 - `levy/models.py` — dataclasses: `LLMRequest`, `LLMResponse`, `CacheEntry`,
   `LevyResult` (`source` ∈ `llm | exact_cache | semantic_cache`), `MetricsSnapshot`.
 - `levy/llm_client.py` — `LLMClient` ABC + `MockLLMClient` (0.5s sleep, reversed
-  echo), `OpenAILLMClient` (raw httpx), `OllamaLLMClient`, `AnthropicLLMClient`
+  echo), `OllamaLLMClient`, `AnthropicLLMClient`
   (LEV-6) — synchronous wrapper around the official `anthropic` SDK
   (`messages.create`), selected via `llm_provider="anthropic"`. Retry is the
   SDK's own exponential backoff (`anthropic_max_retries`), not reimplemented;
@@ -115,7 +116,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   when Faiss absent), engine end-to-end semantic cache hit/miss.
 - `examples/simple_replay.py` — replays a prompt list under no-cache / exact /
   exact+semantic configs. `examples/ollama_demo.py` — optional side demo of the
-  Ollama provider (`qwen3` + `nomic-embed-text`); **not used in the study** — the
+  Ollama provider (models from `LEVY_OLLAMA_MODEL_<n>` / `LEVY_OLLAMA_EMBEDDING_MODEL_<n>`); **not used in the study** — the
   real models are `all-MiniLM-L6-v2` / `modernbert` embeddings, a mock LLM in the
   D3 grid, and Claude Haiku/Sonnet/Opus for latency and throughput. `examples/anthropic_smoke_check.py`
   — one-shot real-API smoke check for the Anthropic connector (billed, requires a
@@ -311,8 +312,8 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
 - `scripts/run_experiments.py` — argparse CLI over `levy/experiment/runner.py`: dataset
   path (default `data/ground_truth.csv`), output directory, `--models/--workloads/
   --thresholds` grid-subset flags for smoke runs, `--embedding-provider` (default
-  `mock`, fully offline against the synthetic fixture; pass `sentence-transformers` for
-  the real study run, which is LEV-13). Non-zero exit on a sanity-check failure.
+  `sentence-transformers`, the study's models; `mock` is accepted, unlisted, for the
+  offline tests only). Non-zero exit on a sanity-check failure.
 - `scripts/merge_results.py` (2026-08-06) — argparse CLI over `levy/experiment/merge.py`:
   positional harness directories + `--out-dir` (which may be one of them, an in-place
   merge, backed up first). `--allow-partial` writes an incomplete set for diagnostics
@@ -362,8 +363,7 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   statement; residual diagnostics — design balance, Shapiro-Wilk, Levene — reported,
   never acted on; η², partial η² and ω² per term (LEV-20) appended to `anova.csv`
   as `eta_sq`/`partial_eta_sq`/`omega_sq`, ω² deliberately unclamped, kept out of
-  `ANOVA_COLUMNS` so older bundles still load in the dashboard. **Degenerate-response rule:** zero variance in `fpr` (what the
-  synthetic fixture yields under mock embeddings) makes the F-tests undefined, so
+  `ANOVA_COLUMNS` so older bundles still load in the dashboard. **Degenerate-response rule:** zero variance in `fpr` makes the F-tests undefined, so
   decisions are reported as `undefined`, never as retained nulls);
   `curves.py` (tidy threshold-vs-hit-rate / threshold-vs-precision tables per
   (model, workload) with the harness zero-division flags carried through, plus
@@ -384,9 +384,9 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   exits non-zero with the diff table when out of tolerance.
 - **Release packaging (LEV-9)** — `scripts/reproduce.sh` is the **single definition
   of the evaluation pipeline** (`run_experiments.py` → `run_analysis.py` →
-  `check_replication.py`, `set -euo pipefail`, offline defaults: fixture dataset +
-  mock embeddings; overridable via positional args or `LEVY_DATASET` /
-  `LEVY_OUT_DIR` / `LEVY_EMBEDDING_PROVIDER` / `LEVY_MODELS` / `LEVY_WORKLOADS` /
+  `check_replication.py`, `set -euo pipefail`, defaults: fixture dataset +
+  `sentence-transformers` embeddings, weights downloaded once on first use; overridable via positional args or `LEVY_DATASET` /
+  `LEVY_OUT_DIR` / `LEVY_MODELS` / `LEVY_WORKLOADS` /
   `LEVY_THRESHOLDS`). `docs/REPRODUCTION.md` shows those same commands and the
   container's `CMD` invokes the script — so a flag change breaks the script rather
   than silently staling the guide. **Do not restate the pipeline commands anywhere
@@ -394,9 +394,9 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   dependency source, keeping conda-forge `faiss-cpu`); `docker-compose.yml` gained a
   `pipeline` service (`docker compose run --rm pipeline`) with the pre-existing
   `redis:7-alpine` service untouched and not a dependency of the default path.
-  Verified: `--network none`, no `ANTHROPIC_API_KEY`, exit 0, `results.csv`/
-  `decisions.csv` byte-identical to the host conda run; cold build 5m34s, image
-  16.4 GB (torch, via sentence-transformers). Docker is outside the pytest suite by
+  The image holds the libraries, not the model weights, so its first run needs
+  network to download the two embedding models; no `ANTHROPIC_API_KEY` is needed.
+  Cold build 5m34s, image 16.4 GB (torch, via sentence-transformers). Docker is outside the pytest suite by
   design. `scripts/audit_release.sh` is the re-runnable release audit (LICENSE, no
   tracked secret file, 9 credential patterns over tracked files *and* over all git
   history via `git log --all --pickaxe-regex -S`, personal-data markers in `data/`,
@@ -429,9 +429,8 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   dashboard.py` is the thin Streamlit shell (`streamlit run scripts/
   dashboard.py -- --bundle <dir>`): threshold-performance explorer (both
   metrics, degenerate points marked, 30% viability line), a hypothesis/κ
-  summary read verbatim from the bundle, and a live query box (`mock` /
-  `sentence-transformers` provider choice, the latter documented as
-  needing a first-run download). A missing/incomplete bundle renders the
+  summary read verbatim from the bundle, and a live query box (embeds with
+  `sentence-transformers`, the study's models; weights download on first use). A missing/incomplete bundle renders the
   typed error's message and stops cleanly, never a traceback; provenance
   (fixture-only labelling, providers) is a visible banner. `tests/
   test_dashboard.py` — 19 unit tests, fully offline, headless (no Streamlit
@@ -499,6 +498,26 @@ Package `levy/` — plain Python dataclasses, synchronous, provider-pluggable:
   metrics and provider clients. Counts per file drift; `pytest --co -q` is the
   authority.
 
+- **Levy Console (LEV-23)** — `levy/console/`, a `console` section of the API beside
+  the delivered endpoints, which it does not modify: `options.py` (the closed lists a
+  request picks from — embedding/LLM providers and models, cache switches, backend,
+  store, per-MTok prices per Anthropic model — each seeded from a value the code
+  already names; no mock in any list; `ConsoleSettings` is both a request's resolved
+  configuration and its pool key); `pool.py` (`ConsolePool`, one engine per
+  configuration, separate from the delivered `EnginePool`; injectable LLM and
+  embedding factories for tests; `PrefixedRedisStore` keeps each configuration's
+  Redis keys apart without touching `RedisStore`); `tracing.py` (`TraceRecorder`,
+  bounded in-memory buffer with a version cursor and epoch, hit-to-origin savings
+  map; `LiveTimingCollector` reports each segment's start and end so a pending
+  provider call is visible); `routes.py` (`POST /console/chat` with every setting as
+  an enum query parameter so Swagger shows selectors, `GET /console/traces`,
+  `POST /console/traces/clear`, `POST /console/cache/clear`, `GET /console`);
+  `static/` (the page: vanilla JS + inline SVG, no CDN). Engine hooks, both opt-in
+  and behaviour-identical when absent: `observation=` on `LevyEngine.generate()` /
+  `SemanticCache.get()` (`SemanticLookupObservation`, nearest neighbour on a miss
+  too) and the `llm_call` / `store` segments (kept out of `SEGMENTS`). Tests:
+  `tests/test_request_tracing.py` (19), `tests/test_console.py` (40) and `tests/test_config.py` (11, models from `.env`), offline.
+
 - **Later measurement and analysis tooling (LEV-17, LEV-18, LEV-21, LEV-22).**
   `scripts/run_throughput.py` serves `levy.api.app.create_app()` under `uvicorn` and
   drives it at 1/4/16/64 concurrent requests in an all-hit and an all-miss arm
@@ -538,11 +557,15 @@ implied by the original design, not bugs:
    **Model default drift:** the original design's example model string
    (`claude-3-sonnet-20240229`) is retired; the connector defaults to a current
    model instead — flagged here, not silently resolved.
-   Since LEV-14 that default is **`claude-haiku-4-5-20251001` at $1/$5 per MTok**,
-   the model the latency pilot actually calls: `anthropic_model` and the two
-   price fields are one triple describing one model, and the previous
-   `claude-opus-4-8` / $5 / $25 values described a model no run had ever called.
-   Escalating the model means changing all three together.
+   **Since LEV-23 (design D14) no model id or price is written in the code.**
+   `anthropic_model` and its two per-MTok prices are one triple describing one
+   model, read together from `.env`: `LEVY_ANTHROPIC_MODEL_<n>` with its
+   `_INPUT_USD_PER_MTOK` / `_OUTPUT_USD_PER_MTOK` (plain numbers, dot decimals;
+   lowest `<n>` is the default); Ollama models from `LEVY_OLLAMA_MODEL_<n>` /
+   `LEVY_OLLAMA_EMBEDDING_MODEL_<n>`. The console re-reads `.env` on each
+   Swagger load and request (`levy.config.current_model_catalog`). A client constructed
+   without them fails naming the variable. The published latency run used
+   `claude-haiku-4-5-20251001` at $1/$5 (recorded in `release/latency/`).
 3. ~~**No Faiss HNSW index**~~ — **Resolved (LEV-2).** `SemanticCache` now owns a
    `VectorIndex` (Faiss HNSW or brute-force oracle) and uses `similarity =
    1/(1+L2_distance)` per Algorithm 1. **Threshold-scale flag for LEV-4/LEV-8:**
@@ -602,10 +625,10 @@ implied by the original design, not bugs:
    `python -m unittest discover` still works but is no longer advertised as the
    default. A gated command (`--cov=levy --cov-branch --cov-fail-under=90`) enforces
    ≥90% branch coverage on `levy/`, with network-only provider internals
-   (OpenAI/Ollama LLM clients, Ollama/SentenceTransformer embedding clients) excluded
+   (the Ollama LLM client, Ollama/SentenceTransformer embedding clients) excluded
    via inline `# pragma: no cover` markers. `MockLLMClient` latency is now injectable
    (`latency_seconds`, default 0.5 unchanged); tests inject 0, so the suite runs in
-   the suite is not dominated by sleeps (the full suite, 666 tests, takes about 2 minutes).
+   the suite is not dominated by sleeps (the full suite, 737 tests, takes about 2 minutes).
 
 ## Commands
 
@@ -663,14 +686,14 @@ python scripts/annotate_dataset.py \
 
 # Demos
 python examples/simple_replay.py     # mock LLM; uses sentence-transformers if installed
-python examples/ollama_demo.py       # optional, not part of the study; needs `ollama serve` + qwen3 + nomic-embed-text
+python examples/ollama_demo.py       # optional, not part of the study; needs `ollama serve` + LEVY_OLLAMA_* in .env
 python examples/anthropic_smoke_check.py  # one real, billed call; requires ANTHROPIC_API_KEY in .env
 
 # HTTP API (LEV-7) — reads .env for the configured provider's credentials
 uvicorn levy.api.app:app --reload
 
 # Whole evaluation pipeline in one command (LEV-9) — the canonical entry point.
-# Offline by default (fixture dataset + mock embeddings); prefer this over
+# Fixture dataset + the study's embedding models by default; prefer this over
 # retyping the three stages below.
 scripts/reproduce.sh                          # -> results/reproduce/
 scripts/reproduce.sh data/ground_truth.csv results/study-run
@@ -741,8 +764,8 @@ edits:
   `add-fastapi-router`, `add-statistical-analysis`, `add-release-packaging`,
   `add-results-dashboard`, `add-corpus-acquisition` (2026-08-04),
   `add-ground-truth-dataset` (2026-08-05), `add-latency-measurement` (2026-08-07),
-  `add-anova-effect-sizes` (2026-09-19). **No changes are in flight** —
-  `openspec list` reports none. The production runs (LEV-13, LEV-17, LEV-21, LEV-22)
+  `add-anova-effect-sizes` (2026-09-19). **In flight:** `add-levy-console`
+  (LEV-23). The production runs (LEV-13, LEV-17, LEV-21, LEV-22)
   use already-shipped tooling and produce result artifacts rather than capability
   changes, so they have no OpenSpec change of their own.
 - `openspec/config.yaml` — project context injected into artifact generation.
@@ -785,6 +808,7 @@ Release (2026-11-02).
 | LEV-21 | — (duplicate prevalence in the source pools, `scripts/measure_prevalence.py`) | High | done; `release/prevalence/` (positive share of eligible pairs: faq 36.9 %, code 26.1 %, chat 34.9 %) |
 | LEV-22 | — (robustness re-analysis of H0 on the binary per-decision outcome, `levy/analysis/robustness.py`, `scripts/run_robustness.py`) | High | done; `release/d3-results/robustness/`. Model effect: the primary exact permutation and ML/Firth logistic retain H0₁ and reject H0₂, agreeing with the ANOVA; the pair-clustered tests (sign-flip, matched-unit, bootstrap) reject H0₁ and are recorded as DISAGREE — see `verdicts.csv` |
 | LEV-20 | `add-anova-effect-sizes` | High | archived (2026-09-19) — η², partial η², ω² per ANOVA term, published in `release/d3-results/analysis/anova.csv` |
+| LEV-23 | `add-levy-console` | High | in progress — console section of the API (`/console/*`) and the live observability page |
 
 Critical path: LEV-1 → LEV-2 → LEV-4 → LEV-8, with LEV-3 → LEV-12 → LEV-11 (D2)
 → LEV-13 (D3). **LEV-11 and LEV-13 are deliberately separate:** D2 is human-paced
@@ -860,6 +884,8 @@ real calls, 0 refusals, no budget halt.
 - Provider abstraction: every external dependency (LLM, embeddings, store) has an
   ABC plus a mock implementation, so tests and demos run with zero external
   services. Keep this pattern when adding Anthropic/Faiss/FastAPI.
-- The mock-first design is deliberate: experiments must be reproducible offline.
+- Test doubles (mock LLM, mock embeddings) exist for the offline test suite. Mock
+  embeddings never appear as a default or a documented option anywhere a user runs
+  Levy; the mock LLM is used only where the answer is irrelevant (the harness replay).
 - Licence is Apache 2.0; the code and dataset will be released publicly, so keep
   the repo free of personal/sensitive data.

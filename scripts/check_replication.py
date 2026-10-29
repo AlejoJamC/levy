@@ -58,11 +58,21 @@ from levy.experiment.metrics import ExperimentSanityError
 from levy.experiment.runner import run_sweep, write_results_csv
 
 
+EMBEDDING_PROVIDERS = ("sentence-transformers", "ollama")
+
+
+def embedding_provider(value: str) -> str:
+    # Real embeddings only. "mock" stays accepted, unlisted, for the offline test suite.
+    if value in EMBEDDING_PROVIDERS or value == "mock":
+        return value
+    raise argparse.ArgumentTypeError(f"choose from {', '.join(EMBEDDING_PROVIDERS)}")
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--reference", type=Path, required=True, help="Reference results.csv to replicate")
     parser.add_argument("--dataset", type=Path, default=None, help="Dataset to re-run against (default: the dataset_path in the reference run's run_meta.json)")
-    parser.add_argument("--embedding-provider", type=str, default=None, choices=["mock", "sentence-transformers", "ollama"], help="Embedding provider for the re-run (default: the provider recorded in run_meta.json, else mock)")
+    parser.add_argument("--embedding-provider", type=embedding_provider, default=None, metavar="{sentence-transformers,ollama}", help="Embedding provider for the re-run (default: the provider recorded in run_meta.json, else sentence-transformers)")
     parser.add_argument("--keep-dir", type=Path, default=None, help="Write the candidate run here instead of a discarded temp directory")
     parser.add_argument("--relative-tolerance", type=float, default=RELATIVE_TOLERANCE, help=f"Relative tolerance (default: {RELATIVE_TOLERANCE}, the +/-5%%)")
     parser.add_argument("--absolute-floor", type=float, default=ABSOLUTE_FLOOR, help=f"Absolute floor for near-zero reference values (default: {ABSOLUTE_FLOOR})")
@@ -113,16 +123,16 @@ def main(argv=None, output_fn=print) -> int:
         )
         return 1
 
-    embedding_provider = args.embedding_provider or run_meta.get("embedding_provider") or "mock"
+    provider = args.embedding_provider or run_meta.get("embedding_provider") or "sentence-transformers"
     configs = _configs_from_reference(reference)
 
-    output_fn(f"[check_replication] re-running {len(configs)} configuration(s) on {dataset_path} (embeddings: {embedding_provider})")
+    output_fn(f"[check_replication] re-running {len(configs)} configuration(s) on {dataset_path} (embeddings: {provider})")
     pairs = load_dataset(dataset_path)
     try:
         results, _ = run_sweep(
             pairs,
             configs=configs,
-            embedding_provider=embedding_provider,
+            embedding_provider=provider,
             llm_latency_seconds=args.llm_latency_seconds,
         )
     except ExperimentSanityError as exc:
@@ -158,7 +168,7 @@ def main(argv=None, output_fn=print) -> int:
             report,
             reference_path=args.reference,
             dataset_path=dataset_path,
-            embedding_provider=embedding_provider,
+            embedding_provider=provider,
             relative=args.relative_tolerance,
             absolute_floor=args.absolute_floor,
             generated_at_utc=timestamp,

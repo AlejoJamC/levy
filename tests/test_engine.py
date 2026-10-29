@@ -1,9 +1,9 @@
 """
 Tests for LevyEngine construction branches not covered by the semantic-cache
-and exact-cache end-to-end tests: provider selection (openai/ollama/redis)
+and exact-cache end-to-end tests: provider selection (ollama, unknown providers, redis)
 and the LLM-failure path in generate(). All offline -- RedisStore's lazy
-`redis.from_url()` never opens a real connection, and OpenAI/Ollama clients
-are only constructed here, never asked to `.generate()` (that path makes a
+`redis.from_url()` never opens a real connection, and the Ollama client
+is only constructed here, never asked to `.generate()` (that path makes a
 real HTTP call and is pragma-excluded).
 """
 
@@ -16,37 +16,35 @@ import levy.engine as engine_module
 from levy.cache.store import InMemoryStore
 from levy.config import LevyConfig
 from levy.engine import LevyEngine
-from levy.llm_client import LLMClient, OllamaLLMClient, OpenAILLMClient
+from levy.llm_client import LLMClient, OllamaLLMClient
 
 
 class TestProviderSelection(unittest.TestCase):
 
-    def test_openai_provider_without_api_key_raises(self):
-        config = LevyConfig(llm_provider="openai", openai_api_key=None, embedding_provider="mock")
-        with self.assertRaises(ValueError):
-            LevyEngine(config)
-
-    def test_openai_provider_with_api_key_constructs_client(self):
-        config = LevyConfig(
-            llm_provider="openai",
-            openai_api_key="sk-test",
-            embedding_provider="mock",
-        )
-        engine = LevyEngine(config)
-        self.assertIsInstance(engine.llm_client, OpenAILLMClient)
-        self.assertEqual(engine.llm_client.api_key, "sk-test")
-
     def test_ollama_provider_constructs_client(self):
-        config = LevyConfig(llm_provider="ollama", embedding_provider="mock")
+        config = LevyConfig(llm_provider="ollama", model_name="test-ollama-model", embedding_provider="mock")
         engine = LevyEngine(config)
         self.assertIsInstance(engine.llm_client, OllamaLLMClient)
+        self.assertEqual(engine.llm_client.model, "test-ollama-model")
+
+    def test_ollama_provider_without_a_model_raises_naming_the_variable(self):
+        config = LevyConfig(llm_provider="ollama", model_name=None, embedding_provider="mock")
+        with self.assertRaises(ValueError) as ctx:
+            LevyEngine(config)
+        self.assertIn("LEVY_OLLAMA_MODEL_<n>", str(ctx.exception))
+
+    def test_unknown_provider_raises_instead_of_falling_back_to_mock(self):
+        config = LevyConfig(llm_provider="openai", embedding_provider="mock")
+        with self.assertRaises(ValueError) as ctx:
+            LevyEngine(config)
+        self.assertIn("'anthropic', 'ollama', 'mock'", str(ctx.exception))
 
 
 class TestRedisStoreFallback(unittest.TestCase):
 
     def test_falls_back_to_memory_when_redis_store_unavailable(self):
         """Simulates a levy.cache.redis_store import failure (RedisStore = None)."""
-        config = LevyConfig(cache_store_type="redis", embedding_provider="mock")
+        config = LevyConfig(cache_store_type="redis", embedding_provider="mock", llm_provider="mock")
         with mock.patch.object(engine_module, "RedisStore", None):
             engine = LevyEngine(config)
         self.assertIsInstance(engine.store, InMemoryStore)
@@ -54,7 +52,7 @@ class TestRedisStoreFallback(unittest.TestCase):
     def test_constructs_redis_store_when_available(self):
         """redis.from_url() is lazy (no real connection attempt), so this
         succeeds fully offline against the redis-py client library."""
-        config = LevyConfig(cache_store_type="redis", embedding_provider="mock")
+        config = LevyConfig(cache_store_type="redis", embedding_provider="mock", llm_provider="mock")
         engine = LevyEngine(config)
         self.assertEqual(type(engine.store).__name__, "RedisStore")
 
@@ -63,7 +61,7 @@ class TestRedisStoreFallback(unittest.TestCase):
             def __init__(self, *args, **kwargs):
                 raise ConnectionError("simulated: no redis server")
 
-        config = LevyConfig(cache_store_type="redis", embedding_provider="mock")
+        config = LevyConfig(cache_store_type="redis", embedding_provider="mock", llm_provider="mock")
         with mock.patch.object(engine_module, "RedisStore", _ExplodingRedisStore):
             engine = LevyEngine(config)
         self.assertIsInstance(engine.store, InMemoryStore)

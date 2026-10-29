@@ -28,43 +28,6 @@ class MockLLMClient(LLMClient):
             model="mock-v1"
         )
 
-class OpenAILLMClient(LLMClient):
-    """Minimal OpenAI client using httpx."""
-    def __init__(self, api_key: str, base_url: str = "https://api.openai.com/v1", model: str = "gpt-3.5-turbo"):
-        self.api_key = api_key
-        self.base_url = base_url
-        self.model = model
-
-    def generate(self, request: LLMRequest) -> LLMResponse:  # pragma: no cover -- requires the real OpenAI API
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": self.model,
-            "messages": [{"role": "user", "content": request.prompt}],
-            "max_tokens": request.max_tokens,
-            "temperature": request.temperature,
-        }
-        
-        # Merge extra params
-        payload.update(request.extra_params)
-
-        with httpx.Client(timeout=30.0) as client:
-            resp = client.post(f"{self.base_url}/chat/completions", json=payload, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
-            
-            content = data["choices"][0]["message"]["content"]
-            tokens = data.get("usage", {}).get("total_tokens", 0)
-            
-            return LLMResponse(
-                text=content,
-                token_usage=tokens,
-                model=self.model,
-                metadata=data
-            )
-
 class BudgetExceededError(Exception):
     """Raised when accumulated estimated Anthropic spend has reached the configured cap."""
     def __init__(self, cap_usd: float, estimated_cost_usd: float):
@@ -112,15 +75,23 @@ class AnthropicLLMClient(LLMClient):
     def __init__(
         self,
         api_key: Optional[str],
-        model: str = "claude-opus-4-8",
+        model: Optional[str] = None,
         max_retries: int = 2,
         budget_cap_usd: float = 200.0,
-        input_price_per_mtok: float = 5.0,
-        output_price_per_mtok: float = 25.0,
+        input_price_per_mtok: Optional[float] = None,
+        output_price_per_mtok: Optional[float] = None,
         http_client: Optional[Any] = None,
     ):
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY is required for the 'anthropic' provider")
+        # No model or price is written in the code: they change every few months and
+        # come from LEVY_ANTHROPIC_MODEL_<n> in .env.
+        if not model or input_price_per_mtok is None or output_price_per_mtok is None:
+            raise ValueError(
+                "An Anthropic model and its input/output prices per MTok are required; "
+                "configure them in .env as LEVY_ANTHROPIC_MODEL_<n>, LEVY_ANTHROPIC_MODEL_<n>_INPUT_USD_PER_MTOK "
+                "and LEVY_ANTHROPIC_MODEL_<n>_OUTPUT_USD_PER_MTOK"
+            )
         self.model = model
         self.budget = _BudgetGuard(budget_cap_usd, input_price_per_mtok, output_price_per_mtok)
 
@@ -169,7 +140,9 @@ class AnthropicLLMClient(LLMClient):
 
 class OllamaLLMClient(LLMClient):
     """Client for local Ollama instances."""
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "qwen3"):
+    def __init__(self, base_url: str = "http://localhost:11434", model: Optional[str] = None):
+        if not model:
+            raise ValueError("An Ollama model is required; configure it in .env as LEVY_OLLAMA_MODEL_<n>")
         self.base_url = base_url
         self.model = model
 

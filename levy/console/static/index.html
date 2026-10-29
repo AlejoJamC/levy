@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Levy Console</title>
+<link rel="stylesheet" href="/console/assets/console.css">
+</head>
+<body>
+<div class="page">
+
+<header class="top">
+  <div class="brand"><span class="brand-name">Levy</span><span class="brand-sub">console</span></div>
+  <div class="top-right">
+    <span class="live" id="live"><span class="live-dot" aria-hidden="true"></span><span id="live-text">connecting…</span></span>
+    <button type="button" class="btn" id="clear-history">Clear history</button>
+  </div>
+</header>
+
+<div class="board">
+<section class="summary" aria-label="Session summary">
+  <div class="tile"><span class="tile-k">Served</span><span class="tile-v" id="s-served">0</span><span class="tile-n" id="s-served-note">no requests yet</span></div>
+  <div class="tile"><span class="tile-k">Hit rate</span><span class="tile-v" id="s-hit">0 %</span>
+    <div class="bar" aria-hidden="true"><div class="bar-fill" id="s-hit-bar"></div></div>
+    <span class="tile-n" id="s-mix">0 exact · 0 semantic · 0 miss</span></div>
+  <div class="tile"><span class="tile-k">Spent</span><span class="tile-v" id="s-spent">$0</span><span class="tile-n" id="s-spent-note"></span></div>
+  <div class="tile"><span class="tile-k">Avoided by hits</span><span class="tile-v" id="s-avoided">0 s</span><span class="tile-n" id="s-avoided-note">0 tokens</span></div>
+</section>
+
+<section class="panel path" aria-label="Request path">
+  <div class="panel-head">
+    <h2 id="map-title">Where requests go</h2>
+    <span class="mono muted small" id="map-config"></span>
+  </div>
+      <svg class="map" id="map" viewBox="0 0 656 212" role="img" aria-label="Request path through Levy">
+      <defs>
+        <marker id="head-idle" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#2A313C"></path></marker>
+        <marker id="head-exact" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#6EE7B7"></path></marker>
+        <marker id="head-semantic" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#7CB7FF"></path></marker>
+        <marker id="head-miss" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#F5A524"></path></marker>
+        <marker id="head-error" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#FF7A7A"></path></marker>
+        <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="10" stroke="rgba(245,165,36,0.06)" stroke-width="6"></line>
+        </pattern>
+      </defs>
+      <rect id="zone-local" x="0.5" y="0.5" width="475" height="211" rx="8" class="zone-local"></rect>
+      <g id="zone-net">
+        <rect x="488.5" y="0.5" width="167" height="211" rx="8" class="zone-net"></rect>
+        <text x="500" y="21" class="zone-label net">INTERNET</text>
+      </g>
+      <text x="12" y="21" class="zone-label">THIS MACHINE · <tspan id="host"></tspan></text>
+
+      <g class="edges">
+        <path id="f1" d="M 92 112 L 123 112" class="edge" marker-end="url(#head-idle)"></path>
+        <path id="f2" d="M 212 112 L 243 112" class="edge" marker-end="url(#head-idle)"></path>
+        <path id="f3" d="M 336 112 L 367 112" class="edge" marker-end="url(#head-idle)"></path>
+        <path id="f4" d="M 464 112 L 503 112" class="edge" marker-end="url(#head-idle)"></path>
+        <path id="r1" d="M 128 136 L 97 136" class="edge" marker-end="url(#head-idle)"></path>
+        <path id="r2" d="M 248 136 L 217 136" class="edge" marker-end="url(#head-idle)"></path>
+        <path id="r3" d="M 372 136 L 341 136" class="edge" marker-end="url(#head-idle)"></path>
+        <path id="r4" d="M 508 136 L 469 136" class="edge" marker-end="url(#head-idle)"></path>
+      </g>
+
+      <text id="stored-exact" x="292" y="78" class="stored">+1 stored</text>
+      <text id="stored-sem" x="418" y="78" class="stored">+1 stored</text>
+
+      <g id="wait-rings">
+        <rect x="500" y="84" width="152" height="80" rx="14" class="ring1"></rect>
+        <rect x="492" y="76" width="168" height="96" rx="18" class="ring2"></rect>
+      </g>
+
+      <g class="node" id="n-client"><rect x="12" y="92" width="80" height="64" rx="8"></rect>
+        <text x="52" y="120" class="n-name">Client</text><text x="52" y="137" class="n-sub">/docs</text></g>
+      <g class="node" id="n-router"><rect x="128" y="92" width="84" height="64" rx="8"></rect>
+        <text x="170" y="120" class="n-name">Router</text><text x="170" y="137" class="n-sub" id="router-sub">:8000</text></g>
+      <g class="node" id="n-exact"><rect x="248" y="92" width="88" height="64" rx="8"></rect>
+        <text x="292" y="120" class="n-name">Exact</text><text x="292" y="137" class="n-sub" id="exact-sub"></text></g>
+      <g class="node" id="n-semantic"><rect x="372" y="92" width="92" height="64" rx="8"></rect>
+        <text x="418" y="120" class="n-name">Semantic</text><text x="418" y="137" class="n-sub" id="sem-sub"></text></g>
+      <g class="node" id="n-llm"><rect x="508" y="92" width="136" height="64" rx="8"></rect>
+        <text x="576" y="120" class="n-name" id="llm-name">LLM</text><text x="576" y="137" class="n-sub" id="llm-sub"></text></g>
+
+      <circle id="packet" r="5" cx="52" cy="112"></circle>
+
+      <text x="12" y="186" class="foot" id="foot-left"></text>
+      <text x="644" y="186" class="foot end" id="foot-right"></text>
+    </svg>
+  <p class="story" id="story">Fire <span class="mono">POST /console/chat</span> from <a href="/docs#/console">/docs</a>. Each request appears here as it runs.</p>
+</section>
+
+<section class="panel answer-panel empty" aria-label="Answer" id="answer-panel">
+  <h2 id="answer-title">What the request got back</h2>
+  <p class="placeholder">The answer of the selected request appears here.</p>
+  <p class="asked" id="asked" hidden><span class="muted">Asked:</span> <span id="asked-prompt"></span><span class="sep" aria-hidden="true">·</span><span class="muted">Answer written for:</span> <span id="written-for"></span></p>
+  <p class="answer" id="d-answer"></p>
+</section>
+
+
+
+  <section class="panel detail empty" aria-label="Trace detail" id="detail">
+    <p class="placeholder">Why the cache decided, where the time went, what it cost and the configuration of the selected request appear here.</p>
+    <div class="d-head">
+      <div class="d-line"><span class="badge" id="d-badge"></span><span class="d-total mono" id="d-total"></span><span class="steps"><button type="button" class="btn step" id="step-prev" aria-label="Previous section">‹</button><button type="button" class="btn step" id="step-next" aria-label="Next section">›</button></span></div>
+      <span class="mono muted small" id="d-meta"></span>
+      <p class="d-prompt" id="d-prompt"></p>
+    </div>
+
+    <details class="block" name="trace">
+      <summary>WHY THIS DECISION</summary>
+      <div id="d-sem"></div>
+    </details>
+
+    <details class="block" name="trace">
+      <summary>WHERE THE TIME WENT</summary>
+      <div id="d-spans"></div>
+      <p class="note" id="d-ratio"></p>
+    </details>
+
+    <details class="block" name="trace">
+      <summary id="d-cost-title">COST</summary>
+      <div class="cells" id="d-cost"></div>
+      <button type="button" class="btn link" id="d-origin" hidden></button>
+      <pre class="err" id="d-error" hidden></pre>
+    </details>
+
+    <details class="block" name="trace">
+      <summary>CONFIGURATION</summary>
+      <dl class="cfg" id="d-config"></dl>
+    </details>
+
+    <details class="block" name="trace">
+      <summary>IDENTITY</summary>
+      <dl class="ident" id="d-ident"></dl>
+    </details>
+  </section>
+
+  <section class="panel history" aria-label="Request history">
+    <div class="panel-head">
+      <h2>History</h2>
+      <button type="button" class="pill" id="follow" aria-pressed="true">Following live</button>
+    </div>
+    <ol class="rows" id="rows"></ol>
+    <p class="muted small" id="rows-empty">No requests yet.</p>
+  </section>
+</div>
+
+</div>
+<script src="/console/assets/console.js"></script>
+</body>
+</html>
